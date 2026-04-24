@@ -16,11 +16,18 @@ export default function InventoryPage() {
             try {
                 const res = await fetch(`/api/inventory?page=${page}&search=${search}`);
                 const result = await res.json();
-                setProducts(result.data || []);
-                setMeta(result.meta);
-                setLoading(false);
+
+                if (res.ok) {
+                    setProducts(result.data || []);
+                    setMeta(result.meta || { pagination: { total: 0, page: 1, pageSize: 10, lastPage: 1 } });
+                } else {
+                    console.error("Failed to fetch inventory:", result.error);
+                    setProducts([]);
+                }
             } catch (err) {
                 console.error("Failed to fetch inventory:", err);
+                setProducts([]);
+            } finally {
                 setLoading(false);
             }
         };

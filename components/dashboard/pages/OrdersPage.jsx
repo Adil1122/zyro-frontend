@@ -23,10 +23,17 @@ export default function OrdersPage() {
             if (search) url += `&search=${encodeURIComponent(search)}`;
             const res = await fetch(url);
             const json = await res.json();
-            setOrdersData(json.data);
-            setMeta(json.meta);
+
+            if (res.ok) {
+                setOrdersData(json.data || []);
+                setMeta(json.meta);
+            } else {
+                console.error("Failed to fetch orders:", json.error);
+                setOrdersData([]);
+            }
         } catch (err) {
             console.error("Failed to fetch orders:", err);
+            setOrdersData([]);
         } finally {
             setLoading(false);
         }
@@ -39,7 +46,7 @@ export default function OrdersPage() {
         return () => clearTimeout(timer);
     }, [page, sf, search]);
 
-    const filtered = ordersData;
+    const filtered = ordersData || [];
 
     const counts = meta?.counts || { all: 0, pending: 0, confirmed: 0, delivered: 0, returned: 0 };
 
@@ -170,7 +177,7 @@ export default function OrdersPage() {
                 </Card>
             </div>
             {sel && (() => {
-                const o = ordersData.find(x => x.id === sel);
+                const o = ordersData?.find(x => x.id === sel);
                 if (!o) return null;
                 return (
                     <div style={{ width: 340, borderLeft: `1px solid ${T.border}`, background: T.bgCard, overflow: "auto", flexShrink: 0 }}>
