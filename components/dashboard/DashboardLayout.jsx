@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { T } from "./constants";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
@@ -19,11 +20,44 @@ export default function DashboardLayout({ children }) {
 
     const page = getPageFromPath(pathname);
 
+    const isLoginPage = pathname === "/login";
+    const router = useRouter();
+    const [user, setUser] = useState(null);
+    const [loadingAuth, setLoadingAuth] = useState(true);
+
     useEffect(() => {
         setMounted(true);
-    }, []);
 
-    if (!mounted) return null;
+        const checkAuth = () => {
+            const storedUser = localStorage.getItem('zyro_user');
+            const currentUser = storedUser ? JSON.parse(storedUser) : null;
+            setUser(currentUser);
+            setLoadingAuth(false);
+
+            if (!currentUser && !isLoginPage) {
+                router.push("/login");
+            } else if (currentUser && isLoginPage) {
+                router.push("/");
+            }
+        };
+
+        checkAuth();
+
+        // Listen for storage changes across tabs or custom authChange event
+        window.addEventListener('storage', checkAuth);
+        window.addEventListener('authChange', checkAuth);
+
+        return () => {
+            window.removeEventListener('storage', checkAuth);
+            window.removeEventListener('authChange', checkAuth);
+        };
+    }, [pathname, isLoginPage, router]);
+
+    if (!mounted || loadingAuth) return null;
+
+    if (isLoginPage) {
+        return <div style={{ width: "100%", height: "100vh", background: T.bg, color: T.text, fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif" }}>{children}</div>;
+    }
 
     return (
         <div style={{

@@ -1,10 +1,19 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { T } from "./constants";
 import Icon from "./Icon";
 
 export default function Header() {
+    const router = useRouter();
+
+    const handleLogout = () => {
+        localStorage.removeItem('zyro_user');
+        window.dispatchEvent(new Event('authChange'));
+        router.push("/login");
+    };
     return (
         <header style={{
             height: 60, background: T.bgCard,
@@ -50,8 +59,20 @@ export default function Header() {
                         </button>
                     ))}
                 </div>
-                <div style={{ padding: "1px", background: "linear-gradient(135deg, #1A5140 0%, #112E24 100%)", borderRadius: "50%", border: `1px solid ${T.borderMid}` }}>
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: T.bgElev, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: T.j200 }}>JS</div>
+                <div
+                    onClick={handleLogout}
+                    title="Click to Logout"
+                    style={{
+                        padding: "1px", background: "linear-gradient(135deg, #1A5140 0%, #112E24 100%)",
+                        borderRadius: "50%", border: `1px solid ${T.borderMid}`, cursor: "pointer",
+                        transition: "all 0.2s"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.boxShadow = T.glowGreen}
+                    onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}
+                >
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: T.bgElev, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: T.j200 }}>
+                        <Icon name="log-out" size={14} color={T.red} />
+                    </div>
                 </div>
             </div>
         </header>
