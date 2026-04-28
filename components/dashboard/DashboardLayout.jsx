@@ -6,10 +6,12 @@ import { supabase } from "@/lib/supabase";
 import { T } from "./constants";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import ZyroMobile from "./MobileApp";
 
 export default function DashboardLayout({ children }) {
     const [collapsed, setCollapsed] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
     const pathname = usePathname();
 
     // Map pathname to page id
@@ -47,9 +49,14 @@ export default function DashboardLayout({ children }) {
         window.addEventListener('storage', checkAuth);
         window.addEventListener('authChange', checkAuth);
 
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        handleResize();
+        window.addEventListener('resize', handleResize);
+
         return () => {
             window.removeEventListener('storage', checkAuth);
             window.removeEventListener('authChange', checkAuth);
+            window.removeEventListener('resize', handleResize);
         };
     }, [pathname, isLoginPage, router]);
 
@@ -57,6 +64,10 @@ export default function DashboardLayout({ children }) {
 
     if (isLoginPage) {
         return <div style={{ width: "100%", height: "100vh", background: T.bg, color: T.text, fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif" }}>{children}</div>;
+    }
+
+    if (isMobile && !isLoginPage) {
+        return <ZyroMobile />;
     }
 
     return (
