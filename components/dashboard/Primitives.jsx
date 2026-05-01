@@ -104,11 +104,26 @@ export function Badge({ status }) {
 }
 
 export function PlatformBadge({ platform }) {
+    const p = (platform || "").toLowerCase();
     const cfg = {
         woo: { label: "WooCommerce", c: T.j300, bg: "rgba(92,168,124,0.15)" },
+        woocommerce: { label: "WooCommerce", c: T.j300, bg: "rgba(92,168,124,0.15)" },
         daraz: { label: "Daraz", c: "#F59E0B", bg: "rgba(245,158,11,0.12)" },
         shopify: { label: "Shopify", c: "#10B981", bg: "rgba(16,185,129,0.12)" },
-    }[platform];
+        postex: { label: "PostEx", c: "#004A7C", bg: "rgba(0,74,124,0.12)" },
+    }[p];
+
+    if (!cfg) {
+        return (
+            <span style={{
+                padding: "2px 8px", borderRadius: T.r4,
+                background: T.bgElev, color: T.textMuted,
+                fontSize: 10, fontWeight: 700, letterSpacing: "0.05em",
+                textTransform: "uppercase", border: `1px solid ${T.borderMid}`,
+            }}>{platform || "UNKNOWN"}</span>
+        );
+    }
+
     return (
         <span style={{
             padding: "2px 8px", borderRadius: T.r4,

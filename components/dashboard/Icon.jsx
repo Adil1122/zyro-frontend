@@ -19,6 +19,8 @@ export default function Icon({ name, size = 16, color = "currentColor" }) {
         plus: <svg {...p}><path d="M12 5v14M5 12h14" /></svg>,
         check: <svg {...p}><path d="M20 6L9 17l-5-5" /></svg>,
         arrow: <svg {...p}><path d="M5 12h14M13 6l6 6-6 6" /></svg>,
+        "arrow-left": <svg {...p}><path d="M19 12H5M11 6l-6 6 6 6" /></svg>,
+
         download: <svg {...p}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>,
         filter: <svg {...p}><path d="M22 3H2l8 9.5V19l4 2v-8.5L22 3z" /></svg>,
         chevron: <svg {...p}><path d="M6 9l6 6 6-6" /></svg>,

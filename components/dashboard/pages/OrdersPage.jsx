@@ -119,7 +119,7 @@ export default function OrdersPage() {
                                             <Icon name="pin" size={10} color={T.textFaint} />{o.city || '—'}
                                         </div>
                                     </td>
-                                    <td style={{ padding: "12px 16px" }}><PlatformBadge platform="shopify" /></td>
+                                    <td style={{ padding: "12px 16px" }}><PlatformBadge platform={o.platform || "shopify"} /></td>
                                     <td style={{ padding: "12px 16px" }}><Badge status={o.status.toLowerCase()} /></td>
                                     <td style={{ padding: "12px 16px" }}>
                                         <div>
@@ -192,31 +192,49 @@ export default function OrdersPage() {
                         <div style={{ padding: 20 }}>
                             <Badge status={o.status.toLowerCase()} />
                             <div style={{ marginTop: 18, padding: 16, background: T.bgElev, borderRadius: T.r10, marginBottom: 16, border: `1px solid ${T.border}` }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Customer</div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                    <div style={{
-                                        width: 44, height: 44, borderRadius: "50%",
-                                        background: `linear-gradient(135deg, ${T.j400} 0%, ${T.j600} 100%)`,
-                                        display: "flex", alignItems: "center", justifyContent: "center",
-                                        fontSize: 14, fontWeight: 800, color: "#fff"
-                                    }}>
-                                        {(o.customer || "C").split(" ").map(w => w[0]).join("")}
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{o.customer}</div>
-                                        <div style={{ fontSize: 11, color: T.textFaint }}>{o.city || '—'}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            {[["Amount", `Rs ${(o.amount ?? 0).toLocaleString()}`], ["Items", `1 products`],
-                            ["Platform", "Shopify"],
-                            ["Courier", "TCS"], ["Tracking", "772938102"], ["Placed", `${new Date(o.time).toLocaleDateString()}`],
-                            ].map(([k, v]) => (
-                                <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${T.border}` }}>
-                                    <span style={{ fontSize: 12, color: T.textFaint }}>{k}</span>
-                                    <span style={{ fontSize: 12, fontWeight: 700, color: T.text, fontFamily: k === "Tracking" ? "monospace" : "inherit" }}>{v}</span>
-                                </div>
-                            ))}
+                                 <div style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Customer</div>
+                                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                     <div style={{
+                                         width: 44, height: 44, borderRadius: "50%",
+                                         background: `linear-gradient(135deg, ${T.j400} 0%, ${T.j600} 100%)`,
+                                         display: "flex", alignItems: "center", justifyContent: "center",
+                                         fontSize: 14, fontWeight: 800, color: "#fff"
+                                     }}>
+                                         {(o.customer || "C").split(" ").map(w => w[0]).join("")}
+                                     </div>
+                                     <div>
+                                         <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{o.customer}</div>
+                                         <div style={{ fontSize: 11, color: T.textFaint }}>{o.city || '—'}</div>
+                                     </div>
+                                 </div>
+                                 {o.address?.shipping && (
+                                     <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${T.border}`, fontSize: 11, color: T.textMuted, lineHeight: 1.5 }}>
+                                         <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 9, color: T.textFaint }}>SHIPPING ADDRESS</div>
+                                         {o.address.shipping.address1}<br />
+                                         {o.address.shipping.city}, {o.address.shipping.state} {o.address.shipping.postcode}
+                                     </div>
+                                 )}
+                             </div>
+
+                             <div style={{ marginBottom: 16 }}>
+                                 <div style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Items</div>
+                                 {(o.items || []).map((item, idx) => (
+                                     <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
+                                         <span style={{ color: T.text }}><span style={{ fontWeight: 700 }}>{item.quantity}×</span> {item.name}</span>
+                                         <span style={{ color: T.textFaint }}>Rs {(item.subtotal ?? 0).toLocaleString()}</span>
+                                     </div>
+                                 ))}
+                             </div>
+
+                             {[["Amount", `Rs ${(o.amount ?? 0).toLocaleString()}`],
+                             ["Platform", o.platform === 'woocommerce' ? "WooCommerce" : (o.platform || "Shopify")],
+                             ["Courier", "TCS"], ["Tracking", "772938102"], ["Placed", `${new Date(o.time).toLocaleDateString()}`],
+                             ].map(([k, v]) => (
+                                 <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${T.border}` }}>
+                                     <span style={{ fontSize: 12, color: T.textFaint }}>{k}</span>
+                                     <span style={{ fontSize: 12, fontWeight: 700, color: T.text, fontFamily: k === "Tracking" ? "monospace" : "inherit" }}>{v}</span>
+                                 </div>
+                             ))}
                             <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
                                 {o.status.toLowerCase() === "pending" && <GradientButton variant="primary" full icon="check">Confirm Order</GradientButton>}
                                 {o.status.toLowerCase() === "confirmed" && <GradientButton variant="primary" full icon="truck">Book Courier</GradientButton>}
