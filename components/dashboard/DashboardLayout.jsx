@@ -23,6 +23,10 @@ export default function DashboardLayout({ children }) {
     const page = getPageFromPath(pathname);
 
     const isLoginPage = pathname === "/login";
+    const isSignupPage = pathname === "/signup";
+    const isPlansPage = pathname === "/plans";
+    const isPublicPage = isLoginPage || isSignupPage;
+
     const router = useRouter();
     const [user, setUser] = useState(null);
     const [loadingAuth, setLoadingAuth] = useState(true);
@@ -36,7 +40,7 @@ export default function DashboardLayout({ children }) {
             setUser(currentUser);
             setLoadingAuth(false);
 
-            if (!currentUser && !isLoginPage) {
+            if (!currentUser && !isPublicPage && !isPlansPage) {
                 router.push("/login");
             } else if (currentUser && isLoginPage) {
                 router.push("/");
@@ -58,15 +62,22 @@ export default function DashboardLayout({ children }) {
             window.removeEventListener('authChange', checkAuth);
             window.removeEventListener('resize', handleResize);
         };
-    }, [pathname, isLoginPage, router]);
+    }, [pathname, isLoginPage, isSignupPage, isPlansPage, router]);
 
     if (!mounted || loadingAuth) return null;
 
-    if (isLoginPage) {
-        return <div style={{ width: "100%", height: "100vh", background: T.bg, color: T.text, fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif" }}>{children}</div>;
+    if (isLoginPage || isSignupPage || isPlansPage) {
+        return <div style={{ 
+            width: "100%", 
+            minHeight: "100vh", 
+            background: T.bg, 
+            color: T.text, 
+            fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif",
+            overflow: "auto"
+        }}>{children}</div>;
     }
 
-    if (isMobile && !isLoginPage) {
+    if (isMobile && !isPublicPage) {
         return <ZyroMobile />;
     }
 
