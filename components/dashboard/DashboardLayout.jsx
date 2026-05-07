@@ -34,15 +34,47 @@ export default function DashboardLayout({ children }) {
     useEffect(() => {
         setMounted(true);
 
-        const checkAuth = () => {
+        const checkAuth = async () => {
             const storedUser = localStorage.getItem('zyro_user');
             const currentUser = storedUser ? JSON.parse(storedUser) : null;
-            setUser(currentUser);
+            
+            if (!currentUser) {
+                if (!isPublicPage && !isPlansPage) {
+                    router.push("/login");
+                }
+                setLoadingAuth(false);
+                return;
+            }
+
+            // Fetch fresh user data to check trial/plan
+            try {
+                const { data: dbUser, error } = await supabase
+                    .from('users')
+                    .select('*, plans(*)')
+                    .eq('id', currentUser.id)
+                    .single();
+
+                if (dbUser) {
+                    setUser(dbUser);
+                    localStorage.setItem('zyro_user', JSON.stringify(dbUser));
+
+                    // Trial check
+                    const trialEndsAt = new Date(dbUser.trial_ends_at);
+                    const now = new Date();
+                    const isTrialExpired = now > trialEndsAt;
+                    const hasPlan = !!dbUser.plan_id;
+
+                    if (isTrialExpired && !hasPlan && !isPlansPage && !isPublicPage && pathname !== "/payment") {
+                        router.push("/plans");
+                    }
+                }
+            } catch (err) {
+                console.error("Auth sync error:", err);
+            }
+
             setLoadingAuth(false);
 
-            if (!currentUser && !isPublicPage && !isPlansPage) {
-                router.push("/login");
-            } else if (currentUser && isLoginPage) {
+            if (currentUser && isLoginPage) {
                 router.push("/");
             }
         };
@@ -98,7 +130,7 @@ export default function DashboardLayout({ children }) {
             {/* MAIN CONTENT AREA */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
                 {/* TOP HEADER */}
-                <Header />
+                <Header user={user} />
 
                 {/* PAGE CONTENT */}
                 <div style={{ flex: 1, overflow: "auto", background: T.bg }}>

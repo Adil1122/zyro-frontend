@@ -79,5 +79,6 @@ export const NAV = [
     { id: "customers", label: "Customers" },
     { id: "automation", label: "Automation" },
     { id: "analytics", label: "Analytics" },
+    { id: "plans", label: "Plans" },
     { id: "settings", label: "Settings" },
 ];
