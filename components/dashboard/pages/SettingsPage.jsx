@@ -35,26 +35,25 @@ function useWooCommerceStats() {
         setError(null);
         try {
             const userId = getCurrentUserId();
-            const res = await fetch("/api/woocommerce/stats", {
-                headers: { 'x-user-id': userId }
-            });
-            const data = await res.json();
-            if (!data.configured) {
-                setStats({ configured: false });
-            } else if (data.error) {
-                setError(data.error);
-                setStats({ configured: true });
-            } else {
-                setStats({ configured: true, ...data });
-            }
+            // Only check if WooCommerce is configured, don't fetch live stats automatically
+            const { data: user } = await supabase
+                .from('users')
+                .select('wc_store_url, wc_consumer_key, wc_consumer_secret')
+                .eq('id', userId)
+                .single();
+            
+            const configured = !!(user?.wc_store_url && user?.wc_consumer_key && user?.wc_consumer_secret);
+            setStats({ configured });
         } catch (e) {
             setError(e.message);
+            setStats({ configured: false });
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
+        // Check if WooCommerce is configured on mount (no live stats fetching)
         fetchStats();
     }, []);
 
@@ -199,10 +198,52 @@ function useInstaWorldStats() {
 
 // ─── WooCommerce Store Card ─────────────────────────────────────────────────
 function WooCommerceCard({ onManage }) {
-    const { stats, loading, error } = useWooCommerceStats();
+    const { stats, loading, error, refetch } = useWooCommerceStats();
+    const [syncing, setSyncing] = useState(false);
+    const [syncResult, setSyncResult] = useState(null);
 
     const isConnected = stats?.configured && !error;
     const storeUrl = process.env.NEXT_PUBLIC_WC_STORE_URL || null; // only if exposed
+
+    const handleSync = async () => {
+        setSyncing(true);
+        setSyncResult(null);
+        
+        try {
+            const userId = getCurrentUserId();
+            const response = await fetch('/api/woocommerce/sync', {
+                method: 'POST',
+                headers: { 
+                    'x-user-id': userId,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                setSyncResult({
+                    success: true,
+                    message: 'Sync completed successfully',
+                    results: data.results
+                });
+                // Refresh stats after sync
+                refetch();
+            } else {
+                setSyncResult({
+                    success: false,
+                    message: data.error || 'Sync failed'
+                });
+            }
+        } catch (error) {
+            setSyncResult({
+                success: false,
+                message: 'Sync failed: ' + error.message
+            });
+        } finally {
+            setSyncing(false);
+        }
+    };
 
     return (
         <Card style={{ marginBottom: 10, padding: 16 }}>
@@ -287,17 +328,55 @@ function WooCommerceCard({ onManage }) {
                     </span>
                 </div>
 
-                {/* Action button */}
-                {isConnected && !loading
-                    ? <GradientButton variant="secondary" size="sm" icon="settings" onClick={onManage}>Manage</GradientButton>
-                    : !loading
-                        ? <GradientButton variant="primary" size="sm" icon="plus"
-                            onClick={onManage}>
-                            Connect Store
+                {/* Action buttons */}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    {isConnected && !loading && (
+                        <GradientButton 
+                            variant="primary" 
+                            size="sm" 
+                            icon="refresh" 
+                            onClick={handleSync}
+                            disabled={syncing}
+                        >
+                            {syncing ? "Syncing..." : "Sync"}
                         </GradientButton>
-                        : null
-                }
+                    )}
+                    {isConnected && !loading
+                        ? <GradientButton variant="secondary" size="sm" icon="settings" onClick={onManage}>Manage</GradientButton>
+                        : !loading
+                            ? <GradientButton variant="primary" size="sm" icon="plus"
+                                onClick={onManage}>
+                                Connect Store
+                            </GradientButton>
+                            : null
+                    }
+                </div>
             </div>
+            
+            {/* Sync Result Notification */}
+            {syncResult && (
+            <div style={{
+                marginTop: 8,
+                padding: 12,
+                borderRadius: T.r8,
+                background: syncResult.success ? T.greenBg : T.redBg,
+                border: `1px solid ${syncResult.success ? T.green : T.red}`,
+                fontSize: 12,
+                color: syncResult.success ? T.green : T.red,
+            }}>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                    {syncResult.success ? "✓ Sync Complete" : "✗ Sync Failed"}
+                </div>
+                <div>{syncResult.message}</div>
+                {syncResult.results && (
+                    <div style={{ marginTop: 8, fontSize: 11, opacity: 0.8 }}>
+                        <div>Customers: {syncResult.results.customers.inserted} inserted, {syncResult.results.customers.updated} updated</div>
+                        <div>Products: {syncResult.results.products.inserted} inserted, {syncResult.results.products.updated} updated</div>
+                        <div>Orders: {syncResult.results.orders.inserted} inserted, {syncResult.results.orders.updated} updated</div>
+                    </div>
+                )}
+            </div>
+            )}
         </Card>
     );
 }

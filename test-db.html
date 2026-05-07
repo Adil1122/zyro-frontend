@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Database Test</title>
+</head>
+<body>
+    <h1>Database Test</h1>
+    <button onclick="testDatabase()">Test Database</button>
+    <pre id="results"></pre>
+
+    <script>
+        async function testDatabase() {
+            const results = document.getElementById('results');
+            results.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch('/api/test-db-data', {
+                    headers: {
+                        'x-user-id': '1'
+                    }
+                });
+                
+                const data = await response.json();
+                results.textContent = JSON.stringify(data, null, 2);
+                
+            } catch (error) {
+                results.textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
