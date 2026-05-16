@@ -7,7 +7,8 @@ const supabase = createClient(
 );
 
 // Google Ads OAuth Configuration
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/google-ads/callback`;
+const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, ''); // Remove trailing slash
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${appUrl}/api/google-ads/callback`;
 
 // Helper function to get user ID from request
 function getUserIdFromRequest(request) {

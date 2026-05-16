@@ -7,7 +7,8 @@ const supabase = createClient(
 );
 
 // Meta App Configuration
-const META_REDIRECT_URI = process.env.META_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/meta-ads/callback`;
+const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, ''); // Remove trailing slash
+const META_REDIRECT_URI = process.env.META_REDIRECT_URI || `${appUrl}/api/meta-ads/callback`;
 
 // Helper function to get user ID from request
 function getUserIdFromRequest(request) {
