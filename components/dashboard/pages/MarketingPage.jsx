@@ -53,7 +53,11 @@ export default function MarketingPage() {
             try {
                 const userId = getCurrentUserId();
                 if (userId) {
-                    const res = await fetch('/api/meta-ads/stats');
+                    const res = await fetch('/api/meta-ads/stats', {
+                        headers: {
+                            'x-user-id': userId
+                        }
+                    });
                     if (res.ok) {
                         const stats = await res.json();
                         setMetaAdsStats(stats);
@@ -71,7 +75,11 @@ export default function MarketingPage() {
             try {
                 const userId = getCurrentUserId();
                 if (userId) {
-                    const res = await fetch('/api/google-ads/stats');
+                    const res = await fetch('/api/google-ads/stats', {
+                        headers: {
+                            'x-user-id': userId
+                        }
+                    });
                     if (res.ok) {
                         const stats = await res.json();
                         setGoogleAdsStats(stats);
@@ -209,6 +217,60 @@ export default function MarketingPage() {
             setGoogleAdsConnected(false);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleMetaAdsDisconnect = async () => {
+        try {
+            const userId = getCurrentUserId();
+            if (!userId) return;
+
+            const res = await fetch('/api/meta-ads/disconnect', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-id': userId
+                }
+            });
+
+            if (res.ok) {
+                setMetaAdsConnected(false);
+                setMetaAdsStats(null);
+                alert('Meta Ads disconnected successfully');
+            } else {
+                const data = await res.json();
+                alert('Failed to disconnect Meta Ads: ' + (data.error || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error('Failed to disconnect Meta Ads:', err);
+            alert('Failed to disconnect Meta Ads: ' + err.message);
+        }
+    };
+
+    const handleGoogleAdsDisconnect = async () => {
+        try {
+            const userId = getCurrentUserId();
+            if (!userId) return;
+
+            const res = await fetch('/api/google-ads/disconnect', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-id': userId
+                }
+            });
+
+            if (res.ok) {
+                setGoogleAdsConnected(false);
+                setGoogleAdsStats(null);
+                alert('Google Ads disconnected successfully');
+            } else {
+                const data = await res.json();
+                alert('Failed to disconnect Google Ads: ' + (data.error || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error('Failed to disconnect Google Ads:', err);
+            alert('Failed to disconnect Google Ads: ' + err.message);
         }
     };
 
@@ -399,9 +461,14 @@ export default function MarketingPage() {
                             </GradientButton>
                         )}
                         {isLoggedIn && platform === "meta" && metaAdsConnected && (
-                            <GradientButton variant="secondary" size="sm" icon="refresh" onClick={handleMetaAdsStatsRefresh}>
-                                Refresh Stats
-                            </GradientButton>
+                            <>
+                                <GradientButton variant="secondary" size="sm" icon="refresh" onClick={handleMetaAdsStatsRefresh}>
+                                    Refresh Stats
+                                </GradientButton>
+                                <GradientButton variant="danger" size="sm" icon="close" onClick={handleMetaAdsDisconnect}>
+                                    Disconnect
+                                </GradientButton>
+                            </>
                         )}
                         {isLoggedIn && platform === "google" && !googleAdsConnected && (
                             <GradientButton size="sm" icon="google" onClick={handleGoogleAdsConnect}>
@@ -409,9 +476,14 @@ export default function MarketingPage() {
                             </GradientButton>
                         )}
                         {isLoggedIn && platform === "google" && googleAdsConnected && (
-                            <GradientButton variant="secondary" size="sm" icon="refresh" onClick={handleGoogleAdsStatsRefresh}>
-                                Refresh Stats
-                            </GradientButton>
+                            <>
+                                <GradientButton variant="secondary" size="sm" icon="refresh" onClick={handleGoogleAdsStatsRefresh}>
+                                    Refresh Stats
+                                </GradientButton>
+                                <GradientButton variant="danger" size="sm" icon="close" onClick={handleGoogleAdsDisconnect}>
+                                    Disconnect
+                                </GradientButton>
+                            </>
                         )}
                         {isLoggedIn && (
                             <GradientButton variant="secondary" size="sm" icon="settings" onClick={() => setShowCredentialsModal(true)}>
