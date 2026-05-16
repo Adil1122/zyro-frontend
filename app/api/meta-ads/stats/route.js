@@ -71,7 +71,7 @@ export async function GET(request) {
 
     // Fetch campaigns with stats
     const campaignsResponse = await fetch(
-      `https://graph.facebook.com/v18.0/act_${accountId}/campaigns?fields=id,name,status,objective,buying_type,created_time,updated_time,insights{spend,impressions,clicks,reach,cpc,ctr}&date_preset=${datePreset}&access_token=${user.meta_ads_access_token}`
+      `https://graph.facebook.com/v18.0/${accountId}/campaigns?fields=id,name,status,objective,buying_type,created_time,updated_time,insights{spend,impressions,clicks,reach,cpc,ctr}&date_preset=${datePreset}&access_token=${user.meta_ads_access_token}`
     );
 
     const campaignsData = await campaignsResponse.json();
