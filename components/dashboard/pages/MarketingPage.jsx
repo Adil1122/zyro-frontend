@@ -21,6 +21,7 @@ export default function MarketingPage() {
     const [googleAdsConnected, setGoogleAdsConnected] = useState(false);
     const [googleAdsStats, setGoogleAdsStats] = useState(null);
     const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [credentials, setCredentials] = useState({
         meta_app_id: '',
         meta_app_secret: '',
@@ -30,6 +31,10 @@ export default function MarketingPage() {
     });
 
     useEffect(() => {
+        // Check if user is logged in
+        const userId = getCurrentUserId();
+        setIsLoggedIn(!!userId);
+
         const fetchMarketing = async () => {
             setLoading(true);
             try {
@@ -164,19 +169,46 @@ export default function MarketingPage() {
     const handleCredentialsSave = async () => {
         try {
             const userId = getCurrentUserId();
-            if (!userId) return;
+            if (!userId) {
+                // Redirect to login if not logged in
+                window.location.href = '/login';
+                return;
+            }
 
             const res = await fetch('/api/user/credentials', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(credentials)
             });
-
-            if (res.ok) {
-                setShowCredentialsModal(false);
+            const data = await res.json();
+            
+            if (!res.ok) {
+                if (data.requiresLogin) {
+                    // Show login prompt and redirect
+                    if (confirm('You must be logged in to save credentials. Would you like to log in now?')) {
+                        window.location.href = '/login';
+                    }
+                    return;
+                }
+                throw new Error(data.error || 'Failed to save credentials');
             }
+            
+            alert('Credentials saved successfully!');
+            setShowCredentialsModal(false);
+            
+            // Refresh connection status
+            if (credentials.meta_app_id && credentials.meta_app_secret) {
+                const metaRes = await fetch('/api/meta-ads/stats');
+                if (metaRes.ok) {
+                    const metaStats = await metaRes.json();
+                    setMetaAdsStats(metaStats);
+                    setMetaAdsConnected(true);
+                }
+            }
+            
         } catch (err) {
             console.error('Failed to save credentials:', err);
+            alert('Failed to save credentials: ' + err.message);
         }
     };
 
@@ -307,29 +339,36 @@ export default function MarketingPage() {
                 subtitle={`AI-powered campaign analysis · ${active.count} campaigns detected`}
                 actions={
                     <div style={{ display: "flex", gap: 8 }}>
-                        {platform === "meta" && !metaAdsConnected && (
+                        {!isLoggedIn && (
+                            <GradientButton size="sm" icon="user" onClick={() => window.location.href = '/login'}>
+                                Login Required
+                            </GradientButton>
+                        )}
+                        {isLoggedIn && platform === "meta" && !metaAdsConnected && (
                             <GradientButton size="sm" icon="meta" onClick={handleMetaAdsConnect}>
                                 Connect Meta Ads
                             </GradientButton>
                         )}
-                        {platform === "meta" && metaAdsConnected && (
+                        {isLoggedIn && platform === "meta" && metaAdsConnected && (
                             <GradientButton variant="secondary" size="sm" icon="refresh" onClick={handleMetaAdsStatsRefresh}>
                                 Refresh Stats
                             </GradientButton>
                         )}
-                        {platform === "google" && !googleAdsConnected && (
+                        {isLoggedIn && platform === "google" && !googleAdsConnected && (
                             <GradientButton size="sm" icon="google" onClick={handleGoogleAdsConnect}>
                                 Connect Google Ads
                             </GradientButton>
                         )}
-                        {platform === "google" && googleAdsConnected && (
+                        {isLoggedIn && platform === "google" && googleAdsConnected && (
                             <GradientButton variant="secondary" size="sm" icon="refresh" onClick={handleGoogleAdsStatsRefresh}>
                                 Refresh Stats
                             </GradientButton>
                         )}
-                        <GradientButton variant="secondary" size="sm" icon="settings" onClick={() => setShowCredentialsModal(true)}>
-                            API Credentials
-                        </GradientButton>
+                        {isLoggedIn && (
+                            <GradientButton variant="secondary" size="sm" icon="settings" onClick={() => setShowCredentialsModal(true)}>
+                                API Credentials
+                            </GradientButton>
+                        )}
                         <GradientButton variant="secondary" size="sm" icon="download">Download Report</GradientButton>
                     </div>
                 }

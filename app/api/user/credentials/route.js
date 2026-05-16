@@ -42,8 +42,15 @@ export async function GET(request) {
 export async function POST(request) {
   const userId = getCurrentUserId();
   
+  console.log('Debug - Current userId:', userId);
+  
   if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    console.log('Debug - No userId found, returning 401');
+    return NextResponse.json({ 
+      error: 'You must be logged in to save credentials. Please log in first.',
+      requiresLogin: true,
+      loginUrl: '/login'
+    }, { status: 401 });
   }
 
   try {
