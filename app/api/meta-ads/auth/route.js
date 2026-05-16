@@ -7,7 +7,7 @@ const supabase = createClient(
 );
 
 // Meta App Configuration
-const META_REDIRECT_URI = process.env.META_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/meta-ads/callback`;
+const META_REDIRECT_URI = 'https://zyro-frontend.vercel.app/api/meta-ads/callback' || `${process.env.NEXT_PUBLIC_APP_URL}/api/meta-ads/callback`;
 
 // Helper function to get user ID from request
 function getUserIdFromRequest(request) {
