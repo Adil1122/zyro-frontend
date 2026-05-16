@@ -89,7 +89,11 @@ export default function MarketingPage() {
             try {
                 const userId = getCurrentUserId();
                 if (userId) {
-                    const res = await fetch('/api/user/credentials');
+                    const res = await fetch('/api/user/credentials', {
+                        headers: {
+                            'x-user-id': userId
+                        }
+                    });
                     if (res.ok) {
                         const data = await res.json();
                         setCredentials({
@@ -177,7 +181,10 @@ export default function MarketingPage() {
 
             const res = await fetch('/api/user/credentials', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-user-id': userId
+                },
                 body: JSON.stringify(credentials)
             });
             const data = await res.json();
