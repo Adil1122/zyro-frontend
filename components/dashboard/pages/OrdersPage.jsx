@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton, Badge, PlatformBadge, Card, PageHeader } from "../Primitives";
+import { getCurrentUserId } from "../../../lib/auth";
 
 export default function OrdersPage() {
     const [ordersData, setOrdersData] = useState([]);
@@ -18,9 +19,11 @@ export default function OrdersPage() {
     const fetchOrders = async () => {
         setLoading(true);
         try {
+            const userId = getCurrentUserId();
             let url = `/api/orders?page=${page}&pageSize=${pageSize}`;
             if (sf !== "all") url += `&status=${sf}`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (userId) url += `&userId=${encodeURIComponent(userId)}`;
             const res = await fetch(url);
             const json = await res.json();
 

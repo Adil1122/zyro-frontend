@@ -5,6 +5,7 @@ import {
   CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, PieChart, Pie, Cell,
 } from "recharts";
+import { getCurrentUserId } from "../../lib/auth";
 
 // ═══ DESIGN TOKENS ═════════════════════════════════════════════════════════
 const T = {
@@ -410,12 +411,25 @@ function BottomTabBar({ active, setActive, openMore }) {
 // HOME PAGE
 // ═══════════════════════════════════════════════════════════════════════════
 function HomePage({ setActive }) {
+  const [user, setUser] = useState(null);
   const [greet] = useState(() => {
     const hr = new Date().getHours();
     if (hr < 12) return { text: "Good morning", emoji: "☀️", icon: "sun" };
     if (hr < 17) return { text: "Good afternoon", emoji: "👋", icon: "sun" };
     return { text: "Good evening", emoji: "🌙", icon: "moon" };
   });
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('zyro_user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
 
   const salesData = [
     { day: "M", value: 42 }, { day: "T", value: 38 }, { day: "W", value: 55 },
@@ -454,7 +468,7 @@ function HomePage({ setActive }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 22 }}>{greet.emoji}</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, color: T.textMuted }}>{greet.text}, Ahmad</div>
+            <div style={{ fontSize: 13, color: T.textMuted }}>{greet.text}, {user?.name?.split(' ')[0] || 'User'}</div>
             <div style={{ fontSize: 20, fontWeight: 800, color: T.text, letterSpacing: "-0.4px" }}>
               Your store's on fire today 🔥
             </div>
@@ -2013,6 +2027,20 @@ function CustomersPage() {
 }
 
 function SettingsPage() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('zyro_user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <TopHeader title="Settings" showLogo />
@@ -2031,10 +2059,10 @@ function SettingsPage() {
               border: "2px solid rgba(255,255,255,0.4)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 20, fontWeight: 800, color: "#fff",
-            }}>AK</div>
+            }}>{getInitials(user?.name)}</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Ahmad Khan</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", marginTop: 2 }}>Owner · Acme Stores</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>{user?.name || 'User'}</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", marginTop: 2 }}>Owner · {user?.store_name || 'Store'}</div>
               <div style={{
                 marginTop: 6, display: "inline-flex", alignItems: "center", gap: 4,
                 padding: "3px 8px", borderRadius: 20,

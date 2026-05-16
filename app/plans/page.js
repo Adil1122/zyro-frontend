@@ -24,19 +24,25 @@ export default function PlansPage() {
         fetchPlans();
     }, []);
 
-    const features = [
-        { label: "Auto order confirmation (WhatsApp template)", starter: true, growth: true, pro: true },
-        { label: "Courier booking automation", starter: "self-serve", growth: "+ team books on behalf", pro: true },
-        { label: "Connected stores", starter: "1", growth: "3", pro: "Unlimited" },
-        { label: "Order dashboard", starter: true, growth: true, pro: true },
-        { label: "WhatsApp AI Chatbot (free-form replies)", starter: false, growth: true, pro: true },
-        { label: "Daily courier receipts via WhatsApp", starter: false, growth: true, pro: true },
-        { label: "Inventory management & sync", starter: false, growth: false, pro: true },
-        { label: "Sync products across platforms", starter: false, growth: false, pro: true },
-        { label: "Meta Ads stats", starter: false, growth: false, pro: true },
-        { label: "Google Ads stats", starter: false, growth: false, pro: true },
-        { label: "Dedicated account manager", starter: false, growth: false, pro: true },
-    ];
+    // Feature labels mapping
+    const featureLabels = {
+        auto_order_confirmation: "Auto order confirmation (WhatsApp template)",
+        courier_booking_automation: "Courier booking automation",
+        connected_stores: "Connected stores",
+        order_dashboard: "Order dashboard",
+        whatsapp_ai_chatbot: "WhatsApp AI Chatbot (free-form replies)",
+        daily_courier_receipts: "Daily courier receipts via WhatsApp",
+        inventory_management: "Inventory management & sync",
+        sync_products: "Sync products across platforms",
+        meta_ads_stats: "Meta Ads stats",
+        google_ads_stats: "Google Ads stats",
+        dedicated_account_manager: "Dedicated account manager",
+    };
+
+    // Get all unique feature names from all plans
+    const allFeatures = plans.length > 0 ? 
+        Object.keys(plans[0].features || {}).sort() : 
+        Object.keys(featureLabels);
 
     const renderValue = (val) => {
         if (val === true) return <span style={{ color: T.green, fontSize: 18 }}>✓</span>;
@@ -85,15 +91,19 @@ export default function PlansPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {features.map((f, i) => (
-                            <tr key={i} style={{ 
+                        {allFeatures.map((featureName, i) => (
+                            <tr key={featureName} style={{ 
                                 borderTop: `1px solid ${T.border}`,
                                 background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)"
                             }}>
-                                <td style={{ ...cellStyle, textAlign: "left", fontSize: 13, color: T.textSub }}>{f.label}</td>
+                                <td style={{ ...cellStyle, textAlign: "left", fontSize: 13, color: T.textSub }}>
+                                    {featureLabels[featureName] || featureName}
+                                </td>
                                 {plans.map(plan => {
-                                    const key = plan.name.toLowerCase();
-                                    return <td key={plan.id} style={{ ...cellStyle, textAlign: "center" }}>{renderValue(f[key] ?? false)}</td>
+                                    const value = plan.features?.[featureName] ?? 'false';
+                                    return <td key={plan.id} style={{ ...cellStyle, textAlign: "center" }}>
+                                        {renderValue(value === 'true' ? true : value === 'false' ? false : value)}
+                                    </td>;
                                 })}
                             </tr>
                         ))}

@@ -228,6 +228,7 @@ async function syncOrders(userId, creds) {
                                 .from('customers')
                                 .update(customerData)
                                 .eq('id', existingCustomer.id);
+                            // Note: Customer updates are tracked in the order count
                         } else {
                             // Insert new customer
                             const { data: newCustomer, error: customerInsertError } = await supabase
@@ -245,6 +246,7 @@ async function syncOrders(userId, creds) {
                             if (!customerId) {
                                 throw new Error('Failed to insert customer - no ID returned');
                             }
+                            // Note: Customer inserts are tracked separately if needed
                         }
                     }
 
@@ -267,6 +269,8 @@ async function syncOrders(userId, creds) {
                         .maybeSingle(); // Use maybeSingle() instead of single()
 
                     let orderId;
+                    let orderWasInserted = false;
+                    
                     if (existingOrder?.id) {
                         orderId = existingOrder.id;
                         // Update existing order
@@ -274,6 +278,7 @@ async function syncOrders(userId, creds) {
                             .from('orders')
                             .update(orderData)
                             .eq('id', existingOrder.id);
+                        result.updated++;
                     } else {
                         // Insert new order
                         const { data: newOrder, error: insertError } = await supabase
@@ -291,6 +296,8 @@ async function syncOrders(userId, creds) {
                         if (!orderId) {
                             throw new Error('Failed to insert order - no ID returned');
                         }
+                        orderWasInserted = true;
+                        result.inserted++;
                     }
 
                     // Prepare order items for batch insert
@@ -304,19 +311,22 @@ async function syncOrders(userId, creds) {
                                 .select('id')
                                 .eq('user_id', userId)
                                 .eq('sku', item.sku)
-                                .single();
+                                .maybeSingle(); // Use maybeSingle() to avoid error when not found
                             
-                            if (product) {
+                            if (product?.id) {
                                 productId = product.id;
                             }
                         }
 
-                        orderItems.push({
-                            order_id: orderId,
-                            product_id: productId,
-                            quantity: item.quantity || 1,
-                            price: item.price || 0
-                        });
+                        // Only add order item if we have a valid order_id
+                        if (orderId) {
+                            orderItems.push({
+                                order_id: orderId,
+                                product_id: productId,
+                                quantity: item.quantity || 1,
+                                price: item.price || 0
+                            });
+                        }
                     }
 
                     if (orderItems.length > 0) {
@@ -324,8 +334,6 @@ async function syncOrders(userId, creds) {
                             .from('order_items')
                             .insert(orderItems);
                     }
-
-                    result.inserted++;
                 } catch (error) {
                     console.error(`Error syncing order ${order.number}:`, error);
                     result.errors++;

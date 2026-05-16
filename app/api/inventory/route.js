@@ -6,9 +6,10 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const search = searchParams.get('search') || '';
+    const userId = searchParams.get('userId');
 
     try {
-        const data = await inventoryService.getInventory(page, pageSize, search);
+        const data = await inventoryService.getInventory(page, pageSize, search, userId);
         return NextResponse.json(data);
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });

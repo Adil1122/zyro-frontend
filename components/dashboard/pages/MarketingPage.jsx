@@ -8,6 +8,7 @@ import {
 import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton, Card, ChartTip, PageHeader } from "../Primitives";
+import { getCurrentUserId } from "@/lib/supabase";
 
 export default function MarketingPage() {
     const [platform, setPlatform] = useState("meta");
@@ -15,6 +16,18 @@ export default function MarketingPage() {
     const [metaPagination, setMetaPagination] = useState({ pagination: { total: 0, page: 1, pageSize: 10, lastPage: 1 } });
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
+    const [metaAdsConnected, setMetaAdsConnected] = useState(false);
+    const [metaAdsStats, setMetaAdsStats] = useState(null);
+    const [googleAdsConnected, setGoogleAdsConnected] = useState(false);
+    const [googleAdsStats, setGoogleAdsStats] = useState(null);
+    const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+    const [credentials, setCredentials] = useState({
+        meta_app_id: '',
+        meta_app_secret: '',
+        google_ads_client_id: '',
+        google_ads_client_secret: '',
+        google_ads_developer_token: ''
+    });
 
     useEffect(() => {
         const fetchMarketing = async () => {
@@ -30,8 +43,142 @@ export default function MarketingPage() {
                 setLoading(false);
             }
         };
+        
+        const checkMetaAdsConnection = async () => {
+            try {
+                const userId = getCurrentUserId();
+                if (userId) {
+                    const res = await fetch('/api/meta-ads/stats');
+                    if (res.ok) {
+                        const stats = await res.json();
+                        setMetaAdsStats(stats);
+                        setMetaAdsConnected(true);
+                    } else {
+                        setMetaAdsConnected(false);
+                    }
+                }
+            } catch (err) {
+                setMetaAdsConnected(false);
+            }
+        };
+
+        const checkGoogleAdsConnection = async () => {
+            try {
+                const userId = getCurrentUserId();
+                if (userId) {
+                    const res = await fetch('/api/google-ads/stats');
+                    if (res.ok) {
+                        const stats = await res.json();
+                        setGoogleAdsStats(stats);
+                        setGoogleAdsConnected(true);
+                    } else {
+                        setGoogleAdsConnected(false);
+                    }
+                }
+            } catch (err) {
+                setGoogleAdsConnected(false);
+            }
+        };
+
+        const loadCredentials = async () => {
+            try {
+                const userId = getCurrentUserId();
+                if (userId) {
+                    const res = await fetch('/api/user/credentials');
+                    if (res.ok) {
+                        const data = await res.json();
+                        setCredentials({
+                            meta_app_id: data.meta_app_id || '',
+                            meta_app_secret: '',
+                            google_ads_client_id: data.google_ads_client_id || '',
+                            google_ads_client_secret: '',
+                            google_ads_developer_token: ''
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load credentials:", err);
+            }
+        };
+        
         fetchMarketing();
+        checkMetaAdsConnection();
+        checkGoogleAdsConnection();
+        loadCredentials();
     }, [page]);
+
+    const handleMetaAdsConnect = async () => {
+        try {
+            const res = await fetch('/api/meta-ads/auth');
+            const data = await res.json();
+            if (data.authUrl) {
+                window.location.href = data.authUrl;
+            }
+        } catch (err) {
+            console.error('Failed to connect Meta Ads:', err);
+        }
+    };
+
+    const handleMetaAdsStatsRefresh = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch('/api/meta-ads/stats');
+            const stats = await res.json();
+            setMetaAdsStats(stats);
+            setMetaAdsConnected(true);
+        } catch (err) {
+            console.error('Failed to fetch Meta Ads stats:', err);
+            setMetaAdsConnected(false);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleAdsConnect = async () => {
+        try {
+            const res = await fetch('/api/google-ads/auth');
+            const data = await res.json();
+            if (data.authUrl) {
+                window.location.href = data.authUrl;
+            }
+        } catch (err) {
+            console.error('Failed to connect Google Ads:', err);
+        }
+    };
+
+    const handleGoogleAdsStatsRefresh = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch('/api/google-ads/stats');
+            const stats = await res.json();
+            setGoogleAdsStats(stats);
+            setGoogleAdsConnected(true);
+        } catch (err) {
+            console.error('Failed to fetch Google Ads stats:', err);
+            setGoogleAdsConnected(false);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCredentialsSave = async () => {
+        try {
+            const userId = getCurrentUserId();
+            if (!userId) return;
+
+            const res = await fetch('/api/user/credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(credentials)
+            });
+
+            if (res.ok) {
+                setShowCredentialsModal(false);
+            }
+        } catch (err) {
+            console.error('Failed to save credentials:', err);
+        }
+    };
 
     const metaTrend = [
         { day: "1", spend: 1200, revenue: 4800 },
@@ -66,7 +213,17 @@ export default function MarketingPage() {
 
     const totalSpendCalculated = marketingData.reduce((sum, c) => sum + Number(c.budget || 0), 0);
 
-    const metaCampaigns = marketingData.map(c => ({
+    // Use real Meta Ads stats if available, otherwise use mock data
+    const metaCampaigns = metaAdsStats ? metaAdsStats.campaigns.map(c => ({
+        name: c.name,
+        spend: c.spend,
+        rev: c.revenue || c.spend * 3.2,
+        roas: c.roas || (c.spend > 0 ? (c.revenue || c.spend * 3.2) / c.spend : 0),
+        clicks: c.clicks,
+        ctr: c.ctr || (c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0),
+        conv: Math.floor(c.spend / 500),
+        status: c.status
+    })) : marketingData.map(c => ({
         name: c.name,
         spend: c.budget,
         rev: c.budget * 3.2,
@@ -77,12 +234,24 @@ export default function MarketingPage() {
         status: c.status
     }));
 
-    const googleCampaigns = [
+    const mockGoogleCampaigns = [
         { name: "Search — Cotton Kurta Keywords", spend: 6400, rev: 24500, roas: 3.83, clicks: 512, ctr: 5.8, conv: 22, status: "winning" },
         { name: "Search — Shalwar Trouser", spend: 4200, rev: 15400, roas: 3.67, clicks: 380, ctr: 6.2, conv: 18, status: "winning" },
     ];
 
-    const meta = {
+    const meta = metaAdsStats ? {
+        brand: "Meta Ads", subtitle: "Facebook + Instagram campaigns",
+        accent: "#1877F2", icon: "meta",
+        spend: `Rs ${metaAdsStats.totalSpend.toLocaleString()}`,
+        revenue: `Rs ${metaAdsStats.revenue.toLocaleString()}`,
+        roas: `${metaAdsStats.roas.toFixed(2)}x`,
+        orders: metaAdsStats.totalOrders,
+        aov: metaAdsStats.totalOrders > 0 ? `Rs ${Math.round(metaAdsStats.revenue / metaAdsStats.totalOrders).toLocaleString()}` : "Rs 0",
+        trend: metaTrend, campaigns: metaCampaigns, creatives: marketingData[0]?.creatives || [],
+        account: "Connected Meta Ads Account",
+        count: metaCampaigns.length,
+        connected: true
+    } : {
         brand: "Meta Ads", subtitle: "Facebook + Instagram campaigns",
         accent: "#1877F2", icon: "meta",
         spend: `Rs ${totalSpendCalculated.toLocaleString()}`,
@@ -91,17 +260,43 @@ export default function MarketingPage() {
         orders: Math.floor(totalSpendCalculated / 400),
         aov: "Rs 1,280",
         trend: metaTrend, campaigns: metaCampaigns, creatives: marketingData[0]?.creatives || [],
-        account: "Zyro Brand PK · Ad Account 8392",
-        count: metaPagination.pagination.total
+        account: "Not Connected",
+        count: metaPagination.pagination.total,
+        connected: false
     };
-    const google = {
+    // Use real Google Ads stats if available, otherwise use mock data
+    const googleCampaigns = googleAdsStats ? googleAdsStats.campaigns.map(c => ({
+        name: c.name,
+        spend: c.spend,
+        rev: c.revenue || c.spend * 3.5,
+        roas: c.roas || (c.spend > 0 ? (c.revenue || c.spend * 3.5) / c.spend : 0),
+        clicks: c.clicks,
+        ctr: c.ctr || (c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0),
+        conv: Math.floor(c.conversions),
+        status: c.status
+    })) : mockGoogleCampaigns;
+
+    const google = googleAdsStats ? {
         brand: "Google Ads", subtitle: "Search + Shopping campaigns",
         accent: "#4285F4", icon: "google",
-        spend: "Rs 19,600", revenue: "Rs 66,000", roas: "3.37x",
-        orders: 73, aov: "Rs 904",
+        spend: `$${googleAdsStats.totalSpend.toFixed(2)}`,
+        revenue: `$${googleAdsStats.revenue.toFixed(2)}`,
+        roas: `${googleAdsStats.roas.toFixed(2)}x`,
+        orders: googleAdsStats.totalOrders,
+        aov: googleAdsStats.totalOrders > 0 ? `$${Math.round(googleAdsStats.revenue / googleAdsStats.totalOrders).toFixed(2)}` : "$0",
         trend: googleTrend, campaigns: googleCampaigns, creatives: [],
-        account: "zyro-brand-pk · ID 123-456-7890",
-        count: googleCampaigns.length
+        account: "Connected Google Ads Account",
+        count: googleCampaigns.length,
+        connected: true
+    } : {
+        brand: "Google Ads", subtitle: "Search + Shopping campaigns",
+        accent: "#4285F4", icon: "google",
+        spend: "$19,600", revenue: "$66,000", roas: "3.37x",
+        orders: 73, aov: "$904",
+        trend: googleTrend, campaigns: googleCampaigns, creatives: [],
+        account: "Not Connected",
+        count: googleCampaigns.length,
+        connected: false
     };
     const active = platform === "meta" ? meta : google;
 
@@ -110,7 +305,34 @@ export default function MarketingPage() {
             <PageHeader
                 title="Marketing Intelligence"
                 subtitle={`AI-powered campaign analysis · ${active.count} campaigns detected`}
-                actions={<GradientButton variant="secondary" size="sm" icon="download">Download Report</GradientButton>}
+                actions={
+                    <div style={{ display: "flex", gap: 8 }}>
+                        {platform === "meta" && !metaAdsConnected && (
+                            <GradientButton size="sm" icon="meta" onClick={handleMetaAdsConnect}>
+                                Connect Meta Ads
+                            </GradientButton>
+                        )}
+                        {platform === "meta" && metaAdsConnected && (
+                            <GradientButton variant="secondary" size="sm" icon="refresh" onClick={handleMetaAdsStatsRefresh}>
+                                Refresh Stats
+                            </GradientButton>
+                        )}
+                        {platform === "google" && !googleAdsConnected && (
+                            <GradientButton size="sm" icon="google" onClick={handleGoogleAdsConnect}>
+                                Connect Google Ads
+                            </GradientButton>
+                        )}
+                        {platform === "google" && googleAdsConnected && (
+                            <GradientButton variant="secondary" size="sm" icon="refresh" onClick={handleGoogleAdsStatsRefresh}>
+                                Refresh Stats
+                            </GradientButton>
+                        )}
+                        <GradientButton variant="secondary" size="sm" icon="settings" onClick={() => setShowCredentialsModal(true)}>
+                            API Credentials
+                        </GradientButton>
+                        <GradientButton variant="secondary" size="sm" icon="download">Download Report</GradientButton>
+                    </div>
+                }
             />
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
@@ -287,6 +509,149 @@ export default function MarketingPage() {
                         </Card>
                     )}
                 </>
+            )}
+
+            {/* API Credentials Modal */}
+            {showCredentialsModal && (
+                <div style={{
+                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+                    background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center",
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.r12,
+                        width: "90%", maxWidth: 600, maxHeight: "80vh", overflow: "auto",
+                        boxShadow: T.shadowLg
+                    }}>
+                        <div style={{
+                            padding: "24px 24px 16px", borderBottom: `1px solid ${T.border}`,
+                            display: "flex", justifyContent: "space-between", alignItems: "center"
+                        }}>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: T.text }}>API Credentials</div>
+                            <button
+                                onClick={() => setShowCredentialsModal(false)}
+                                style={{ background: "none", border: "none", color: T.textFaint, cursor: "pointer", fontSize: 20 }}
+                            >
+                                ×
+                            </button>
+                        </div>
+                        
+                        <div style={{ padding: 24 }}>
+                            <div style={{ marginBottom: 20 }}>
+                                <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 12 }}>Meta Ads Configuration</h3>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                                    <div>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: T.textSub, display: "block", marginBottom: 4 }}>
+                                            App ID
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={credentials.meta_app_id}
+                                            onChange={(e) => setCredentials({...credentials, meta_app_id: e.target.value})}
+                                            style={{
+                                                width: "100%", height: 36, padding: "0 10px",
+                                                background: T.bgHigh, border: `1px solid ${T.border}`,
+                                                borderRadius: T.r6, color: T.text, fontSize: 13,
+                                                outline: "none"
+                                            }}
+                                            placeholder="Enter Meta App ID"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: T.textSub, display: "block", marginBottom: 4 }}>
+                                            App Secret
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={credentials.meta_app_secret}
+                                            onChange={(e) => setCredentials({...credentials, meta_app_secret: e.target.value})}
+                                            style={{
+                                                width: "100%", height: 36, padding: "0 10px",
+                                                background: T.bgHigh, border: `1px solid ${T.border}`,
+                                                borderRadius: T.r6, color: T.text, fontSize: 13,
+                                                outline: "none"
+                                            }}
+                                            placeholder="Enter Meta App Secret"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: 20 }}>
+                                <h3 style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 12 }}>Google Ads Configuration</h3>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                                    <div>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: T.textSub, display: "block", marginBottom: 4 }}>
+                                            Client ID
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={credentials.google_ads_client_id}
+                                            onChange={(e) => setCredentials({...credentials, google_ads_client_id: e.target.value})}
+                                            style={{
+                                                width: "100%", height: 36, padding: "0 10px",
+                                                background: T.bgHigh, border: `1px solid ${T.border}`,
+                                                borderRadius: T.r6, color: T.text, fontSize: 13,
+                                                outline: "none"
+                                            }}
+                                            placeholder="Enter Google Ads Client ID"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: T.textSub, display: "block", marginBottom: 4 }}>
+                                            Client Secret
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={credentials.google_ads_client_secret}
+                                            onChange={(e) => setCredentials({...credentials, google_ads_client_secret: e.target.value})}
+                                            style={{
+                                                width: "100%", height: 36, padding: "0 10px",
+                                                background: T.bgHigh, border: `1px solid ${T.border}`,
+                                                borderRadius: T.r6, color: T.text, fontSize: 13,
+                                                outline: "none"
+                                            }}
+                                            placeholder="Enter Google Ads Client Secret"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: T.textSub, display: "block", marginBottom: 4 }}>
+                                            Developer Token
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={credentials.google_ads_developer_token}
+                                            onChange={(e) => setCredentials({...credentials, google_ads_developer_token: e.target.value})}
+                                            style={{
+                                                width: "100%", height: 36, padding: "0 10px",
+                                                background: T.bgHigh, border: `1px solid ${T.border}`,
+                                                borderRadius: T.r6, color: T.text, fontSize: 13,
+                                                outline: "none"
+                                            }}
+                                            placeholder="Enter Google Ads Developer Token"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                                <GradientButton
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => setShowCredentialsModal(false)}
+                                >
+                                    Cancel
+                                </GradientButton>
+                                <GradientButton
+                                    size="sm"
+                                    onClick={handleCredentialsSave}
+                                >
+                                    Save Credentials
+                                </GradientButton>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

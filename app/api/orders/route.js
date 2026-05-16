@@ -7,9 +7,10 @@ export async function GET(request) {
     const pageSize = parseInt(searchParams.get('pageSize') || '10');
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || 'all';
+    const userId = searchParams.get('userId');
 
     try {
-        const data = await ordersService.getOrders(page, pageSize, search, status);
+        const data = await ordersService.getOrders(page, pageSize, search, status, userId);
         return NextResponse.json(data);
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });

@@ -18,7 +18,15 @@ export default function ProfilePage() {
         email: "",
         phone: "",
         timezone: "Asia/Karachi",
-        currency: "PKR"
+        currency: "PKR",
+        stripe_publishable_key: "",
+        stripe_secret_key: "",
+        jazzcash_merchant_id: "",
+        jazzcash_password: "",
+        jazzcash_integrity_salt: "",
+        easypaisa_merchant_id: "",
+        easypaisa_store_id: "",
+        easypaisa_hash_key: ""
     });
 
     useEffect(() => {
@@ -35,7 +43,15 @@ export default function ProfilePage() {
             email: userData.email || "",
             phone: userData.phone || "",
             timezone: userData.timezone || "Asia/Karachi",
-            currency: userData.currency || "PKR"
+            currency: userData.currency || "PKR",
+            stripe_publishable_key: userData.stripe_publishable_key || "",
+            stripe_secret_key: userData.stripe_secret_key || "",
+            jazzcash_merchant_id: userData.jazzcash_merchant_id || "",
+            jazzcash_password: userData.jazzcash_password || "",
+            jazzcash_integrity_salt: userData.jazzcash_integrity_salt || "",
+            easypaisa_merchant_id: userData.easypaisa_merchant_id || "",
+            easypaisa_store_id: userData.easypaisa_store_id || "",
+            easypaisa_hash_key: userData.easypaisa_hash_key || ""
         });
         setIsLoading(false);
     }, [router]);
@@ -53,7 +69,15 @@ export default function ProfilePage() {
                     email: formData.email,
                     phone: formData.phone,
                     timezone: formData.timezone,
-                    currency: formData.currency
+                    currency: formData.currency,
+                    stripe_publishable_key: formData.stripe_publishable_key,
+                    stripe_secret_key: formData.stripe_secret_key,
+                    jazzcash_merchant_id: formData.jazzcash_merchant_id,
+                    jazzcash_password: formData.jazzcash_password,
+                    jazzcash_integrity_salt: formData.jazzcash_integrity_salt,
+                    easypaisa_merchant_id: formData.easypaisa_merchant_id,
+                    easypaisa_store_id: formData.easypaisa_store_id,
+                    easypaisa_hash_key: formData.easypaisa_hash_key
                 })
                 .eq('id', user.id)
                 .select()

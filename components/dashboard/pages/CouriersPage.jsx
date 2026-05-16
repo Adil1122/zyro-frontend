@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton, Card, PageHeader } from "../Primitives";
+import { getCurrentUserId } from "../../../lib/auth";
 
 export default function CouriersPage() {
     const [courierStats, setCourierStats] = useState([]);
@@ -20,7 +21,10 @@ export default function CouriersPage() {
         const fetchCouriers = async () => {
             setLoading(true);
             try {
-                const res = await fetch(`/api/couriers?page=${page}`);
+                const userId = getCurrentUserId();
+                let url = `/api/couriers?page=${page}`;
+                if (userId) url += `&userId=${encodeURIComponent(userId)}`;
+                const res = await fetch(url);
                 const result = await res.json();
                 setCourierStats(result.data || []);
                 setMeta(result.meta);

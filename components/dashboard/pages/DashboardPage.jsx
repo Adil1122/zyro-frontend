@@ -10,16 +10,21 @@ import {
 import { T, salesData, revenueData, platformData, orders } from "../constants";
 import Icon from "../Icon";
 import { GradientButton, Badge, PlatformBadge, Card, KPI, ChartTip, PageHeader } from "../Primitives";
+import { getCurrentUserId } from "../../../lib/auth";
 
 export default function DashboardPage() {
     const [range, setRange] = useState("7d");
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState(null);
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const res = await fetch('/api/dashboard-stats');
+                const userId = getCurrentUserId();
+                let url = '/api/dashboard-stats';
+                if (userId) url += `?userId=${encodeURIComponent(userId)}`;
+                const res = await fetch(url);
                 const data = await res.json();
                 setStats(data);
                 setLoading(false);
@@ -29,6 +34,13 @@ export default function DashboardPage() {
             }
         };
         fetchStats();
+    }, []);
+
+    useEffect(() => {
+        const storedUser = localStorage.getItem('zyro_user');
+        if (storedUser) {
+            setUser(JSON.parse(storedUser));
+        }
     }, []);
 
     const formatTime = (dateStr) => {
@@ -54,7 +66,7 @@ export default function DashboardPage() {
     return (
         <div style={{ padding: "28px 32px", maxWidth: 1280 }}>
             <PageHeader
-                title="Good morning, Ahmad"
+                title={`Good morning, ${user?.name?.split(' ')[0] || 'User'}`}
                 subtitle={`${new Date().toLocaleDateString('en-PK', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} · Here's your Zyro overview`}
                 actions={<>
                     <div style={{ display: "flex", background: T.bgElev, border: `1px solid ${T.border}`, borderRadius: T.r8, padding: 3 }}>

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { supabase, saveUserToStorage } from "@/lib/supabase";
 import { T } from "@/components/dashboard/constants";
 
 export default function LoginPage() {
@@ -18,25 +18,41 @@ export default function LoginPage() {
         setError(null);
 
         try {
+            console.log('Attempting login with email:', email);
+            
             const { data, error } = await supabase.rpc('check_user_login', {
                 p_email: email,
                 p_password: password
             });
 
-            if (error || !data || data.length === 0) {
+            console.log('Supabase response:', { data, error });
+
+            if (error) {
+                console.error('Supabase error:', error);
+                throw new Error(error.message || 'Database error occurred');
+            }
+
+            if (!data || data.length === 0) {
                 throw new Error('Invalid email or password');
             }
 
             const user = data[0];
+            console.log('User data retrieved:', user);
 
             // Save user to localStorage for custom auth
-            localStorage.setItem('zyro_user', JSON.stringify(user));
+            const saved = saveUserToStorage(user);
+            if (!saved) {
+                throw new Error('Failed to save login data to browser storage. Please check your browser settings and allow local storage.');
+            }
+            console.log('User saved to localStorage successfully');
 
             // Trigger a custom event so the layout can catch it
             window.dispatchEvent(new Event('authChange'));
+            console.log('Auth change event dispatched');
 
             router.push("/");
         } catch (err) {
+            console.error('Login error:', err);
             setError(err.message);
         } finally {
             setIsLoading(false);

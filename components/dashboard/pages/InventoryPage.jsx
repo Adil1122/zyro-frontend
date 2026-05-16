@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton, Card, KPI, PageHeader } from "../Primitives";
+import { getCurrentUserId } from "../../../lib/auth";
 
 export default function InventoryPage() {
     const [products, setProducts] = useState([]);
@@ -14,7 +15,10 @@ export default function InventoryPage() {
         const fetchInventory = async () => {
             setLoading(true);
             try {
-                const res = await fetch(`/api/inventory?page=${page}&search=${search}`);
+                const userId = getCurrentUserId();
+                let url = `/api/inventory?page=${page}&search=${search}`;
+                if (userId) url += `&userId=${encodeURIComponent(userId)}`;
+                const res = await fetch(url);
                 const result = await res.json();
 
                 if (res.ok) {

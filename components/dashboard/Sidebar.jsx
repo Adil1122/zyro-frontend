@@ -1,13 +1,28 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { T, NAV } from "./constants";
 import Icon from "./Icon";
 import { ZyroLogo } from "./Primitives";
+import { getCurrentUserId } from "../../lib/auth";
 
 import Link from "next/link";
 
 export default function Sidebar({ page, collapsed, setCollapsed }) {
+    const [user, setUser] = useState(null);
+
+    useEffect(() => {
+        const storedUser = localStorage.getItem('zyro_user');
+        if (storedUser) {
+            setUser(JSON.parse(storedUser));
+        }
+    }, []);
+
+    const getInitials = (name) => {
+        if (!name) return 'U';
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    };
+
     return (
         <div style={{
             width: collapsed ? 62 : 232, background: T.bgCard,
@@ -106,10 +121,10 @@ export default function Sidebar({ page, collapsed, setCollapsed }) {
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: 11, fontWeight: 800, color: "#fff", flexShrink: 0,
                         border: `1px solid ${T.borderMid}`,
-                    }}>AK</div>
+                    }}>{getInitials(user?.name)}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>Ahmad Khan</div>
-                        <div style={{ fontSize: 10, color: T.textFaint }}>Owner · Acme Stores</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{user?.name || 'User'}</div>
+                        <div style={{ fontSize: 10, color: T.textFaint }}>Owner · {user?.store_name || 'Store'}</div>
                     </div>
                     <Link href="/settings" style={{
                         background: "none", border: "none", cursor: "pointer", color: T.textFaint,
