@@ -30,93 +30,116 @@ export default function MarketingPage() {
         google_ads_developer_token: ''
     });
 
+    const fetchMarketing = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/marketing?page=${page}`);
+            const result = await res.json();
+            setMarketingData(result.data || []);
+            setMetaPagination(result.meta);
+            setLoading(false);
+        } catch (err) {
+            console.error("Failed to fetch marketing:", err);
+            setLoading(false);
+        }
+    };
+    
+    const checkMetaAdsConnection = async () => {
+        try {
+            const userId = getCurrentUserId();
+            if (userId) {
+                const res = await fetch('/api/meta-ads/stats', {
+                    headers: {
+                        'x-user-id': userId
+                    }
+                });
+                if (res.ok) {
+                    const stats = await res.json();
+                    setMetaAdsStats(stats);
+                    setMetaAdsConnected(true);
+                } else {
+                    setMetaAdsConnected(false);
+                }
+            }
+        } catch (err) {
+            setMetaAdsConnected(false);
+        }
+    };
+
+    const checkGoogleAdsConnection = async () => {
+        try {
+            const userId = getCurrentUserId();
+            if (userId) {
+                const res = await fetch('/api/google-ads/stats', {
+                    headers: {
+                        'x-user-id': userId
+                    }
+                });
+                if (res.ok) {
+                    const stats = await res.json();
+                    setGoogleAdsStats(stats);
+                    setGoogleAdsConnected(true);
+                } else {
+                    setGoogleAdsConnected(false);
+                }
+            }
+        } catch (err) {
+            setGoogleAdsConnected(false);
+        }
+    };
+
+    const loadCredentials = async () => {
+        try {
+            const userId = getCurrentUserId();
+            if (userId) {
+                const res = await fetch('/api/user/credentials', {
+                    headers: {
+                        'x-user-id': userId
+                    }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setCredentials({
+                        meta_app_id: data.meta_app_id || '',
+                        meta_app_secret: '',
+                        google_ads_client_id: data.google_ads_client_id || '',
+                        google_ads_client_secret: '',
+                        google_ads_developer_token: ''
+                    });
+                }
+            }
+        } catch (err) {
+            console.error("Failed to load credentials:", err);
+        }
+    };
+
     useEffect(() => {
         // Check if user is logged in
         const userId = getCurrentUserId();
         setIsLoggedIn(!!userId);
 
-        const fetchMarketing = async () => {
-            setLoading(true);
-            try {
-                const res = await fetch(`/api/marketing?page=${page}`);
-                const result = await res.json();
-                setMarketingData(result.data || []);
-                setMetaPagination(result.meta);
-                setLoading(false);
-            } catch (err) {
-                console.error("Failed to fetch marketing:", err);
-                setLoading(false);
-            }
-        };
-        
-        const checkMetaAdsConnection = async () => {
-            try {
-                const userId = getCurrentUserId();
-                if (userId) {
-                    const res = await fetch('/api/meta-ads/stats', {
-                        headers: {
-                            'x-user-id': userId
-                        }
-                    });
-                    if (res.ok) {
-                        const stats = await res.json();
-                        setMetaAdsStats(stats);
-                        setMetaAdsConnected(true);
-                    } else {
-                        setMetaAdsConnected(false);
-                    }
-                }
-            } catch (err) {
-                setMetaAdsConnected(false);
-            }
-        };
+        // Check for OAuth success parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const metaAdsConnected = urlParams.get('meta_ads_connected');
+        const googleAdsConnected = urlParams.get('google_ads_connected');
 
-        const checkGoogleAdsConnection = async () => {
-            try {
-                const userId = getCurrentUserId();
-                if (userId) {
-                    const res = await fetch('/api/google-ads/stats', {
-                        headers: {
-                            'x-user-id': userId
-                        }
-                    });
-                    if (res.ok) {
-                        const stats = await res.json();
-                        setGoogleAdsStats(stats);
-                        setGoogleAdsConnected(true);
-                    } else {
-                        setGoogleAdsConnected(false);
-                    }
-                }
-            } catch (err) {
-                setGoogleAdsConnected(false);
-            }
-        };
+        if (metaAdsConnected === 'true') {
+            // Clear URL parameters
+            window.history.replaceState({}, document.title, window.location.pathname);
+            // Force refresh Meta Ads connection status
+            setTimeout(() => {
+                checkMetaAdsConnection();
+            }, 1000);
+        }
 
-        const loadCredentials = async () => {
-            try {
-                const userId = getCurrentUserId();
-                if (userId) {
-                    const res = await fetch('/api/user/credentials', {
-                        headers: {
-                            'x-user-id': userId
-                        }
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        setCredentials({
-                            meta_app_id: data.meta_app_id || '',
-                            meta_app_secret: '',
-                            google_ads_client_id: data.google_ads_client_id || '',
-                            google_ads_client_secret: '',
-                            google_ads_developer_token: ''
-                        });
-                    }
-                }
-            } catch (err) {
-                console.error("Failed to load credentials:", err);
-            }
-        };
+        if (googleAdsConnected === 'true') {
+            // Clear URL parameters
+            window.history.replaceState({}, document.title, window.location.pathname);
+            // Force refresh Google Ads connection status
+            setTimeout(() => {
+                checkGoogleAdsConnection();
+            }, 1000);
+        }
         
         fetchMarketing();
         checkMetaAdsConnection();

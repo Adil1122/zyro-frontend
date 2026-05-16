@@ -87,6 +87,14 @@ export async function GET(request) {
       throw new Error(adAccountsData.error?.message || 'Failed to fetch ad accounts');
     }
 
+    // Automatically select the first active ad account
+    let selectedAccountId = null;
+    if (adAccountsData.data && adAccountsData.data.length > 0) {
+      // Find the first active account
+      const activeAccount = adAccountsData.data.find(account => account.account_status === 1) || adAccountsData.data[0];
+      selectedAccountId = activeAccount.id;
+    }
+
     // Update user's Meta Ads credentials
     await supabase
       .from('users')
@@ -94,6 +102,7 @@ export async function GET(request) {
         meta_ads_access_token: tokenData.access_token,
         meta_ads_refresh_token: tokenData.refresh_token || null,
         meta_ads_token_expires_at: new Date(Date.now() + (tokenData.expires_in * 1000)),
+        meta_ads_ad_account_id: selectedAccountId,
         meta_ads_connected_at: new Date(),
         meta_ads_enabled: true,
       })
