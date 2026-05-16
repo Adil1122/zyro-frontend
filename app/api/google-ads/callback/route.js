@@ -16,11 +16,15 @@ export async function GET(request) {
   const error = searchParams.get('error');
 
   if (error) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/marketing?error=${encodeURIComponent(error)}`);
+    return new Response(getCallbackHTML('error', error), {
+      headers: { 'Content-Type': 'text/html' }
+    });
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/marketing?error=missing_parameters`);
+    return new Response(getCallbackHTML('error', 'Missing parameters'), {
+      headers: { 'Content-Type': 'text/html' }
+    });
   }
 
   try {
@@ -33,7 +37,9 @@ export async function GET(request) {
       .single();
 
     if (stateError || !stateData || new Date(stateData.expires_at) < new Date()) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/marketing?error=invalid_state`);
+      return new Response(getCallbackHTML('error', 'Invalid state'), {
+        headers: { 'Content-Type': 'text/html' }
+      });
     }
 
     // Get user's Google Ads credentials from database
@@ -44,7 +50,9 @@ export async function GET(request) {
       .single();
 
     if (userError || !user || !user.google_ads_client_id || !user.google_ads_client_secret) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/marketing?error=google_credentials_missing`);
+      return new Response(getCallbackHTML('error', 'Google credentials missing'), {
+        headers: { 'Content-Type': 'text/html' }
+      });
     }
 
     // Exchange authorization code for access token
@@ -115,10 +123,179 @@ export async function GET(request) {
         );
     }
 
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/marketing?google_ads_connected=true`);
+    return new Response(getCallbackHTML('success', 'google_ads_connected'), {
+      headers: { 'Content-Type': 'text/html' }
+    });
 
   } catch (error) {
     console.error('Google Ads OAuth callback error:', error);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/marketing?error=${encodeURIComponent(error.message)}`);
+    return new Response(getCallbackHTML('error', error.message), {
+      headers: { 'Content-Type': 'text/html' }
+    });
+  }
+}
+
+function getCallbackHTML(type, message) {
+  if (type === 'success') {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Google Ads Connected</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              background: #f8f9fa;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+              margin: 0;
+            }
+            .container {
+              text-align: center;
+              padding: 40px;
+              background: white;
+              border-radius: 12px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              max-width: 400px;
+              width: 90%;
+            }
+            .checkmark {
+              width: 60px;
+              height: 60px;
+              background: #4285F4;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin: 0 auto 20px;
+              color: white;
+              font-size: 24px;
+            }
+            h2 {
+              font-size: 18px;
+              font-weight: 600;
+              color: #1a1a1a;
+              margin: 0 0 8px;
+            }
+            p {
+              font-size: 14px;
+              color: #666;
+              margin: 0 0 20px;
+              line-height: 1.5;
+            }
+            .btn {
+              background: #4285F4;
+              color: white;
+              border: none;
+              padding: 12px 24px;
+              border-radius: 6px;
+              font-size: 14px;
+              font-weight: 600;
+              cursor: pointer;
+              text-decoration: none;
+              display: inline-block;
+            }
+            .btn:hover {
+              background: #3367D6;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="checkmark">✓</div>
+            <h2>Google Ads Connected Successfully!</h2>
+            <p>Your Google Ads account has been connected. You can now view your campaign data in the Marketing dashboard.</p>
+            <a href="/marketing?google_ads_connected=true" class="btn">Go to Marketing</a>
+          </div>
+          <script>
+            setTimeout(() => {
+              window.location.href = '/marketing?google_ads_connected=true';
+            }, 3000);
+          </script>
+        </body>
+      </html>
+    `;
+  } else {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Connection Error</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+              background: #f8f9fa;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+              margin: 0;
+            }
+            .container {
+              text-align: center;
+              padding: 40px;
+              background: white;
+              border-radius: 12px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              max-width: 400px;
+              width: 90%;
+            }
+            .error {
+              width: 60px;
+              height: 60px;
+              background: #dc3545;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin: 0 auto 20px;
+              color: white;
+              font-size: 24px;
+            }
+            h2 {
+              font-size: 18px;
+              font-weight: 600;
+              color: #1a1a1a;
+              margin: 0 0 8px;
+            }
+            p {
+              font-size: 14px;
+              color: #666;
+              margin: 0 0 20px;
+              line-height: 1.5;
+            }
+            .btn {
+              background: #6c757d;
+              color: white;
+              border: none;
+              padding: 12px 24px;
+              border-radius: 6px;
+              font-size: 14px;
+              font-weight: 600;
+              cursor: pointer;
+              text-decoration: none;
+              display: inline-block;
+            }
+            .btn:hover {
+              background: #5a6268;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="error">✕</div>
+            <h2>Connection Failed</h2>
+            <p>There was an error connecting your Google Ads account: ${message}</p>
+            <a href="/marketing?error=${encodeURIComponent(message)}" class="btn">Back to Marketing</a>
+          </div>
+        </body>
+      </html>
+    `;
   }
 }
