@@ -118,7 +118,18 @@ export default function MarketingPage() {
 
     const handleMetaAdsConnect = async () => {
         try {
-            const res = await fetch('/api/meta-ads/auth');
+            const userId = getCurrentUserId();
+            if (!userId) {
+                // Redirect to login if not logged in
+                window.location.href = '/login';
+                return;
+            }
+
+            const res = await fetch('/api/meta-ads/auth', {
+                headers: {
+                    'x-user-id': userId
+                }
+            });
             const data = await res.json();
             if (data.authUrl) {
                 window.location.href = data.authUrl;
@@ -131,7 +142,17 @@ export default function MarketingPage() {
     const handleMetaAdsStatsRefresh = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/meta-ads/stats');
+            const userId = getCurrentUserId();
+            if (!userId) {
+                setMetaAdsConnected(false);
+                return;
+            }
+
+            const res = await fetch('/api/meta-ads/stats', {
+                headers: {
+                    'x-user-id': userId
+                }
+            });
             const stats = await res.json();
             setMetaAdsStats(stats);
             setMetaAdsConnected(true);
@@ -145,7 +166,18 @@ export default function MarketingPage() {
 
     const handleGoogleAdsConnect = async () => {
         try {
-            const res = await fetch('/api/google-ads/auth');
+            const userId = getCurrentUserId();
+            if (!userId) {
+                // Redirect to login if not logged in
+                window.location.href = '/login';
+                return;
+            }
+
+            const res = await fetch('/api/google-ads/auth', {
+                headers: {
+                    'x-user-id': userId
+                }
+            });
             const data = await res.json();
             if (data.authUrl) {
                 window.location.href = data.authUrl;
@@ -158,7 +190,17 @@ export default function MarketingPage() {
     const handleGoogleAdsStatsRefresh = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/google-ads/stats');
+            const userId = getCurrentUserId();
+            if (!userId) {
+                setGoogleAdsConnected(false);
+                return;
+            }
+
+            const res = await fetch('/api/google-ads/stats', {
+                headers: {
+                    'x-user-id': userId
+                }
+            });
             const stats = await res.json();
             setGoogleAdsStats(stats);
             setGoogleAdsConnected(true);

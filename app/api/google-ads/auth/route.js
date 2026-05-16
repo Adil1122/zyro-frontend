@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getCurrentUserId } from '@/lib/supabase';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -10,8 +9,39 @@ const supabase = createClient(
 // Google Ads OAuth Configuration
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/google-ads/callback`;
 
+// Helper function to get user ID from request
+function getUserIdFromRequest(request) {
+  // Try to get user ID from Authorization header
+  const authHeader = request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+  
+  // Try to get user ID from custom header
+  const userIdHeader = request.headers.get('x-user-id');
+  if (userIdHeader) {
+    return userIdHeader;
+  }
+  
+  // Try to get user ID from cookie
+  const cookieHeader = request.headers.get('cookie');
+  if (cookieHeader) {
+    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      acc[key] = value;
+      return acc;
+    }, {});
+    
+    if (cookies.user_id) {
+      return cookies.user_id;
+    }
+  }
+  
+  return null;
+}
+
 export async function GET(request) {
-  const userId = getCurrentUserId();
+  const userId = getUserIdFromRequest(request);
   
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
