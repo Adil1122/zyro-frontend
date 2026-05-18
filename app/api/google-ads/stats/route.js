@@ -37,6 +37,63 @@ function getUserIdFromRequest(request) {
   return null;
 }
 
+// Helper function to automatically refresh Google Ads access token if expired
+async function refreshGoogleAdsTokenIfNeeded(userId, user) {
+  const expiry = new Date(user.google_ads_token_expires_at);
+  const now = new Date();
+  
+  // If token is still valid (with a 60-second buffer), return it
+  if (expiry > new Date(now.getTime() + 60000)) {
+    return user.google_ads_access_token;
+  }
+  
+  console.log(`Google Ads access token expired or expiring soon for user ${userId}. Refreshing...`);
+  
+  if (!user.google_ads_refresh_token) {
+    throw new Error('Google Ads refresh token not available. Please reconnect your account.');
+  }
+  
+  if (!user.google_ads_client_id || !user.google_ads_client_secret) {
+    throw new Error('Google Ads OAuth client credentials not found in user record.');
+  }
+
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      client_id: user.google_ads_client_id,
+      client_secret: user.google_ads_client_secret,
+      refresh_token: user.google_ads_refresh_token,
+      grant_type: 'refresh_token',
+    }),
+  });
+
+  const responseText = await tokenResponse.text();
+  if (!tokenResponse.ok) {
+    throw new Error(`Failed to refresh Google Ads token: ${responseText}`);
+  }
+
+  const tokenData = JSON.parse(responseText);
+  const newExpiry = new Date(Date.now() + (tokenData.expires_in * 1000));
+
+  // Update new access token in database
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({
+      google_ads_access_token: tokenData.access_token,
+      google_ads_token_expires_at: newExpiry
+    })
+    .eq('id', userId);
+
+  if (updateError) {
+    console.error('Failed to save refreshed token to database:', updateError);
+  }
+
+  return tokenData.access_token;
+}
+
 export async function GET(request) {
   const userId = getUserIdFromRequest(request);
   
@@ -48,7 +105,7 @@ export async function GET(request) {
     // Get user's Google Ads credentials
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('google_ads_access_token, google_ads_token_expires_at, google_ads_developer_token, google_ads_customer_id')
+      .select('google_ads_access_token, google_ads_token_expires_at, google_ads_developer_token, google_ads_customer_id, google_ads_refresh_token, google_ads_client_id, google_ads_client_secret')
       .eq('id', userId)
       .single();
 
@@ -60,14 +117,19 @@ export async function GET(request) {
       return NextResponse.json({ error: 'No Google Ads account selected' }, { status: 400 });
     }
 
-    // Check if token is expired
-    if (new Date(user.google_ads_token_expires_at) < new Date()) {
-      return NextResponse.json({ error: 'Google Ads token expired' }, { status: 401 });
+    // Refresh token if needed
+    let activeAccessToken = user.google_ads_access_token;
+    try {
+      activeAccessToken = await refreshGoogleAdsTokenIfNeeded(userId, user);
+    } catch (refreshError) {
+      console.error('Google Ads token refresh failed:', refreshError);
+      return NextResponse.json({ error: `Token refresh failed: ${refreshError.message}` }, { status: 401 });
     }
 
     const searchParams = request.nextUrl.searchParams;
     const datePreset = searchParams.get('date_preset') || 'LAST_7_DAYS';
-    const customerId = user.google_ads_customer_id;
+    const rawCustomerId = user.google_ads_customer_id;
+    const cleanCustomerId = rawCustomerId.replace('customers/', '').replace(/-/g, '').trim();
 
     // GAQL query for campaign stats
     const gaqlQuery = `
@@ -89,23 +151,38 @@ export async function GET(request) {
       AND campaign.status != 'REMOVED'
     `;
 
-    // Execute GAQL query
-    const queryResponse = await fetch(`https://googleads.googleapis.com/v17/customers/${customerId}:searchStream`, {
+    // Execute GAQL query to get real Google Ads data
+    const queryResponse = await fetch(`https://googleads.googleapis.com/v20/customers/${cleanCustomerId}/googleAds:searchStream`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${user.google_ads_access_token}`,
+        'Authorization': `Bearer ${activeAccessToken}`,
         'developer-token': user.google_ads_developer_token,
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify({
         query: gaqlQuery.trim()
       }),
     });
 
-    const queryData = await queryResponse.json();
+    const rawResponseText = await queryResponse.text();
+    let queryData;
+    try {
+      queryData = JSON.parse(rawResponseText);
+    } catch (parseError) {
+      throw new Error(`Google Ads returned non-JSON response (Status ${queryResponse.status}) during search: ${rawResponseText.substring(0, 300)}`);
+    }
 
-    if (!queryResponse.ok || queryData.error) {
-      throw new Error(queryData.error?.message || 'Failed to execute GAQL query');
+    if (!queryResponse.ok) {
+      let errorMessage = 'Failed to execute Google Ads query';
+      if (Array.isArray(queryData) && queryData[0]?.error) {
+        errorMessage = queryData[0].error.message;
+      } else if (queryData?.error) {
+        errorMessage = queryData.error.message;
+      } else {
+        errorMessage = `HTTP error ${queryResponse.status}: ${rawResponseText.substring(0, 200)}`;
+      }
+      throw new Error(errorMessage);
     }
 
     // Process and aggregate campaign data
@@ -115,9 +192,21 @@ export async function GET(request) {
     let totalClicks = 0;
     let totalConversions = 0;
 
+    // Extract results safely from both Array and Object response formats
+    const results = [];
+    if (Array.isArray(queryData)) {
+      for (const chunk of queryData) {
+        if (chunk.results) {
+          results.push(...chunk.results);
+        }
+      }
+    } else if (queryData.results) {
+      results.push(...queryData.results);
+    }
+
     // Process streaming response
-    if (queryData.results) {
-      for (const result of queryData.results) {
+    if (results.length > 0) {
+      for (const result of results) {
         const campaignId = result.campaign?.id;
         const date = result.segments?.date;
         

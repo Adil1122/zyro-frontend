@@ -7,7 +7,8 @@ const supabase = createClient(
 );
 
 // Google Ads OAuth Configuration
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/google-ads/callback`;
+const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, ''); // Remove trailing slash
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${appUrl}/api/google-ads/callback`;
 
 export async function GET(request) {
   const searchParams = request.nextUrl.searchParams;
@@ -45,11 +46,18 @@ export async function GET(request) {
     // Get user's Google Ads credentials from database
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('google_ads_client_id, google_ads_client_secret')
+      .select('google_ads_client_id, google_ads_client_secret, google_ads_developer_token')
       .eq('id', stateData.user_id)
       .single();
 
-    if (userError || !user || !user.google_ads_client_id || !user.google_ads_client_secret) {
+    console.log('Google Ads credentials retrieved:', {
+      hasClientId: !!user?.google_ads_client_id,
+      hasClientSecret: !!user?.google_ads_client_secret,
+      hasDeveloperToken: !!user?.google_ads_developer_token,
+      userError
+    });
+
+    if (userError || !user || !user.google_ads_client_id || !user.google_ads_client_secret || !user.google_ads_developer_token) {
       return new Response(getCallbackHTML('error', 'Google credentials missing'), {
         headers: { 'Content-Type': 'text/html' }
       });
@@ -70,25 +78,58 @@ export async function GET(request) {
       }),
     });
 
-    const tokenData = await tokenResponse.json();
+    const responseText = await tokenResponse.text();
+    console.log('Google token response status:', tokenResponse.status);
+    console.log('Google token response text:', responseText);
 
-    if (!tokenResponse.ok || tokenData.error) {
-      throw new Error(tokenData.error?.message || 'Failed to exchange code for token');
+    let tokenData;
+    try {
+      tokenData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse token response as JSON:', parseError);
+      throw new Error(`Token response is not valid JSON: ${responseText.substring(0, 200)}`);
     }
 
-    // Get user's Google Ads accounts
-    const accountsResponse = await fetch('https://googleads.googleapis.com/v17/customers:listAccessibleCustomers', {
+    if (!tokenResponse.ok || tokenData.error) {
+      throw new Error(tokenData.error?.message || `Failed to exchange code for token: ${responseText}`);
+    }
+
+    // Get user's Google Ads accounts using correct API format
+    console.log('Making Google Ads API call to list accessible customers...');
+    const accountsResponse = await fetch('https://googleads.googleapis.com/v20/customers:listAccessibleCustomers', {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
         'developer-token': user.google_ads_developer_token,
-      },
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
     });
 
-    const accountsData = await accountsResponse.json();
+    console.log('Google Ads API response status:', accountsResponse.status);
+    console.log('Google Ads API response headers:', Object.fromEntries(accountsResponse.headers.entries()));
+    
+    const rawResponseText = await accountsResponse.text();
+    console.log('Google Ads API raw response:', rawResponseText);
+
+    let accountsData;
+    try {
+      accountsData = JSON.parse(rawResponseText);
+    } catch (parseError) {
+      console.error('Failed to parse Google Ads response as JSON:', parseError);
+      throw new Error(`Google Ads returned non-JSON response (Status ${accountsResponse.status}): ${rawResponseText.substring(0, 500)}`);
+    }
 
     if (!accountsResponse.ok || accountsData.error) {
-      throw new Error(accountsData.error?.message || 'Failed to fetch Google Ads accounts');
+      throw new Error(accountsData.error?.message || `Failed to fetch Google Ads accounts: ${rawResponseText}`);
     }
+
+    // Check if we got any customer resource names
+    if (!accountsData.resourceNames || accountsData.resourceNames.length === 0) {
+      throw new Error('No Google Ads accounts found. You may not have access to any Google Ads accounts.');
+    }
+
+    console.log('Found Google Ads accounts:', accountsData.resourceNames);
 
     // Update user's Google Ads credentials
     await supabase
@@ -97,6 +138,7 @@ export async function GET(request) {
         google_ads_access_token: tokenData.access_token,
         google_ads_refresh_token: tokenData.refresh_token || null,
         google_ads_token_expires_at: new Date(Date.now() + (tokenData.expires_in * 1000)),
+        google_ads_customer_id: accountsData.resourceNames[0],
         google_ads_connected_at: new Date(),
         google_ads_enabled: true,
       })
