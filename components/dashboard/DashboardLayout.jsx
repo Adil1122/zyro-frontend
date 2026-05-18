@@ -25,7 +25,8 @@ export default function DashboardLayout({ children }) {
     const isLoginPage = pathname === "/login";
     const isSignupPage = pathname === "/signup";
     const isPlansPage = pathname === "/plans";
-    const isPublicPage = isLoginPage || isSignupPage;
+    const isOnboardingPage = pathname === "/onboarding";
+    const isPublicPage = isLoginPage || isSignupPage || isOnboardingPage;
 
     const router = useRouter();
     const [user, setUser] = useState(null);
@@ -57,6 +58,14 @@ export default function DashboardLayout({ children }) {
                 if (dbUser) {
                     setUser(dbUser);
                     localStorage.setItem('zyro_user', JSON.stringify(dbUser));
+
+                    // Onboarding redirect check
+                    const isOnboardingCompleted = dbUser.onboarding_completed === true;
+                    if (!isOnboardingCompleted && !isOnboardingPage && !isLoginPage && !isSignupPage && !isPlansPage) {
+                        router.push("/onboarding");
+                        setLoadingAuth(false);
+                        return;
+                    }
 
                     // Trial check
                     const trialEndsAt = new Date(dbUser.trial_ends_at);
@@ -98,7 +107,7 @@ export default function DashboardLayout({ children }) {
 
     if (!mounted || loadingAuth) return null;
 
-    if (isLoginPage || isSignupPage || isPlansPage) {
+    if (isLoginPage || isSignupPage || isPlansPage || isOnboardingPage) {
         return <div style={{ 
             width: "100%", 
             minHeight: "100vh", 
