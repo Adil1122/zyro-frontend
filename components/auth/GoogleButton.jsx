@@ -130,7 +130,7 @@ export default function GoogleButton({ onClick, disabled, className }) {
 
             // Redirect appropriately based on onboarding status
             if (finalUser.onboarding_completed) {
-              router.push("/");
+              router.push("/dashboard");
             } else {
               router.push("/onboarding");
             }

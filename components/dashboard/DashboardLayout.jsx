@@ -29,8 +29,31 @@ export default function DashboardLayout({ children }) {
     const isPublicPage = isLoginPage || isSignupPage || isOnboardingPage;
 
     const router = useRouter();
-    const [user, setUser] = useState(null);
-    const [loadingAuth, setLoadingAuth] = useState(true);
+    
+    // Initialize state synchronously from localStorage to prevent mounting lag
+    const [user, setUser] = useState(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const storedUser = localStorage.getItem('zyro_user');
+                return storedUser ? JSON.parse(storedUser) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+        return null;
+    });
+
+    const [loadingAuth, setLoadingAuth] = useState(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const storedUser = localStorage.getItem('zyro_user');
+                return !storedUser; // false if user exists (no loading needed), true if not
+            } catch (e) {
+                return true;
+            }
+        }
+        return true;
+    });
 
     useEffect(() => {
         setMounted(true);
@@ -53,7 +76,7 @@ export default function DashboardLayout({ children }) {
 
             // If logged in and on login page, redirect immediately
             if (currentUser && isLoginPage) {
-                router.push("/");
+                router.push("/dashboard");
                 return;
             }
 

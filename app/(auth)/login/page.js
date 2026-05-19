@@ -138,7 +138,7 @@ export default function LoginPage() {
 
       // Trigger a custom event so the layout can catch it
       window.dispatchEvent(new Event('authChange'));
-      router.push("/");
+      router.push("/dashboard");
     } catch (err) {
       console.error('Login error:', err);
       setError(err.message || 'An unexpected error occurred during login');

@@ -161,7 +161,7 @@ export default function OnboardingPage() {
       console.error("Onboarding setup failed:", err);
       setError("Something went wrong, but proceeding to dashboard...");
       setTimeout(() => {
-        router.push("/");
+        router.push("/dashboard");
       }, 1500);
     } finally {
       setIsLoading(false);
@@ -181,7 +181,7 @@ export default function OnboardingPage() {
             <SuccessState
               title="Setup Complete!"
               subtitle="Optimizing your personal commerce ecosystem..."
-              redirectTo="/"
+              redirectTo="/dashboard"
               redirectDelay={2000}
             />
           </AuthCard>
