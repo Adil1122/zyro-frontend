@@ -847,6 +847,77 @@ export default function SettingsPage({ tabParam }) {
     const initialManaging = searchParams.get("manage");
     const [managingStore, setManagingStore] = useState(initialManaging);
 
+    // ─── WhatsApp Integration State ───
+    const [waConfig, setWaConfig] = useState({
+        phoneNumberId: "",
+        wabaId: "",
+        accessToken: "",
+        templateName: "order_confirmation",
+        isActive: false
+    });
+    const [waLoading, setWaLoading] = useState(false);
+    const [waSaving, setWaSaving] = useState(false);
+    const [waMessage, setWaMessage] = useState(null);
+
+    const fetchWhatsAppConfig = async () => {
+        setWaLoading(true);
+        try {
+            const userId = getCurrentUserId();
+            const { data, error } = await supabase
+                .from('users')
+                .select('wa_phone_number_id, wa_waba_id, wa_access_token, wa_template_name, wa_is_active')
+                .eq('id', userId)
+                .single();
+            
+            if (error) throw error;
+            if (data) {
+                setWaConfig({
+                    phoneNumberId: data.wa_phone_number_id || "",
+                    wabaId: data.wa_waba_id || "",
+                    accessToken: data.wa_access_token || "",
+                    templateName: data.wa_template_name || "order_confirmation",
+                    isActive: !!data.wa_is_active
+                });
+            }
+        } catch (e) {
+            console.error("Failed to load WhatsApp configurations:", e.message);
+        } finally {
+            setWaLoading(false);
+        }
+    };
+
+    const handleSaveWhatsAppConfig = async (e) => {
+        if (e) e.preventDefault();
+        setWaSaving(true);
+        setWaMessage(null);
+        try {
+            const userId = getCurrentUserId();
+            const { error } = await supabase
+                .from('users')
+                .update({
+                    wa_phone_number_id: waConfig.phoneNumberId,
+                    wa_waba_id: waConfig.wabaId,
+                    wa_access_token: waConfig.accessToken,
+                    wa_template_name: waConfig.templateName,
+                    wa_is_active: waConfig.isActive
+                })
+                .eq('id', userId);
+
+            if (error) throw error;
+            setWaMessage({ success: true, text: "✓ WhatsApp credentials updated successfully!" });
+        } catch (e) {
+            setWaMessage({ success: false, text: "✗ Failed to update settings: " + e.message });
+        } finally {
+            setWaSaving(false);
+        }
+    };
+
+    useEffect(() => {
+        if (tab === "whatsapp") {
+            fetchWhatsAppConfig();
+        }
+    }, [tab]);
+
     useEffect(() => {
         if (tabParam && tabParam !== tab) {
             setTab(tabParam);
@@ -981,30 +1052,133 @@ export default function SettingsPage({ tabParam }) {
                 {tab === "whatsapp" && (
                     <div style={{ maxWidth: 720 }}>
                         <h2 style={{ fontSize: 20, fontWeight: 800, color: T.text, margin: "0 0 6px", letterSpacing: "-0.4px" }}>WhatsApp Setup</h2>
-                        <p style={{ fontSize: 13, color: T.textMuted, margin: "0 0 24px" }}>Dual-number system: AI Bot line + Human Support line.</p>
-                        {[
-                            { type: "Bot Number", number: "+92 311 ZYRO-BOT", quality: "Green", templates: 14, desc: "Handles all automation & AI replies", color: T.j300 },
-                            { type: "Support Number", number: "+92 300 ZYRO-HELP", quality: "Green", templates: 8, desc: "Human agents reply from here", color: T.blue },
-                        ].map(n => (
-                            <Card key={n.type} style={{ marginBottom: 12 }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-                                    <div>
-                                        <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{n.type}</div>
-                                        <div style={{ fontSize: 14, color: n.color, fontFamily: "monospace", marginTop: 4, fontWeight: 600 }}>{n.number}</div>
-                                        <div style={{ fontSize: 12, color: T.textFaint, marginTop: 4 }}>{n.desc}</div>
-                                    </div>
-                                    <GradientButton variant="secondary" size="sm" icon="settings">Configure</GradientButton>
+                        <p style={{ fontSize: 13, color: T.textMuted, margin: "0 0 24px" }}>Configure your Meta WhatsApp Cloud API credentials to automate transactional customer notifications.</p>
+                        
+                        <Card style={{ padding: 24 }}>
+                            {waLoading ? (
+                                <div style={{ textAlign: "center", padding: "40px 0", color: T.textMuted, fontSize: 14 }}>
+                                    Loading configurations...
                                 </div>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                                    {[["Quality Rating", n.quality, T.green], ["Templates", `${n.templates} approved`, T.text], ["Daily Limit", "Unlimited", T.text]].map(([k, v, c]) => (
-                                        <div key={k} style={{ padding: 10, background: T.bgElev, borderRadius: T.r6, border: `1px solid ${T.border}` }}>
-                                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>{k}</div>
-                                            <div style={{ fontSize: 13, fontWeight: 700, color: c, marginTop: 3 }}>{v}</div>
+                            ) : (
+                                <form onSubmit={handleSaveWhatsAppConfig}>
+                                    {waMessage && (
+                                        <div style={{
+                                            padding: "12px 16px",
+                                            borderRadius: T.r8,
+                                            background: waMessage.success ? "rgba(92,168,124,0.15)" : "rgba(224,86,86,0.15)",
+                                            color: waMessage.success ? T.green : T.red,
+                                            fontSize: 13,
+                                            fontWeight: 600,
+                                            marginBottom: 20,
+                                            border: `1px solid ${waMessage.success ? T.green : T.red}33`
+                                        }}>
+                                            {waMessage.text}
                                         </div>
-                                    ))}
-                                </div>
-                            </Card>
-                        ))}
+                                    )}
+
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, padding: "12px 16px", background: T.bgElev, borderRadius: T.r8, border: `1px solid ${T.border}` }}>
+                                        <div>
+                                            <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Notification Automation</div>
+                                            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>Instantly notify customers via WhatsApp for every new order.</div>
+                                        </div>
+                                        <label style={{ position: "relative", display: "inline-block", width: 44, height: 24 }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={waConfig.isActive} 
+                                                onChange={e => setWaConfig({ ...waConfig, isActive: e.target.checked })}
+                                                style={{ opacity: 0, width: 0, height: 0 }} 
+                                            />
+                                            <span style={{
+                                                position: "absolute", cursor: "pointer", top: 0, left: 0, right: 0, bottom: 0,
+                                                backgroundColor: waConfig.isActive ? T.green : T.textFaint,
+                                                borderRadius: 24, transition: "0.2s",
+                                            }}>
+                                                <span style={{
+                                                    position: "absolute", content: '""', height: 18, width: 18, left: waConfig.isActive ? 22 : 3, bottom: 3,
+                                                    backgroundColor: "#fff", borderRadius: "50%", transition: "0.2s"
+                                                }} />
+                                            </span>
+                                        </label>
+                                    </div>
+
+                                    <div style={{ marginBottom: 18 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 700, color: T.textMuted }}>Phone Number ID</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="e.g. 109283748293847"
+                                            value={waConfig.phoneNumberId} 
+                                            onChange={e => setWaConfig({ ...waConfig, phoneNumberId: e.target.value })} 
+                                            required={waConfig.isActive}
+                                            style={{
+                                                width: "100%", padding: "10px 14px", background: T.bgElev,
+                                                color: T.text, border: `1px solid ${T.border}`, borderRadius: T.r8,
+                                                fontSize: 13, fontFamily: "inherit", marginTop: 6, outline: "none",
+                                            }} 
+                                        />
+                                    </div>
+
+                                    <div style={{ marginBottom: 18 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 700, color: T.textMuted }}>WhatsApp Business Account (WABA) ID</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="e.g. 293847293847293"
+                                            value={waConfig.wabaId} 
+                                            onChange={e => setWaConfig({ ...waConfig, wabaId: e.target.value })} 
+                                            required={waConfig.isActive}
+                                            style={{
+                                                width: "100%", padding: "10px 14px", background: T.bgElev,
+                                                color: T.text, border: `1px solid ${T.border}`, borderRadius: T.r8,
+                                                fontSize: 13, fontFamily: "inherit", marginTop: 6, outline: "none",
+                                            }} 
+                                        />
+                                    </div>
+
+                                    <div style={{ marginBottom: 18 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 700, color: T.textMuted }}>Permanent System User Access Token</label>
+                                        <input 
+                                            type="password" 
+                                            placeholder="EAAGz..."
+                                            value={waConfig.accessToken} 
+                                            onChange={e => setWaConfig({ ...waConfig, accessToken: e.target.value })} 
+                                            required={waConfig.isActive}
+                                            style={{
+                                                width: "100%", padding: "10px 14px", background: T.bgElev,
+                                                color: T.text, border: `1px solid ${T.border}`, borderRadius: T.r8,
+                                                fontSize: 13, fontFamily: "inherit", marginTop: 6, outline: "none",
+                                            }} 
+                                        />
+                                    </div>
+
+                                    <div style={{ marginBottom: 24 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 700, color: T.textMuted }}>Approved Template Name</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="e.g. order_confirmation"
+                                            value={waConfig.templateName} 
+                                            onChange={e => setWaConfig({ ...waConfig, templateName: e.target.value })} 
+                                            required={waConfig.isActive}
+                                            style={{
+                                                width: "100%", padding: "10px 14px", background: T.bgElev,
+                                                color: T.text, border: `1px solid ${T.border}`, borderRadius: T.r8,
+                                                fontSize: 13, fontFamily: "inherit", marginTop: 6, outline: "none",
+                                            }} 
+                                        />
+                                        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4 }}>Must match a pre-approved template in your Meta Business Suite, configured with 3 body parameters (Customer Name, Order Number, Grand Total).</div>
+                                    </div>
+
+                                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+                                        <GradientButton 
+                                            type="submit" 
+                                            variant="primary" 
+                                            disabled={waSaving}
+                                            icon={waSaving ? "trending" : "check"}
+                                        >
+                                            {waSaving ? "Saving Settings..." : "Save Configuration"}
+                                        </GradientButton>
+                                    </div>
+                                </form>
+                            )}
+                        </Card>
                     </div>
                 )}
 

@@ -6,6 +6,7 @@ import {
     isWooCommerceConfigured 
 } from '@/lib/services/woocommerceService';
 import { supabase } from '@/lib/supabase';
+import { whatsappService } from '@/lib/services/whatsappService';
 
 
 export async function POST(request) {
@@ -298,6 +299,10 @@ async function syncOrders(userId, creds) {
                         }
                         orderWasInserted = true;
                         result.inserted++;
+                        
+                        // Fire-and-forget WhatsApp notification for the new order
+                        whatsappService.sendOrderNotification(userId, orderId)
+                            .catch(err => console.error('[WooCommerce Sync WA Trigger Error]', err));
                     }
 
                     // Prepare order items for batch insert

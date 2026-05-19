@@ -22,8 +22,8 @@ export default function DashboardLayout({ children }) {
 
     const page = getPageFromPath(pathname);
 
-    const isLoginPage = pathname === "/login";
-    const isSignupPage = pathname === "/signup";
+    const isLoginPage = pathname === "/login" || pathname === "/login-old";
+    const isSignupPage = pathname === "/signup" || pathname === "/signup-old";
     const isPlansPage = pathname === "/plans";
     const isOnboardingPage = pathname === "/onboarding";
     const isPublicPage = isLoginPage || isSignupPage || isOnboardingPage;
@@ -47,45 +47,50 @@ export default function DashboardLayout({ children }) {
                 return;
             }
 
-            // Fetch fresh user data to check trial/plan
-            try {
-                const { data: dbUser, error } = await supabase
-                    .from('users')
-                    .select('*, plans(*)')
-                    .eq('id', currentUser.id)
-                    .single();
-
-                if (dbUser) {
-                    setUser(dbUser);
-                    localStorage.setItem('zyro_user', JSON.stringify(dbUser));
-
-                    // Onboarding redirect check
-                    const isOnboardingCompleted = dbUser.onboarding_completed === true;
-                    if (!isOnboardingCompleted && !isOnboardingPage && !isLoginPage && !isSignupPage && !isPlansPage) {
-                        router.push("/onboarding");
-                        setLoadingAuth(false);
-                        return;
-                    }
-
-                    // Trial check
-                    const trialEndsAt = new Date(dbUser.trial_ends_at);
-                    const now = new Date();
-                    const isTrialExpired = now > trialEndsAt;
-                    const hasPlan = !!dbUser.plan_id;
-
-                    if (isTrialExpired && !hasPlan && !isPlansPage && !isPublicPage && pathname !== "/payment") {
-                        router.push("/plans");
-                    }
-                }
-            } catch (err) {
-                console.error("Auth sync error:", err);
-            }
-
+            // Set user immediately from localStorage for fast response
+            setUser(currentUser);
             setLoadingAuth(false);
 
+            // If logged in and on login page, redirect immediately
             if (currentUser && isLoginPage) {
                 router.push("/");
+                return;
             }
+
+            // Defer database check to background to avoid blocking UI
+            setTimeout(async () => {
+                try {
+                    const { data: dbUser, error } = await supabase
+                        .from('users')
+                        .select('*, plans(*)')
+                        .eq('id', currentUser.id)
+                        .single();
+
+                    if (dbUser && !error) {
+                        setUser(dbUser);
+                        localStorage.setItem('zyro_user', JSON.stringify(dbUser));
+
+                        // Onboarding redirect check
+                        const isOnboardingCompleted = dbUser.onboarding_completed === true;
+                        if (!isOnboardingCompleted && !isOnboardingPage && !isLoginPage && !isSignupPage && !isPlansPage) {
+                            router.push("/onboarding");
+                            return;
+                        }
+
+                        // Trial check
+                        const trialEndsAt = new Date(dbUser.trial_ends_at);
+                        const now = new Date();
+                        const isTrialExpired = now > trialEndsAt;
+                        const hasPlan = !!dbUser.plan_id;
+
+                        if (isTrialExpired && !hasPlan && !isPlansPage && !isPublicPage && pathname !== "/payment") {
+                            router.push("/plans");
+                        }
+                    }
+                } catch (err) {
+                    console.error("Auth sync error:", err);
+                }
+            }, 100); // Small delay to not block initial render
         };
 
         checkAuth();
