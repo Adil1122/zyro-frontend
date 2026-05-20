@@ -1,65 +1,57 @@
 import { supabase } from '@/lib/supabase';
-import crypto from 'crypto';
 
 export async function POST(request) {
   try {
-    const { planId, userId, mobileNumber } = await request.json();
+    const { planId, userId, senderNumber, transactionId, screenshot } = await request.json();
 
-    const { data: user } = await supabase.from('users').select('*').eq('id', userId).single();
-    const { data: plan } = await supabase.from('plans').select('*').eq('id', planId).single();
-
-    if (!user.jazzcash_merchant_id || !user.jazzcash_password || !user.jazzcash_integrity_salt) {
-      throw new Error('JazzCash credentials not configured for this user');
+    if (!planId || !userId || !senderNumber || !transactionId || !screenshot) {
+      throw new Error('All fields are required (Plan, Sender Number, Transaction ID, and Screenshot)');
     }
 
-    const merchantId = user.jazzcash_merchant_id;
-    const password = user.jazzcash_password;
-    const salt = user.jazzcash_integrity_salt;
-    const amount = Math.round(plan.price * 100); // In Paisas
-    const txnRef = `ZYRO-${Date.now()}`;
-    const dateTime = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
-    const expiryDateTime = new Date(Date.now() + 3600000).toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
+    // Fetch plan details
+    const { data: plan, error: planError } = await supabase
+      .from('plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
 
-    const payload = {
-      pp_Version: '1.1',
-      pp_TxnType: 'MWALLET',
-      pp_Language: 'EN',
-      pp_MerchantID: merchantId,
-      pp_Password: password,
-      pp_TxnRefNo: txnRef,
-      pp_Amount: amount.toString(),
-      pp_TxnCurrency: 'PKR',
-      pp_TxnDateTime: dateTime,
-      pp_BillReference: 'PlanSubscription',
-      pp_Description: `Zyro ${plan.name} Plan`,
-      pp_TxnExpiryDateTime: expiryDateTime,
-      pp_MobileNumber: mobileNumber,
-      pp_SecureHash: ''
-    };
-
-    // Calculate Secure Hash
-    const sortedKeys = Object.keys(payload).sort();
-    let message = salt;
-    for (const key of sortedKeys) {
-      if (payload[key] !== '') message += `&${payload[key]}`;
+    if (planError || !plan) {
+      throw new Error('Selected plan not found');
     }
-    
-    payload.pp_SecureHash = crypto.createHmac('sha256', salt).update(message).digest('hex').toUpperCase();
 
-    // In a real scenario, you'd post to JazzCash URL. 
-    // Here we'll simulate a successful transaction and update DB.
-    
-    await supabase.from('users').update({
+    // Update user subscription with manual payment details
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
         plan_id: plan.id,
-        subscription_status: 'active',
-        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        subscription_status: 'pending_verification',
+        manual_payment_sender: senderNumber,
+        manual_payment_tid: transactionId,
+        manual_payment_screenshot: screenshot,
+        manual_payment_method: 'jazzcash',
         last_payment_amount: plan.price,
-        last_payment_date: new Date().toISOString()
-    }).eq('id', userId);
+        last_payment_date: new Date().toISOString(),
+        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      })
+      .eq('id', userId);
 
-    return new Response(JSON.stringify({ success: true, txnRef }), { status: 200 });
+    if (updateError) {
+      throw new Error(`Failed to submit manual payment: ${updateError.message}`);
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: 'Your JazzCash payment receipt was submitted successfully! Our team will verify and activate your subscription shortly.' 
+      }), 
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    console.error('JazzCash Manual Payment Error:', err);
+    return new Response(
+      JSON.stringify({ error: err.message }), 
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }

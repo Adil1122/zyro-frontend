@@ -20,13 +20,7 @@ export default function ProfilePage() {
         timezone: "Asia/Karachi",
         currency: "PKR",
         stripe_publishable_key: "",
-        stripe_secret_key: "",
-        jazzcash_merchant_id: "",
-        jazzcash_password: "",
-        jazzcash_integrity_salt: "",
-        easypaisa_merchant_id: "",
-        easypaisa_store_id: "",
-        easypaisa_hash_key: ""
+        stripe_secret_key: ""
     });
 
     useEffect(() => {
@@ -37,23 +31,47 @@ export default function ProfilePage() {
         }
 
         const userData = JSON.parse(storedUser);
-        setUser(userData);
-        setFormData({
-            name: userData.name || "",
-            email: userData.email || "",
-            phone: userData.phone || "",
-            timezone: userData.timezone || "Asia/Karachi",
-            currency: userData.currency || "PKR",
-            stripe_publishable_key: userData.stripe_publishable_key || "",
-            stripe_secret_key: userData.stripe_secret_key || "",
-            jazzcash_merchant_id: userData.jazzcash_merchant_id || "",
-            jazzcash_password: userData.jazzcash_password || "",
-            jazzcash_integrity_salt: userData.jazzcash_integrity_salt || "",
-            easypaisa_merchant_id: userData.easypaisa_merchant_id || "",
-            easypaisa_store_id: userData.easypaisa_store_id || "",
-            easypaisa_hash_key: userData.easypaisa_hash_key || ""
-        });
-        setIsLoading(false);
+
+        const fetchUserProfile = async () => {
+            try {
+                const { data: latestUserData, error } = await supabase
+                    .from('users')
+                    .select('*, plans(*)')
+                    .eq('id', userData.id)
+                    .single();
+
+                if (!error && latestUserData) {
+                    setUser(latestUserData);
+                    localStorage.setItem('zyro_user', JSON.stringify(latestUserData));
+                    setFormData({
+                        name: latestUserData.name || "",
+                        email: latestUserData.email || "",
+                        phone: latestUserData.phone || "",
+                        timezone: latestUserData.timezone || "Asia/Karachi",
+                        currency: latestUserData.currency || "PKR",
+                        stripe_publishable_key: latestUserData.stripe_publishable_key || "",
+                        stripe_secret_key: latestUserData.stripe_secret_key || ""
+                    });
+                } else {
+                    setUser(userData);
+                    setFormData({
+                        name: userData.name || "",
+                        email: userData.email || "",
+                        phone: userData.phone || "",
+                        timezone: userData.timezone || "Asia/Karachi",
+                        currency: userData.currency || "PKR",
+                        stripe_publishable_key: userData.stripe_publishable_key || "",
+                        stripe_secret_key: userData.stripe_secret_key || ""
+                    });
+                }
+            } catch (err) {
+                console.error("Error loading profile:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchUserProfile();
     }, [router]);
 
     const handleSave = async (e) => {
@@ -71,13 +89,7 @@ export default function ProfilePage() {
                     timezone: formData.timezone,
                     currency: formData.currency,
                     stripe_publishable_key: formData.stripe_publishable_key,
-                    stripe_secret_key: formData.stripe_secret_key,
-                    jazzcash_merchant_id: formData.jazzcash_merchant_id,
-                    jazzcash_password: formData.jazzcash_password,
-                    jazzcash_integrity_salt: formData.jazzcash_integrity_salt,
-                    easypaisa_merchant_id: formData.easypaisa_merchant_id,
-                    easypaisa_store_id: formData.easypaisa_store_id,
-                    easypaisa_hash_key: formData.easypaisa_hash_key
+                    stripe_secret_key: formData.stripe_secret_key
                 })
                 .eq('id', user.id)
                 .select()
@@ -206,72 +218,6 @@ export default function ProfilePage() {
                         </div>
                     </div>
 
-                    <div style={{ marginTop: 30, paddingBottom: 10, borderBottom: `1px solid ${T.border}` }}>
-                        <h3 style={{ fontSize: 16, fontWeight: 700, color: T.text, margin: 0 }}>JazzCash Configuration</h3>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20 }}>
-                        <div style={inputGroupStyle}>
-                            <label style={labelStyle}>Merchant ID</label>
-                            <input
-                                type="text"
-                                style={inputStyle}
-                                value={formData.jazzcash_merchant_id || ""}
-                                onChange={e => setFormData({ ...formData, jazzcash_merchant_id: e.target.value })}
-                            />
-                        </div>
-                        <div style={inputGroupStyle}>
-                            <label style={labelStyle}>Password</label>
-                            <input
-                                type="password"
-                                style={inputStyle}
-                                value={formData.jazzcash_password || ""}
-                                onChange={e => setFormData({ ...formData, jazzcash_password: e.target.value })}
-                            />
-                        </div>
-                        <div style={inputGroupStyle}>
-                            <label style={labelStyle}>Integrity Salt</label>
-                            <input
-                                type="password"
-                                style={inputStyle}
-                                value={formData.jazzcash_integrity_salt || ""}
-                                onChange={e => setFormData({ ...formData, jazzcash_integrity_salt: e.target.value })}
-                            />
-                        </div>
-                    </div>
-
-                    <div style={{ marginTop: 30, paddingBottom: 10, borderBottom: `1px solid ${T.border}` }}>
-                        <h3 style={{ fontSize: 16, fontWeight: 700, color: T.text, margin: 0 }}>EasyPaisa Configuration</h3>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20 }}>
-                        <div style={inputGroupStyle}>
-                            <label style={labelStyle}>Merchant ID</label>
-                            <input
-                                type="text"
-                                style={inputStyle}
-                                value={formData.easypaisa_merchant_id || ""}
-                                onChange={e => setFormData({ ...formData, easypaisa_merchant_id: e.target.value })}
-                            />
-                        </div>
-                        <div style={inputGroupStyle}>
-                            <label style={labelStyle}>Store ID</label>
-                            <input
-                                type="text"
-                                style={inputStyle}
-                                value={formData.easypaisa_store_id || ""}
-                                onChange={e => setFormData({ ...formData, easypaisa_store_id: e.target.value })}
-                            />
-                        </div>
-                        <div style={inputGroupStyle}>
-                            <label style={labelStyle}>Hash Key</label>
-                            <input
-                                type="password"
-                                style={inputStyle}
-                                value={formData.easypaisa_hash_key || ""}
-                                onChange={e => setFormData({ ...formData, easypaisa_hash_key: e.target.value })}
-                            />
-                        </div>
-                    </div>
-
                     <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
                         <button
                             type="submit"
@@ -321,6 +267,9 @@ export default function ProfilePage() {
                                             const data = await res.json();
                                             if (data.success) {
                                                 alert(`Subscription cancelled. Refunded: PKR ${data.refunded.toFixed(2)}`);
+                                                const updatedUser = { ...user, plan_id: null, plans: null, subscription_status: 'cancelled' };
+                                                localStorage.setItem('zyro_user', JSON.stringify(updatedUser));
+                                                window.dispatchEvent(new Event('authChange'));
                                                 window.location.reload();
                                             } else {
                                                 throw new Error(data.error);

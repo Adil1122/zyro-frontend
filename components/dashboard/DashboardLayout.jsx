@@ -100,13 +100,23 @@ export default function DashboardLayout({ children }) {
                             return;
                         }
 
-                        // Trial check
-                        const trialEndsAt = new Date(dbUser.trial_ends_at);
+                        // Trial check (with fallback to created_at + 14 days if trial_ends_at is missing)
+                        let trialEndsAt;
+                        if (dbUser.trial_ends_at) {
+                            trialEndsAt = new Date(dbUser.trial_ends_at);
+                        } else if (dbUser.created_at) {
+                            trialEndsAt = new Date(dbUser.created_at);
+                            trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+                        } else {
+                            trialEndsAt = new Date();
+                            trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+                        }
+                        
                         const now = new Date();
                         const isTrialExpired = now > trialEndsAt;
                         const hasPlan = !!dbUser.plan_id;
 
-                        if (isTrialExpired && !hasPlan && !isPlansPage && !isPublicPage && pathname !== "/payment") {
+                        if (isTrialExpired && !hasPlan && !isPlansPage && !isPublicPage && pathname !== "/payment" && pathname !== "/profile") {
                             router.push("/plans");
                         }
                     }
@@ -135,7 +145,26 @@ export default function DashboardLayout({ children }) {
 
     if (!mounted || loadingAuth) return null;
 
-    if (isLoginPage || isSignupPage || isPlansPage || isOnboardingPage) {
+    let isTrialExpired = false;
+    let hasPlan = false;
+    if (user) {
+        let trialEndsAt;
+        if (user.trial_ends_at) {
+            trialEndsAt = new Date(user.trial_ends_at);
+        } else if (user.created_at) {
+            trialEndsAt = new Date(user.created_at);
+            trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+        } else {
+            trialEndsAt = new Date();
+            trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+        }
+        isTrialExpired = new Date() > trialEndsAt;
+        hasPlan = !!user.plan_id;
+    }
+    const isRestricted = isTrialExpired && !hasPlan;
+    const showSidebar = !isPlansPage && !isRestricted;
+
+    if (isLoginPage || isSignupPage || isOnboardingPage) {
         return <div style={{ 
             width: "100%", 
             minHeight: "100vh", 
@@ -158,11 +187,13 @@ export default function DashboardLayout({ children }) {
             overflow: "hidden",
         }}>
             {/* LEFT SIDEBAR */}
-            <Sidebar
-                page={page}
-                collapsed={collapsed}
-                setCollapsed={setCollapsed}
-            />
+            {showSidebar && (
+                <Sidebar
+                    page={page}
+                    collapsed={collapsed}
+                    setCollapsed={setCollapsed}
+                />
+            )}
 
             {/* MAIN CONTENT AREA */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>

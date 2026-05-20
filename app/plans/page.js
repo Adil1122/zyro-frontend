@@ -8,8 +8,19 @@ export default function PlansPage() {
     const router = useRouter();
     const [plans, setPlans] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [userPlanId, setUserPlanId] = useState(null);
 
     useEffect(() => {
+        const storedUser = localStorage.getItem('zyro_user');
+        if (storedUser) {
+            try {
+                const user = JSON.parse(storedUser);
+                if (user?.plan_id) setUserPlanId(user.plan_id);
+            } catch (err) {
+                console.error("Error parsing stored user:", err);
+            }
+        }
+
         const fetchPlans = async () => {
             try {
                 const res = await fetch("/api/plans");
@@ -111,34 +122,44 @@ export default function PlansPage() {
                     <tfoot>
                         <tr style={{ borderTop: `1px solid ${T.borderMid}`, background: T.bgElev }}>
                             <td style={cellStyle}></td>
-                            {plans.map(plan => (
-                                <td key={plan.id} style={{ ...cellStyle, textAlign: "center" }}>
-                                    <button 
-                                        onClick={() => router.push(`/payment?planId=${plan.id}`)}
-                                        style={{
-                                            padding: "8px 16px",
-                                            background: plan.name === "Professional" ? T.gradBtn : T.bgHigh,
-                                            border: plan.name === "Professional" ? "none" : `1px solid ${T.borderBright}`,
-                                            borderRadius: T.r6,
-                                            color: "#fff",
-                                            fontSize: 12,
-                                            fontWeight: 600,
-                                            cursor: "pointer",
-                                            transition: "all 0.2s"
-                                        }}
-                                        onMouseOver={(e) => {
-                                            if (plan.name === "Professional") e.currentTarget.style.boxShadow = T.glowBtn;
-                                            else e.currentTarget.style.background = T.bgActive;
-                                        }}
-                                        onMouseOut={(e) => {
-                                            if (plan.name === "Professional") e.currentTarget.style.boxShadow = "none";
-                                            else e.currentTarget.style.background = T.bgHigh;
-                                        }}
-                                    >
-                                        Choose {plan.name}
-                                    </button>
-                                </td>
-                            ))}
+                             {plans.map(plan => {
+                                 const isCurrentPlan = userPlanId === plan.id;
+                                 return (
+                                     <td key={plan.id} style={{ ...cellStyle, textAlign: "center" }}>
+                                         <button 
+                                             onClick={() => router.push(`/payment?planId=${plan.id}`)}
+                                             disabled={isCurrentPlan}
+                                             style={{
+                                                 padding: "8px 16px",
+                                                 background: isCurrentPlan 
+                                                     ? "rgba(92,168,124,0.1)" 
+                                                     : (plan.name === "Professional" ? T.gradBtn : T.bgHigh),
+                                                 border: isCurrentPlan 
+                                                     ? `1px solid ${T.green}` 
+                                                     : (plan.name === "Professional" ? "none" : `1px solid ${T.borderBright}`),
+                                                 borderRadius: T.r6,
+                                                 color: isCurrentPlan ? T.green : "#fff",
+                                                 fontSize: 12,
+                                                 fontWeight: 600,
+                                                 cursor: isCurrentPlan ? "not-allowed" : "pointer",
+                                                 transition: "all 0.2s"
+                                             }}
+                                             onMouseOver={(e) => {
+                                                 if (isCurrentPlan) return;
+                                                 if (plan.name === "Professional") e.currentTarget.style.boxShadow = T.glowBtn;
+                                                 else e.currentTarget.style.background = T.bgActive;
+                                             }}
+                                             onMouseOut={(e) => {
+                                                 if (isCurrentPlan) return;
+                                                 if (plan.name === "Professional") e.currentTarget.style.boxShadow = "none";
+                                                 else e.currentTarget.style.background = T.bgHigh;
+                                             }}
+                                         >
+                                             {isCurrentPlan ? "Current Plan" : `Choose ${plan.name}`}
+                                         </button>
+                                     </td>
+                                 );
+                             })}
                         </tr>
                     </tfoot>
                 </table>

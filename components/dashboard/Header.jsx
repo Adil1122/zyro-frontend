@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { T } from "./constants";
@@ -8,6 +8,7 @@ import Icon from "./Icon";
 
 export default function Header({ user }) {
     const router = useRouter();
+    const [showDropdown, setShowDropdown] = useState(false);
 
     const handleLogout = () => {
         localStorage.removeItem('zyro_user');
@@ -72,14 +73,6 @@ export default function Header({ user }) {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                <button 
-                    onClick={() => router.push("/plans")}
-                    style={{
-                        background: "none", border: "none", color: T.j300, fontSize: 13, fontWeight: 600, cursor: "pointer"
-                    }}
-                >
-                    Plans
-                </button>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: T.j700, borderRadius: 20, border: `1px solid ${T.j500}33` }}>
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: T.green, boxShadow: `0 0 8px ${T.green}` }} />
                     <span style={{ fontSize: 11, fontWeight: 700, color: T.j200 }}>Live Sync Status</span>
@@ -104,35 +97,104 @@ export default function Header({ user }) {
                         </button>
                     ))}
                 </div>
-                <div
-                    onClick={() => router.push("/profile")}
-                    title="View Profile"
-                    style={{
-                        padding: "1px", background: "linear-gradient(135deg, #1A5140 0%, #112E24 100%)",
-                        borderRadius: "50%", border: `1px solid ${T.borderMid}`, cursor: "pointer",
-                        transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center"
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.boxShadow = T.glowGreen}
-                    onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}
-                >
-                     <div style={{ width: 32, height: 32, borderRadius: "50%", background: T.bgElev, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: T.j200 }}>
-                        {user?.name?.substring(0, 1).toUpperCase() || <Icon name="user" size={14} color={T.j200} />}
+                <div style={{ position: "relative" }}>
+                    <div
+                        onClick={() => setShowDropdown(!showDropdown)}
+                        title="User Menu"
+                        style={{
+                            padding: "1px", background: "linear-gradient(135deg, #1A5140 0%, #112E24 100%)",
+                            borderRadius: "50%", border: `1px solid ${T.borderMid}`, cursor: "pointer",
+                            transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.boxShadow = T.glowGreen}
+                        onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}
+                    >
+                         <div style={{ width: 32, height: 32, borderRadius: "50%", background: T.bgElev, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: T.j200 }}>
+                            {user?.name?.substring(0, 1).toUpperCase() || <Icon name="user" size={14} color={T.j200} />}
+                        </div>
                     </div>
-                </div>
-                <div
-                    onClick={handleLogout}
-                    title="Click to Logout"
-                    style={{
-                        padding: "1px", background: "linear-gradient(135deg, #421C1C 0%, #2D1414 100%)",
-                        borderRadius: "50%", border: `1px solid rgba(248,113,113,0.3)`, cursor: "pointer",
-                        transition: "all 0.2s"
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 0 15px rgba(248,113,113,0.3)"}
-                    onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}
-                >
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: T.bgElev, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: T.j200 }}>
-                        <Icon name="log-out" size={14} color={T.red} />
-                    </div>
+
+                    {showDropdown && (
+                        <div style={{
+                            position: "absolute",
+                            top: 45,
+                            right: 0,
+                            width: 190,
+                            background: T.bgCard,
+                            borderRadius: T.r8,
+                            border: `1px solid ${T.border}`,
+                            boxShadow: T.shadowLg,
+                            zIndex: 1000,
+                            padding: "6px 0",
+                            overflow: "hidden"
+                        }}>
+                            <div style={{ padding: "8px 16px", borderBottom: `1px solid ${T.border}`, marginBottom: 4 }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.name || "User Profile"}</div>
+                                <div style={{ fontSize: 10, color: T.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.email || ""}</div>
+                            </div>
+                            <button 
+                                onClick={() => {
+                                    setShowDropdown(false);
+                                    router.push("/profile");
+                                }}
+                                style={{
+                                    width: "100%", padding: "10px 16px", background: "none", border: "none",
+                                    color: T.textSub, fontSize: 13, fontWeight: 600, textAlign: "left", cursor: "pointer",
+                                    display: "flex", alignItems: "center", gap: 10, transition: "all 0.2s"
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = T.bgHigh;
+                                    e.currentTarget.style.color = T.text;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "none";
+                                    e.currentTarget.style.color = T.textSub;
+                                }}
+                            >
+                                <Icon name="user" size={14} color={T.textFaint} />
+                                My Profile
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    setShowDropdown(false);
+                                    router.push("/plans");
+                                }}
+                                style={{
+                                    width: "100%", padding: "10px 16px", background: "none", border: "none",
+                                    color: T.textSub, fontSize: 13, fontWeight: 600, textAlign: "left", cursor: "pointer",
+                                    display: "flex", alignItems: "center", gap: 10, transition: "all 0.2s"
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = T.bgHigh;
+                                    e.currentTarget.style.color = T.text;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "none";
+                                    e.currentTarget.style.color = T.textSub;
+                                }}
+                            >
+                                <Icon name="credit-card" size={14} color={T.textFaint} />
+                                Pricing Plans
+                            </button>
+                            <div style={{ height: 1, background: T.border, margin: "4px 0" }} />
+                            <button 
+                                onClick={() => {
+                                    setShowDropdown(false);
+                                    handleLogout();
+                                }}
+                                style={{
+                                    width: "100%", padding: "10px 16px", background: "none", border: "none",
+                                    color: T.red, fontSize: 13, fontWeight: 600, textAlign: "left", cursor: "pointer",
+                                    display: "flex", alignItems: "center", gap: 10, transition: "all 0.2s"
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = "rgba(248,113,113,0.08)"}
+                                onMouseLeave={(e) => e.currentTarget.style.background = "none"}
+                            >
+                                <Icon name="log-out" size={14} color={T.red} />
+                                Sign Out
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </header>
