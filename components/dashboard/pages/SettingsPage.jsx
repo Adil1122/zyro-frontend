@@ -617,7 +617,7 @@ function ShopifyCard({ onManage }) {
 }
 
 // ─── PostEx Courier Card ────────────────────────────────────────────────────
-function PostExCard({ onManage }) {
+function PostExCard({ onManage, onSync, isSyncing, syncResult }) {
     const { stats, loading, error } = usePostExStats();
     const isConnected = stats?.configured && !error;
     const POSTEX_GRAD = "linear-gradient(135deg, #002B49 0%, #004A7C 100%)";
@@ -705,16 +705,44 @@ function PostExCard({ onManage }) {
                     </span>
                 </div>
 
-                {/* Action button */}
-                {isConnected && !loading
-                    ? <GradientButton variant="secondary" size="sm" icon="settings" onClick={onManage}>Manage</GradientButton>
-                    : !loading
-                        ? <GradientButton variant="primary" size="sm" icon="plus"
-                            onClick={onManage}>
-                            Connect Courier
+                {/* Action buttons */}
+                {isConnected && !loading ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                        <GradientButton variant="primary" size="sm" icon="refresh" onClick={onSync} disabled={isSyncing}>
+                            {isSyncing ? "Syncing..." : "Sync"}
                         </GradientButton>
-                        : null
-                }
+                        <GradientButton variant="secondary" size="sm" icon="settings" onClick={onManage}>Manage</GradientButton>
+                    </div>
+                ) : !loading ? (
+                    <GradientButton variant="primary" size="sm" icon="plus" onClick={onManage}>
+                        Connect Courier
+                    </GradientButton>
+                ) : null}
+            
+            {/* Sync Result Notification */}
+            {syncResult && (
+                <div style={{
+                    marginTop: 8,
+                    padding: 12,
+                    borderRadius: T.r8,
+                    background: syncResult.success ? T.greenBg : T.redBg,
+                    border: `1px solid ${syncResult.success ? T.green : T.red}`,
+                    fontSize: 12,
+                    color: syncResult.success ? T.green : T.red,
+                }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                        {syncResult.success ? "✓ Sync Complete" : "✗ Sync Failed"}
+                    </div>
+                    <div>{syncResult.message}</div>
+                    {syncResult.results && (
+                        <div style={{ marginTop: 8, fontSize: 11, opacity: 0.8 }}>
+                            <div>Customers: {syncResult.results.customers.inserted} inserted, {syncResult.results.customers.updated} updated</div>
+                            <div>Products: {syncResult.results.products.inserted} inserted, {syncResult.results.products.updated} updated</div>
+                            <div>Orders: {syncResult.results.orders.inserted} inserted, {syncResult.results.orders.updated} updated</div>
+                        </div>
+                    )}
+                </div>
+            )}
             </div>
         </Card>
     );
@@ -858,6 +886,52 @@ export default function SettingsPage({ tabParam }) {
     const [waLoading, setWaLoading] = useState(false);
     const [waSaving, setWaSaving] = useState(false);
     const [waMessage, setWaMessage] = useState(null);
+
+    // ─── PostEx Sync State ───
+    const [isPostExSyncing, setIsPostExSyncing] = useState(false);
+    const [postExSyncResult, setPostExSyncResult] = useState(null);
+
+    const handlePostExSync = async () => {
+        setIsPostExSyncing(true);
+        setPostExSyncResult(null);
+        
+        try {
+            const userId = getCurrentUserId();
+            const response = await fetch("/api/postex/sync", {
+                method: "POST",
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-user-id': userId 
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (result.error) {
+                setPostExSyncResult({
+                    success: false,
+                    message: result.error || 'PostEx sync failed'
+                });
+            } else {
+                setPostExSyncResult({
+                    success: true,
+                    message: `PostEx sync completed successfully! ${result.syncedOrders || 0} orders synced.`,
+                    results: {
+                        orders: { inserted: result.syncedOrders || 0, updated: 0 },
+                        customers: { inserted: result.syncedCustomers || 0, updated: 0 },
+                        products: { inserted: result.syncedProducts || 0, updated: 0 }
+                    }
+                });
+            }
+        } catch (e) {
+            setPostExSyncResult({
+                success: false,
+                message: 'PostEx sync failed: ' + e.message
+            });
+        } finally {
+            setIsPostExSyncing(false);
+        }
+    };
 
     const fetchWhatsAppConfig = async () => {
         setWaLoading(true);
@@ -1030,7 +1104,7 @@ export default function SettingsPage({ tabParam }) {
                         </p>
 
                         {/* PostEx – live integration */}
-                        <PostExCard onManage={() => handleManage("postex")} />
+                        <PostExCard onManage={() => handleManage("postex")} onSync={handlePostExSync} isSyncing={isPostExSyncing} syncResult={postExSyncResult} />
 
                         {/* Insta World – live integration */}
                         <InstaWorldCard onManage={() => handleManage("instaworld")} />
