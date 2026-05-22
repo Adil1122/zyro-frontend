@@ -264,7 +264,7 @@ async function syncOrders(userId, creds) {
                     // Check if order already exists by order_id
                     const { data: existingOrder, error: checkError } = await supabase
                         .from('orders')
-                        .select('id')
+                        .select('id, status')
                         .eq('user_id', userId)
                         .eq('order_id', order.number.toString())
                         .maybeSingle(); // Use maybeSingle() instead of single()
@@ -280,6 +280,12 @@ async function syncOrders(userId, creds) {
                             .update(orderData)
                             .eq('id', existingOrder.id);
                         result.updated++;
+                        
+                        // Fire WhatsApp notification if status changed to completed
+                        if (existingOrder.status !== order.status && order.status === 'completed') {
+                            whatsappService.sendOrderNotification(userId, orderId, order.status)
+                                .catch(err => console.error('[WooCommerce Sync WA Trigger Error on Update]', err));
+                        }
                     } else {
                         // Insert new order
                         const { data: newOrder, error: insertError } = await supabase
