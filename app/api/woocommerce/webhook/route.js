@@ -163,7 +163,9 @@ export async function POST(request) {
             const orderItems = [];
             for (const item of order.items) {
                 let productId = null;
-                if (item.sku) {
+                
+                // 1. Try finding by SKU if SKU is valid (not empty and not 'N/A')
+                if (item.sku && item.sku !== 'N/A') {
                     const { data: product } = await supabase
                         .from('products')
                         .select('id')
@@ -171,6 +173,20 @@ export async function POST(request) {
                         .eq('sku', item.sku)
                         .maybeSingle();
                     
+                    if (product?.id) {
+                        productId = product.id;
+                    }
+                }
+                
+                // 2. If not found by SKU, try finding by Name
+                if (!productId && item.name) {
+                    const { data: product } = await supabase
+                        .from('products')
+                        .select('id')
+                        .eq('user_id', userId)
+                        .eq('name', item.name)
+                        .maybeSingle();
+                        
                     if (product?.id) {
                         productId = product.id;
                     }

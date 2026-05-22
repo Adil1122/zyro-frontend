@@ -153,22 +153,50 @@ async function syncProducts(userId, creds) {
                     const productData = {
                         user_id: userId,
                         name: product.name,
-                        sku: product.sku || '',
+                        sku: product.sku || null,
                         price: product.price || 0,
                         stock: product.stock || 0,
                         category: product.category || 'Uncategorized',
                         status: product.status === 'instock' ? 'active' : 'inactive'
                     };
 
-                    // Use upsert for better performance
-                    await supabase
-                        .from('products')
-                        .upsert(productData, { 
-                            onConflict: 'sku', 
-                            ignoreDuplicates: false 
-                        });
+                    // Check if product already exists by SKU or Name
+                    let existingProduct = null;
                     
-                    result.inserted++;
+                    if (product.sku && product.sku !== 'N/A') {
+                        const { data } = await supabase
+                            .from('products')
+                            .select('id')
+                            .eq('user_id', userId)
+                            .eq('sku', product.sku)
+                            .maybeSingle();
+                        existingProduct = data;
+                    }
+                    
+                    if (!existingProduct && product.name) {
+                        const { data } = await supabase
+                            .from('products')
+                            .select('id')
+                            .eq('user_id', userId)
+                            .eq('name', product.name)
+                            .maybeSingle();
+                        existingProduct = data;
+                    }
+
+                    if (existingProduct?.id) {
+                        // Update existing product
+                        await supabase
+                            .from('products')
+                            .update(productData)
+                            .eq('id', existingProduct.id);
+                        result.updated++;
+                    } else {
+                        // Insert new product
+                        await supabase
+                            .from('products')
+                            .insert(productData);
+                        result.inserted++;
+                    }
                 } catch (error) {
                     console.error(`Error syncing product ${product.sku}:`, error);
                     result.errors++;
@@ -314,9 +342,11 @@ async function syncOrders(userId, creds) {
                     // Prepare order items for batch insert
                     const orderItems = [];
                     for (const item of order.items || []) {
-                        // Find product by SKU to get product_id
+                        // Find product by SKU or Name to get product_id
                         let productId = null;
-                        if (item.sku) {
+                        
+                        // 1. Try finding by SKU if SKU is valid (not empty and not 'N/A')
+                        if (item.sku && item.sku !== 'N/A') {
                             const { data: product } = await supabase
                                 .from('products')
                                 .select('id')
@@ -324,6 +354,20 @@ async function syncOrders(userId, creds) {
                                 .eq('sku', item.sku)
                                 .maybeSingle(); // Use maybeSingle() to avoid error when not found
                             
+                            if (product?.id) {
+                                productId = product.id;
+                            }
+                        }
+                        
+                        // 2. If not found by SKU, try finding by Name
+                        if (!productId && item.name) {
+                            const { data: product } = await supabase
+                                .from('products')
+                                .select('id')
+                                .eq('user_id', userId)
+                                .eq('name', item.name)
+                                .maybeSingle();
+                                
                             if (product?.id) {
                                 productId = product.id;
                             }

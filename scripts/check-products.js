@@ -1,4 +1,3 @@
-
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
@@ -17,17 +16,16 @@ if (fs.existsSync(envPath)) {
     });
 }
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-async function listRPC() {
+async function check() {
     try {
-        const { data, error } = await supabase.from('pg_proc').select('proname');
-        console.log('Functions:', data);
+        const { data: products, error } = await supabase.from('products').select('*');
+        console.log('Total products in database:', products?.length || 0);
+        console.log('Error:', error);
+        console.log('Products:', products);
     } catch (err) {
-        console.error(err.message);
+        console.error(err);
     }
 }
-listRPC();
+check();
