@@ -220,9 +220,12 @@ export async function POST(request) {
         // 7. Fire WhatsApp notification if triggered
         if (shouldTriggerNotification && dbOrderId) {
             console.log(`[WooCommerce Webhook] Order ${order.number} status is "${order.status}". Triggering WhatsApp notification...`);
-            whatsappService.sendOrderNotification(userId, dbOrderId, order.status)
-                .then(res => console.log('[WooCommerce Webhook] WhatsApp notification response:', res))
-                .catch(err => console.error('[WooCommerce Webhook] WhatsApp notification error:', err));
+            try {
+                const res = await whatsappService.sendOrderNotification(userId, dbOrderId, order.status);
+                console.log('[WooCommerce Webhook] WhatsApp notification response:', res);
+            } catch (err) {
+                console.error('[WooCommerce Webhook] WhatsApp notification error:', err);
+            }
         } else {
             console.log(`[WooCommerce Webhook] Order ${order.number} status is "${order.status}". WhatsApp notification not triggered.`);
         }
