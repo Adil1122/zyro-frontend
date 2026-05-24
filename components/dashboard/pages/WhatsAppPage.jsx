@@ -4,12 +4,23 @@ import React, { useState, useEffect } from "react";
 import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton } from "../Primitives";
+import { getCurrentUserId } from "../../../lib/auth";
 
 export default function WhatsAppPage() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [botActive, setBotActive] = useState(0);
     const [supportActive, setSupportActive] = useState(0);
+
+    // ─── Test Panel State ───────────────────────────────
+    const [testOpen, setTestOpen] = useState(false);
+    const [testForm, setTestForm] = useState({
+        customerName: '', customerPhone: '', orderRef: '',
+        totalAmount: '', deliveryAddress: '', cityName: '', orderDetail: '',
+    });
+    const [testPending, setTestPending] = useState([]);
+    const [testLoading, setTestLoading] = useState(false);
+    const [testResult, setTestResult] = useState(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -339,6 +350,359 @@ export default function WhatsAppPage() {
                     </span>
                 </div>
                 <GradientButton variant="ghost" size="sm" icon="settings">Configure Rules</GradientButton>
+            </div>
+
+            {/* ═══ TEST PANEL: Order Confirmation Flow ═══ */}
+            <div style={{ borderTop: `1px solid ${T.border}` }}>
+                <button
+                    onClick={() => setTestOpen(!testOpen)}
+                    style={{
+                        width: '100%', padding: '12px 28px', background: 'linear-gradient(90deg, rgba(251,191,36,0.06) 0%, rgba(248,113,113,0.06) 100%)',
+                        border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'inherit',
+                    }}
+                >
+                    <div style={{
+                        width: 26, height: 26, borderRadius: T.r6,
+                        background: 'linear-gradient(135deg, #FBBF24 0%, #F87171 100%)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 4px 14px rgba(251,191,36,0.35)', flexShrink: 0,
+                    }}>
+                        <Icon name="tool" size={13} color="#fff" />
+                    </div>
+                    <span style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 700, color: T.yellow }}>
+                        🧪 Test: Order Confirmation Flow (Template not approved yet)
+                    </span>
+                    <span style={{ fontSize: 18, color: T.textFaint, transition: 'transform 0.2s', transform: testOpen ? 'rotate(180deg)' : 'none' }}>▼</span>
+                </button>
+
+                {testOpen && (
+                    <div style={{ padding: '20px 28px', background: T.bgCard, borderTop: `1px solid ${T.border}` }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+                            {/* LEFT: Create Pending Order */}
+                            <div style={{ background: T.bgElev, borderRadius: T.r12, padding: 20, border: `1px solid ${T.border}` }}>
+                                <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 800, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontSize: 16 }}>📝</span> Step 1: Create Pending Order
+                                </h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                    {[
+                                        ['customerName', 'Customer Name', 'Ahmed Raza'],
+                                        ['customerPhone', 'Phone (03xx)', '03001234567'],
+                                        ['orderRef', 'Order Ref #', 'WA-1001'],
+                                        ['totalAmount', 'Total (Rs)', '3500'],
+                                        ['deliveryAddress', 'Delivery Address', 'House 5, Street 10'],
+                                        ['cityName', 'City', 'Karachi'],
+                                    ].map(([key, label, ph]) => (
+                                        <div key={key}>
+                                            <label style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>{label}</label>
+                                            <input
+                                                placeholder={ph}
+                                                value={testForm[key]}
+                                                onChange={(e) => setTestForm(f => ({ ...f, [key]: e.target.value }))}
+                                                style={{
+                                                    width: '100%', padding: '8px 10px', borderRadius: T.r6, border: `1px solid ${T.borderMid}`,
+                                                    background: T.bg, color: T.text, fontSize: 12, fontFamily: 'inherit', outline: 'none',
+                                                    boxSizing: 'border-box',
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <label style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Order Detail (optional)</label>
+                                        <input
+                                            placeholder="2x Blue Shirt, 1x Cap"
+                                            value={testForm.orderDetail}
+                                            onChange={(e) => setTestForm(f => ({ ...f, orderDetail: e.target.value }))}
+                                            style={{
+                                                width: '100%', padding: '8px 10px', borderRadius: T.r6, border: `1px solid ${T.borderMid}`,
+                                                background: T.bg, color: T.text, fontSize: 12, fontFamily: 'inherit', outline: 'none',
+                                                boxSizing: 'border-box',
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                                    <GradientButton
+                                        variant="primary"
+                                        size="sm"
+                                        disabled={testLoading}
+                                        onClick={async () => {
+                                            setTestLoading(true);
+                                            setTestResult(null);
+                                            try {
+                                                const userId = getCurrentUserId();
+                                                const res = await fetch('/api/whatsapp/test-confirmation', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                                                    body: JSON.stringify({ action: 'create_pending', ...testForm, sendWhatsApp: false }),
+                                                });
+                                                const data = await res.json();
+                                                setTestResult({ type: 'create', ...data });
+                                                // Refresh pending list
+                                                const listRes = await fetch('/api/whatsapp/test-confirmation', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                                                    body: JSON.stringify({ action: 'list_pending' }),
+                                                });
+                                                const listData = await listRes.json();
+                                                setTestPending(listData.pendingOrders || []);
+                                            } catch (err) {
+                                                setTestResult({ type: 'error', error: err.message });
+                                            }
+                                            setTestLoading(false);
+                                        }}
+                                    >
+                                        {testLoading ? 'Saving...' : '💾 Save Pending Order'}
+                                    </GradientButton>
+                                    <GradientButton
+                                        variant="secondary"
+                                        size="sm"
+                                        disabled={testLoading}
+                                        onClick={async () => {
+                                            setTestLoading(true);
+                                            setTestResult(null);
+                                            try {
+                                                const userId = getCurrentUserId();
+                                                const res = await fetch('/api/whatsapp/test-confirmation', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                                                    body: JSON.stringify({ action: 'create_pending', ...testForm, sendWhatsApp: true }),
+                                                });
+                                                const data = await res.json();
+                                                setTestResult({ type: 'create_wa', ...data });
+                                                // Refresh pending list
+                                                const listRes = await fetch('/api/whatsapp/test-confirmation', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                                                    body: JSON.stringify({ action: 'list_pending' }),
+                                                });
+                                                const listData = await listRes.json();
+                                                setTestPending(listData.pendingOrders || []);
+                                            } catch (err) {
+                                                setTestResult({ type: 'error', error: err.message });
+                                            }
+                                            setTestLoading(false);
+                                        }}
+                                    >
+                                        {testLoading ? 'Sending...' : '📤 Save & Send WhatsApp'}
+                                    </GradientButton>
+                                </div>
+                            </div>
+
+                            {/* RIGHT: Pending Orders + Actions */}
+                            <div style={{ background: T.bgElev, borderRadius: T.r12, padding: 20, border: `1px solid ${T.border}`, display: 'flex', flexDirection: 'column' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                                    <h3 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <span style={{ fontSize: 16 }}>📋</span> Step 2: Simulate Response
+                                    </h3>
+                                    <GradientButton
+                                        variant="ghost"
+                                        size="xs"
+                                        onClick={async () => {
+                                            const userId = getCurrentUserId();
+                                            const res = await fetch('/api/whatsapp/test-confirmation', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                                                body: JSON.stringify({ action: 'list_pending' }),
+                                            });
+                                            const data = await res.json();
+                                            setTestPending(data.pendingOrders || []);
+                                        }}
+                                    >
+                                        🔄 Refresh
+                                    </GradientButton>
+                                </div>
+
+                                <div style={{ flex: 1, overflowY: 'auto', maxHeight: 200 }}>
+                                    {testPending.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: 30, color: T.textFaint, fontSize: 12 }}>
+                                            No pending orders yet. Create one in Step 1.
+                                        </div>
+                                    ) : (
+                                        testPending.map((po) => (
+                                            <div key={po.id} style={{
+                                                padding: '10px 12px', borderRadius: T.r8, border: `1px solid ${T.border}`,
+                                                marginBottom: 8, background: T.bg,
+                                            }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                    <div>
+                                                        <span style={{ fontSize: 12, fontWeight: 700, color: T.text }}>{po.customer_name}</span>
+                                                        <span style={{ fontSize: 10, color: T.textFaint, marginLeft: 8 }}>{po.phone}</span>
+                                                    </div>
+                                                    <span style={{
+                                                        fontSize: 9, padding: '2px 7px', borderRadius: T.r20, fontWeight: 700,
+                                                        background: po.status === 'pending_confirmation' ? T.yellowBg : po.status === 'confirmed' ? T.greenBg : T.redBg,
+                                                        color: po.status === 'pending_confirmation' ? T.yellow : po.status === 'confirmed' ? T.green : T.red,
+                                                    }}>
+                                                        {po.status}
+                                                    </span>
+                                                </div>
+                                                <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 6 }}>
+                                                    Ref: <b>{po.order_ref}</b> · Rs {po.total_amount} · {po.city_name || 'N/A'}
+                                                    {po.postex_tracking_number && <span style={{ color: T.green }}> · 📦 {po.postex_tracking_number}</span>}
+                                                </div>
+                                                {po.status === 'pending_confirmation' && (
+                                                    <div style={{ display: 'flex', gap: 8 }}>
+                                                        <button
+                                                            disabled={testLoading}
+                                                            onClick={async () => {
+                                                                setTestLoading(true);
+                                                                setTestResult(null);
+                                                                try {
+                                                                    const userId = getCurrentUserId();
+                                                                    const res = await fetch('/api/whatsapp/test-confirmation', {
+                                                                        method: 'POST',
+                                                                        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                                                                        body: JSON.stringify({ action: 'simulate_yes', pendingOrderId: po.id }),
+                                                                    });
+                                                                    const data = await res.json();
+                                                                    setTestResult({ type: 'yes', ...data });
+                                                                    // Refresh list
+                                                                    const listRes = await fetch('/api/whatsapp/test-confirmation', {
+                                                                        method: 'POST',
+                                                                        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                                                                        body: JSON.stringify({ action: 'list_pending' }),
+                                                                    });
+                                                                    const listData = await listRes.json();
+                                                                    setTestPending(listData.pendingOrders || []);
+                                                                } catch (err) {
+                                                                    setTestResult({ type: 'error', error: err.message });
+                                                                }
+                                                                setTestLoading(false);
+                                                            }}
+                                                            style={{
+                                                                padding: '5px 14px', borderRadius: T.r6, fontSize: 11, fontWeight: 700,
+                                                                background: T.greenBg, border: `1px solid ${T.green}44`, color: T.green,
+                                                                cursor: 'pointer', fontFamily: 'inherit',
+                                                            }}
+                                                        >
+                                                            ✅ Simulate YES
+                                                        </button>
+                                                        <button
+                                                            disabled={testLoading}
+                                                            onClick={async () => {
+                                                                setTestLoading(true);
+                                                                setTestResult(null);
+                                                                try {
+                                                                    const userId = getCurrentUserId();
+                                                                    const res = await fetch('/api/whatsapp/test-confirmation', {
+                                                                        method: 'POST',
+                                                                        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                                                                        body: JSON.stringify({ action: 'simulate_no', pendingOrderId: po.id }),
+                                                                    });
+                                                                    const data = await res.json();
+                                                                    setTestResult({ type: 'no', ...data });
+                                                                    // Refresh list
+                                                                    const listRes = await fetch('/api/whatsapp/test-confirmation', {
+                                                                        method: 'POST',
+                                                                        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                                                                        body: JSON.stringify({ action: 'list_pending' }),
+                                                                    });
+                                                                    const listData = await listRes.json();
+                                                                    setTestPending(listData.pendingOrders || []);
+                                                                } catch (err) {
+                                                                    setTestResult({ type: 'error', error: err.message });
+                                                                }
+                                                                setTestLoading(false);
+                                                            }}
+                                                            style={{
+                                                                padding: '5px 14px', borderRadius: T.r6, fontSize: 11, fontWeight: 700,
+                                                                background: T.redBg, border: `1px solid ${T.red}44`, color: T.red,
+                                                                cursor: 'pointer', fontFamily: 'inherit',
+                                                            }}
+                                                        >
+                                                            ❌ Simulate NO
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Result Panel */}
+                        {testResult && (
+                            <div style={{
+                                marginTop: 16, padding: 16, borderRadius: T.r10,
+                                background: testResult.success ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)',
+                                border: `1px solid ${testResult.success ? T.green + '33' : T.red + '33'}`,
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                    <span style={{ fontSize: 16 }}>{testResult.success ? '✅' : '❌'}</span>
+                                    <span style={{ fontSize: 13, fontWeight: 800, color: testResult.success ? T.green : T.red }}>
+                                        {testResult.message || testResult.error || 'Unknown result'}
+                                    </span>
+                                </div>
+                                {testResult.trackingNumber && (
+                                    <div style={{ fontSize: 12, color: T.text, marginBottom: 4 }}>
+                                        📦 <b>PostEx Tracking:</b> {testResult.trackingNumber}
+                                    </div>
+                                )}
+                                {testResult.dbOrderId && (
+                                    <div style={{ fontSize: 12, color: T.text, marginBottom: 4 }}>
+                                        🗄️ <b>DB Order ID:</b> <span style={{ fontFamily: 'monospace', fontSize: 10 }}>{testResult.dbOrderId}</span>
+                                    </div>
+                                )}
+                                {testResult.customerId && (
+                                    <div style={{ fontSize: 12, color: T.text, marginBottom: 4 }}>
+                                        👤 <b>Customer ID:</b> <span style={{ fontFamily: 'monospace', fontSize: 10 }}>{testResult.customerId}</span>
+                                    </div>
+                                )}
+                                {testResult.postexResult && (
+                                    <details style={{ marginTop: 8 }}>
+                                        <summary style={{ fontSize: 11, color: T.textFaint, cursor: 'pointer', fontWeight: 600 }}>PostEx API Response (raw)</summary>
+                                        <pre style={{ fontSize: 10, color: T.textMuted, background: T.bg, padding: 10, borderRadius: T.r6, overflow: 'auto', maxHeight: 150, marginTop: 6 }}>
+                                            {JSON.stringify(testResult.postexResult, null, 2)}
+                                        </pre>
+                                    </details>
+                                )}
+                                {testResult.whatsappResult && (
+                                    <details style={{ marginTop: 8 }}>
+                                        <summary style={{ fontSize: 11, color: T.textFaint, cursor: 'pointer', fontWeight: 600 }}>WhatsApp API Response</summary>
+                                        <pre style={{ fontSize: 10, color: T.textMuted, background: T.bg, padding: 10, borderRadius: T.r6, overflow: 'auto', maxHeight: 150, marginTop: 6 }}>
+                                            {JSON.stringify(testResult.whatsappResult, null, 2)}
+                                        </pre>
+                                    </details>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Flow diagram */}
+                        <div style={{ marginTop: 16, padding: '12px 16px', borderRadius: T.r8, background: T.bg, border: `1px solid ${T.border}` }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>How it works</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                {[
+                                    ['📝', 'Create Pending Order'],
+                                    ['→', ''],
+                                    ['📲', 'WhatsApp Template Sent'],
+                                    ['→', ''],
+                                    ['👤', 'Customer presses YES/NO'],
+                                    ['→', ''],
+                                    ['📦', 'PostEx Order Created'],
+                                    ['→', ''],
+                                    ['🗄️', 'Saved to DB'],
+                                    ['→', ''],
+                                    ['✅', 'Tracking # sent back'],
+                                ].map(([icon, label], i) => (
+                                    label ? (
+                                        <span key={i} style={{
+                                            fontSize: 10, padding: '4px 8px', borderRadius: T.r4, fontWeight: 600,
+                                            background: T.bgElev, color: T.textMuted, border: `1px solid ${T.border}`,
+                                            display: 'flex', alignItems: 'center', gap: 4,
+                                        }}>
+                                            {icon} {label}
+                                        </span>
+                                    ) : (
+                                        <span key={i} style={{ color: T.textFaint, fontSize: 12 }}>{icon}</span>
+                                    )
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
