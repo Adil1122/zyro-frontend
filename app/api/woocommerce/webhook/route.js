@@ -135,7 +135,7 @@ export async function POST(request) {
             }
 
             // Trigger notification if status changed to completed
-            if (existingOrder.status !== order.status && order.status === 'completed') {
+            if (existingOrder.status?.toLowerCase() !== order.status?.toLowerCase() && order.status?.toLowerCase() === 'completed') {
                 shouldTriggerNotification = true;
             }
         } else {
@@ -152,8 +152,8 @@ export async function POST(request) {
                 dbOrderId = newOrder?.id;
             }
 
-            // Trigger notification if new order is already completed
-            if (order.status === 'completed') {
+            // Trigger notification if new order is pending, processing, or completed
+            if (['pending', 'processing', 'completed'].includes(order.status?.toLowerCase())) {
                 shouldTriggerNotification = true;
             }
         }
@@ -217,10 +217,10 @@ export async function POST(request) {
             }
         }
 
-        // 7. Fire WhatsApp notification if status is completed
+        // 7. Fire WhatsApp notification if triggered
         if (shouldTriggerNotification && dbOrderId) {
-            console.log(`[WooCommerce Webhook] Order ${order.number} transitioned to completed. Triggering WhatsApp notification...`);
-            whatsappService.sendOrderNotification(userId, dbOrderId, 'completed')
+            console.log(`[WooCommerce Webhook] Order ${order.number} status is "${order.status}". Triggering WhatsApp notification...`);
+            whatsappService.sendOrderNotification(userId, dbOrderId, order.status)
                 .then(res => console.log('[WooCommerce Webhook] WhatsApp notification response:', res))
                 .catch(err => console.error('[WooCommerce Webhook] WhatsApp notification error:', err));
         } else {
