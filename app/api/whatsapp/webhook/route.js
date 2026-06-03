@@ -22,8 +22,14 @@ export async function POST(request) {
         // Meta webhook verification (GET requests)
         // This POST handler handles actual message events
 
+        if (payload?.entry?.[0]?.changes?.[0]?.value?.statuses) {
+            const statuses = payload.entry[0].changes[0].value.statuses;
+            console.log('[WhatsApp Webhook] Message Status Update:', JSON.stringify(statuses, null, 2));
+            return NextResponse.json({ status: 'ok' });
+        }
+
         if (!payload?.entry?.[0]?.changes?.[0]?.value?.messages) {
-            // Could be a status update or other non-message event
+            // Could be another non-message event
             console.log('[WhatsApp Webhook] Non-message event, acknowledging.');
             return NextResponse.json({ status: 'ok' });
         }
