@@ -46,8 +46,19 @@ export async function POST(request) {
             if (message.type === 'interactive') {
                 // Button reply from template
                 const buttonReply = message.interactive?.button_reply;
-                responseText = buttonReply?.title?.toUpperCase() || '';
-                console.log(`[WhatsApp Webhook] Interactive button reply from ${senderPhone}: "${responseText}"`);
+                const title = buttonReply?.title?.trim()?.toUpperCase() || '';
+                const payloadId = buttonReply?.id?.trim()?.toUpperCase() || '';
+                
+                // Robust matching: check if title or payload contains YES/NO
+                if (title === 'YES' || payloadId === 'YES' || title.includes('YES')) {
+                    responseText = 'YES';
+                } else if (title === 'NO' || payloadId === 'NO' || title.includes('NO')) {
+                    responseText = 'NO';
+                } else {
+                    responseText = title || payloadId;
+                }
+                
+                console.log(`[WhatsApp Webhook] Interactive button reply from ${senderPhone}: title="${buttonReply?.title}", payload="${buttonReply?.id}" -> interpreted as "${responseText}"`);
             } else if (message.type === 'text') {
                 // Plain text reply
                 responseText = message.text?.body?.trim()?.toUpperCase() || '';
