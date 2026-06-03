@@ -44,12 +44,11 @@ export async function POST(request) {
 
             // Extract user response from different message types
             if (message.type === 'interactive') {
-                // Button reply from template
+                // Interactive message reply (List/Reply buttons)
                 const buttonReply = message.interactive?.button_reply;
                 const title = buttonReply?.title?.trim()?.toUpperCase() || '';
                 const payloadId = buttonReply?.id?.trim()?.toUpperCase() || '';
                 
-                // Robust matching: check if title or payload contains YES/NO
                 if (title === 'YES' || payloadId === 'YES' || title.includes('YES')) {
                     responseText = 'YES';
                 } else if (title === 'NO' || payloadId === 'NO' || title.includes('NO')) {
@@ -57,8 +56,21 @@ export async function POST(request) {
                 } else {
                     responseText = title || payloadId;
                 }
-                
                 console.log(`[WhatsApp Webhook] Interactive button reply from ${senderPhone}: title="${buttonReply?.title}", payload="${buttonReply?.id}" -> interpreted as "${responseText}"`);
+            } else if (message.type === 'button') {
+                // Template Quick Reply button
+                const buttonReply = message.button;
+                const text = buttonReply?.text?.trim()?.toUpperCase() || '';
+                const payload = buttonReply?.payload?.trim()?.toUpperCase() || '';
+                
+                if (text === 'YES' || payload === 'YES' || text.includes('YES')) {
+                    responseText = 'YES';
+                } else if (text === 'NO' || payload === 'NO' || text.includes('NO')) {
+                    responseText = 'NO';
+                } else {
+                    responseText = text || payload;
+                }
+                console.log(`[WhatsApp Webhook] Template button reply from ${senderPhone}: text="${buttonReply?.text}", payload="${buttonReply?.payload}" -> interpreted as "${responseText}"`);
             } else if (message.type === 'text') {
                 // Plain text reply
                 responseText = message.text?.body?.trim()?.toUpperCase() || '';
