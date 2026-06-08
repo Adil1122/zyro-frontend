@@ -1,6 +1,19 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { createPostExOrder } from '@/lib/services/postexService';
+
+// Helper to make requests to PostEx API
+const BASE_URL = 'https://api.postex.pk/services/integration/api';
+async function postexRequest(endpoint, apiKey, params = {}, method = 'GET') {
+    let url = `${BASE_URL}${endpoint}`;
+    const options = {
+        method,
+        headers: { 'token': apiKey, 'Content-Type': 'application/json' }
+    };
+    if (params && (method === 'POST' || method === 'PUT')) options.body = JSON.stringify(params);
+    const res = await fetch(url, options);
+    const data = await res.json().catch(() => ({}));
+    return { status: res.status, data };
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -8,35 +21,26 @@ export async function POST(request) {
     let logs = [];
     
     try {
-        const { data: pendingOrder } = await supabase
-            .from('wa_pending_orders')
-            .select('*')
-            .eq('id', '41c3255e-6b70-4a83-acdd-e69be4a0ac1a')
-            .single();
+        const { data: user } = await supabase.from('users').select('postex_api_key').eq('id', 'e5940095-1560-4425-ab60-f8fc5f7874f4').single();
             
-        const { data: user } = await supabase
-            .from('users')
-            .select('postex_api_key')
-            .eq('id', pendingOrder.user_id)
-            .single();
-            
-        logs.push('Calling PostEx API...');
+        // Let's try multiple endpoints for booking an order
+        const endpoints = [
+            { path: '/order/v1/book', method: 'PUT', payload: { trackingNumber: '26482690000060' } },
+            { path: '/order/v1/book', method: 'POST', payload: { trackingNumber: '26482690000060' } },
+            { path: '/order/v2/book', method: 'POST', payload: { trackingNumber: '26482690000060' } },
+            { path: '/order/v3/book', method: 'POST', payload: { trackingNumber: '26482690000060' } },
+            { path: '/order/v1/status', method: 'PUT', payload: { trackingNumber: '26482690000060', status: 'Booked' } },
+        ];
         
-        const postexResult = await createPostExOrder(user.postex_api_key, {
-            orderRefNumber: pendingOrder.order_ref,
-            customerName: pendingOrder.customer_name,
-            customerPhone: pendingOrder.phone,
-            deliveryAddress: pendingOrder.delivery_address || 'N/A',
-            cityName: pendingOrder.city_name || 'Karachi',
-            invoicePayment: pendingOrder.total_amount,
-            orderDetail: pendingOrder.order_detail || '',
-        });
+        for (let ep of endpoints) {
+            logs.push(`Trying ${ep.method} ${ep.path}...`);
+            const res = await postexRequest(ep.path, user.postex_api_key, ep.payload, ep.method);
+            logs.push(`Result: ${res.status} - ${JSON.stringify(res.data)}`);
+            if (res.status === 200 && res.data.statusCode === "200") break;
+        }
         
-        logs.push(`PostEx Result: ${JSON.stringify(postexResult)}`);
-        
-        return NextResponse.json({ success: true, logs, postexResult });
+        return NextResponse.json({ success: true, logs });
     } catch (e) {
-        logs.push(`FATAL ERROR: ${e.message}`);
-        return NextResponse.json({ success: false, logs, error: e.message });
+        return NextResponse.json({ success: false, error: e.message });
     }
 }

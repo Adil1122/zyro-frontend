@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { createPostExOrder, isPostExConfigured } from '@/lib/services/postexService';
 import { whatsappService } from '@/lib/services/whatsappService';
+import { generatePostExSlipPDF } from '@/lib/services/postexPdfService';
 
 /**
  * POST /api/whatsapp/webhook
@@ -282,7 +283,38 @@ async function handleOrderConfirmation(senderPhone, response, phoneNumberId) {
             ? `✅ Your order ${pendingOrder.order_ref} has been confirmed and booked with PostEx!\n\n📦 Tracking Number: ${trackingNumber}\n💰 Total: Rs ${pendingOrder.total_amount}\n\nThank you for your order!`
             : `✅ Your order ${pendingOrder.order_ref} has been confirmed!\n\n💰 Total: Rs ${pendingOrder.total_amount}\n\nThank you for your order!`;
 
-        await sendWhatsAppTextMessage(userId, senderPhone, confirmMsg);
+        if (trackingNumber) {
+            try {
+                // Generate PDF
+                const pdfBuffer = await generatePostExSlipPDF({
+                    trackingNumber: trackingNumber,
+                    orderRefNumber: pendingOrder.order_ref,
+                    customerName: pendingOrder.customer_name,
+                    customerPhone: pendingOrder.phone,
+                    deliveryAddress: pendingOrder.delivery_address || 'N/A',
+                    destination: pendingOrder.city_name || 'Karachi',
+                    amount: pendingOrder.total_amount,
+                    date: new Date().toLocaleDateString(),
+                    orderDetail: pendingOrder.order_detail || ''
+                });
+
+                // Upload to WhatsApp Media API
+                const mediaId = await uploadWhatsAppMedia(userId, pdfBuffer, `PostEx_${trackingNumber}.pdf`, 'application/pdf');
+
+                if (mediaId) {
+                    await sendWhatsAppDocumentMessage(userId, senderPhone, confirmMsg, mediaId, `PostEx_${trackingNumber}.pdf`);
+                } else {
+                    // Fallback to text message
+                    await sendWhatsAppTextMessage(userId, senderPhone, confirmMsg);
+                }
+            } catch (pdfErr) {
+                console.error('[WhatsApp Webhook] PDF Generation/Upload Error:', pdfErr);
+                // Fallback to text message
+                await sendWhatsAppTextMessage(userId, senderPhone, confirmMsg);
+            }
+        } else {
+            await sendWhatsAppTextMessage(userId, senderPhone, confirmMsg);
+        }
 
         console.log(`[WhatsApp Webhook] Order ${pendingOrder.order_ref} fully processed. DB Order: ${dbOrderId}, Tracking: ${trackingNumber}`);
 
@@ -332,6 +364,89 @@ async function sendWhatsAppTextMessage(userId, recipientPhone, text) {
         }
     } catch (err) {
         console.error('[WhatsApp Webhook] Error sending text message:', err);
+    }
+}
+
+/**
+ * Upload Media to WhatsApp API
+ */
+async function uploadWhatsAppMedia(userId, buffer, filename, mimeType) {
+    try {
+        const { data: user } = await supabase
+            .from('users')
+            .select('wa_phone_number_id, wa_access_token')
+            .eq('id', userId)
+            .single();
+
+        if (!user?.wa_phone_number_id || !user?.wa_access_token) return null;
+
+        const url = `https://graph.facebook.com/v18.0/${user.wa_phone_number_id}/media`;
+        
+        const formData = new FormData();
+        formData.append('file', new Blob([buffer], { type: mimeType }), filename);
+        formData.append('type', mimeType);
+        formData.append('messaging_product', 'whatsapp');
+
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${user.wa_access_token}`
+            },
+            body: formData
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+            console.error('[WhatsApp Webhook] Failed to upload media:', data);
+            return null;
+        }
+        
+        return data.id;
+    } catch (err) {
+        console.error('[WhatsApp Webhook] Error uploading media:', err);
+        return null;
+    }
+}
+
+/**
+ * Send a document WhatsApp message
+ */
+async function sendWhatsAppDocumentMessage(userId, recipientPhone, caption, mediaId, filename) {
+    try {
+        const { data: user } = await supabase
+            .from('users')
+            .select('wa_phone_number_id, wa_access_token')
+            .eq('id', userId)
+            .single();
+
+        if (!user?.wa_phone_number_id || !user?.wa_access_token) return;
+
+        const url = `https://graph.facebook.com/v18.0/${user.wa_phone_number_id}/messages`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${user.wa_access_token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: recipientPhone,
+                type: 'document',
+                document: { 
+                    id: mediaId,
+                    caption: caption,
+                    filename: filename
+                },
+            }),
+        });
+
+        if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            console.error('[WhatsApp Webhook] Failed to send document:', errBody);
+        }
+    } catch (err) {
+        console.error('[WhatsApp Webhook] Error sending document message:', err);
     }
 }
 
