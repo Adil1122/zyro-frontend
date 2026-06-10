@@ -29,6 +29,111 @@ window.chanMeta = {
 
 window.fmtRs = function(n){ return 'Rs ' + n.toLocaleString('en-PK'); }
 
+window.updateKPIs = function() {
+    const p = window.products || [];
+    let stockValue = 0;
+    let readyToSell = 0;
+    let runningOut = 0;
+    let outOfStock = 0;
+    p.forEach(prod => {
+        stockValue += (prod.cost || 0) * (prod.avail || 0);
+        readyToSell += (prod.avail || 0);
+        if (prod.status && (prod.status[1] === 'Running out' || prod.status[1] === 'Low stock')) runningOut++;
+        if (prod.status && prod.status[1] === 'Out of stock') outOfStock++;
+    });
+    
+    const setSafe = (selector, html) => { const el = document.querySelector(selector); if(el) el.innerHTML = html; };
+    
+    setSafe('.card-hero .num-lg', window.fmtRs(stockValue));
+    setSafe('.card-hero .t-xs b', p.length + ' products');
+    
+    const productGrid = document.querySelector('.card-hero');
+    if (productGrid && productGrid.parentElement) {
+        const pCards = productGrid.parentElement.querySelectorAll('.card-action .num-md');
+        if (pCards.length >= 3) {
+            pCards[0].textContent = readyToSell.toLocaleString();
+            pCards[1].textContent = runningOut.toLocaleString();
+            pCards[2].textContent = outOfStock.toLocaleString();
+        }
+    }
+
+    const m = window.movements || [];
+    let receipts = 0, sales = 0, returns = 0, adjustments = 0;
+    m.forEach(mov => {
+        if (mov.movement_type === 'Receipt') receipts += mov.qty;
+        else if (mov.movement_type === 'Sale') sales += Math.abs(mov.qty);
+        else if (mov.movement_type === 'Return') returns += mov.qty;
+        else if (mov.movement_type === 'Adjustment') adjustments += mov.qty;
+    });
+    const movesCards = document.querySelectorAll('#view-movements .card .num-md');
+    if (movesCards.length >= 4) {
+        movesCards[0].textContent = '+' + receipts.toLocaleString();
+        movesCards[1].textContent = '−' + sales.toLocaleString();
+        movesCards[2].textContent = '+' + returns.toLocaleString();
+        movesCards[3].textContent = (adjustments > 0 ? '+' : (adjustments < 0 ? '−' : '')) + Math.abs(adjustments).toLocaleString();
+    }
+
+    const s = window.vendors || [];
+    const vendorCards = document.querySelectorAll('#view-suppliers .card .num-md');
+    if (vendorCards.length >= 4) {
+        vendorCards[0].textContent = s.length;
+    }
+
+    const r = window.returnsProcessed || [];
+    let pending = 0, restocked = 0, writtenOff = 0;
+    r.forEach(ret => {
+        if (ret.status === 'Pending') pending++;
+        else if (ret.status === 'Restocked') restocked++;
+        else if (ret.status === 'Written off') writtenOff++;
+    });
+    const returnCards = document.querySelectorAll('#view-returns .card .num-md');
+    if (returnCards.length >= 4) {
+        returnCards[0].textContent = pending;
+        returnCards[1].textContent = restocked;
+        returnCards[2].textContent = writtenOff;
+    }
+};
+
+window.setupPagination = function(viewId, items, renderFn, pageVar, itemName) {
+  const perPage = 10;
+  const total = items.length;
+  const totalPages = Math.ceil(total / perPage) || 1;
+  if(window[pageVar] > totalPages) window[pageVar] = totalPages;
+  if(window[pageVar] < 1) window[pageVar] = 1;
+  const start = (window[pageVar] - 1) * perPage;
+  const paged = items.slice(start, start + perPage);
+
+  const selectorPrefix = viewId === 'view-products' ? '' : '#' + viewId + ' ';
+  let footer = document.querySelector(selectorPrefix + '.table-footer');
+  if (!footer) {
+      const wrap = document.querySelector(selectorPrefix + '.table-wrap');
+      if (wrap) {
+          wrap.insertAdjacentHTML('beforeend', '<div class="table-footer"><span class="t-xs c-text-4"></span><div class="flex items-c gap-2"><button class="btn btn-sec btn-xs">← Prev</button><span class="t-xs c-text-3"></span><button class="btn btn-sec btn-xs">Next →</button></div></div>');
+          footer = document.querySelector(selectorPrefix + '.table-footer');
+      }
+  }
+
+  if (footer) {
+      const footerInfo = footer.querySelector('.t-xs.c-text-4');
+      if(footerInfo) footerInfo.innerHTML = 'Showing <b class="c-text-2">' + (total === 0 ? 0 : start + 1) + '–' + (start + paged.length) + '</b> of ' + total + ' ' + itemName;
+      
+      const pageInfo = footer.querySelector('.c-text-3');
+      if(pageInfo) pageInfo.innerHTML = 'Page ' + window[pageVar] + ' of ' + totalPages;
+
+      const btns = footer.querySelectorAll('button');
+      if (btns.length >= 2) {
+          const prevBtn = btns[0];
+          const nextBtn = btns[1];
+          prevBtn.onclick = () => { if(window[pageVar] > 1) { window[pageVar]--; renderFn(); } };
+          prevBtn.disabled = window[pageVar] === 1;
+          nextBtn.onclick = () => { if(window[pageVar] < totalPages) { window[pageVar]++; renderFn(); } };
+          nextBtn.disabled = window[pageVar] === totalPages;
+      }
+  }
+  
+  return paged;
+};
+
 window.renderRows = function(){
   const tbody = document.getElementById('productRows');
   if(!tbody) return;
@@ -45,14 +150,11 @@ window.renderRows = function(){
       });
   }
 
-  const perPage = 10;
-  const total = filtered.length;
-  const totalPages = Math.ceil(total / perPage) || 1;
-  if(window.currentPage > totalPages) window.currentPage = totalPages;
-  const start = (window.currentPage - 1) * perPage;
-  const paged = filtered.slice(start, start + perPage);
+  window.currentPage = window.currentPage || 1;
+  const paged = window.setupPagination('view-products', filtered, window.renderRows, 'currentPage', 'products');
 
   tbody.innerHTML = paged.map((p,i) => {
+    const start = (window.currentPage - 1) * 10;
     const accentBorder = p.note === 'warn' ? 'box-shadow:inset 3px 0 0 var(--warn);'
                         : p.note === 'danger' ? 'box-shadow:inset 3px 0 0 var(--danger);' : '';
     const stockColor = p.avail === 0 ? 'c-danger' : p.avail <= p.reorder ? 'c-warn' : '';
@@ -119,24 +221,6 @@ window.renderRows = function(){
       '</td>' +
     '</tr>';
   }).join('');
-  
-  const footerInfo = document.querySelector('#view-products .table-footer .t-xs.c-text-4');
-  if(footerInfo) footerInfo.innerHTML = 'Showing <b class="c-text-2">' + paged.length + '</b> of ' + total + ' products';
-  
-  const pageInfo = document.querySelector('#view-products .table-footer .c-text-3');
-  if(pageInfo) pageInfo.innerHTML = 'Page ' + window.currentPage + ' of ' + totalPages;
-
-  const prevBtn = document.querySelector('#view-products .table-footer button:first-child');
-  const nextBtn = document.querySelector('#view-products .table-footer button:last-child');
-  
-  if(prevBtn) {
-      prevBtn.onclick = () => { if(window.currentPage > 1) { window.currentPage--; window.renderRows(); } };
-      prevBtn.disabled = window.currentPage === 1;
-  }
-  if(nextBtn) {
-      nextBtn.onclick = () => { if(window.currentPage < totalPages) { window.currentPage++; window.renderRows(); } };
-      nextBtn.disabled = window.currentPage === totalPages;
-  }
   
   document.querySelectorAll('#view-products .pill-row .pill').forEach(btn => {
       const type = btn.textContent.split(/[0-9]/)[0].trim();
@@ -206,7 +290,10 @@ window.renderMovements = function() {
       });
   }
 
-  tbody.innerHTML = filtered.map(m => {
+  window.currentMovePage = window.currentMovePage || 1;
+  const paged = window.setupPagination('view-movements', filtered, window.renderMovements, 'currentMovePage', 'movements');
+
+  tbody.innerHTML = paged.map(m => {
       return '<tr>' +
           '<td style="color:var(--text-4); font-size:12px;">' + new Date(m.created_at).toLocaleDateString() + '</td>' +
           '<td><span class="badge badge-neutral">' + m.movement_type + '</span></td>' +
@@ -226,14 +313,19 @@ window.renderMovements = function() {
       
       const countSpan = btn.querySelector('.count');
       if(countSpan) countSpan.textContent = count;
-      else if (count > 0 && !btn.querySelector('span')) btn.innerHTML += ' <span class="count">' + count + '</span>';
+      else btn.innerHTML += ' <span class="count">' + count + '</span>';
   });
 };
 
 window.renderPOs = function() {
   const tbody = document.getElementById('poRows');
   if(!tbody) return;
-  tbody.innerHTML = (window.pos || []).map(p => {
+  
+  window.currentPoPage = window.currentPoPage || 1;
+  const filtered = window.pos || [];
+  const paged = window.setupPagination('view-pos', filtered, window.renderPOs, 'currentPoPage', 'purchase orders');
+  
+  tbody.innerHTML = paged.map(p => {
       const isDraft = p.status === 'Draft';
       return '<tr>' +
           '<td class="mono t-sm c-jade" style="font-weight:700;">' + p.po_number + '</td>' +
@@ -287,7 +379,10 @@ window.renderReturns = function() {
       });
   }
 
-  tbody.innerHTML = filtered.map(r => {
+  window.currentReturnPage = window.currentReturnPage || 1;
+  const paged = window.setupPagination('view-returns', filtered, window.renderReturns, 'currentReturnPage', 'returns');
+
+  tbody.innerHTML = paged.map(r => {
       return '<tr>' +
           '<td class="mono c-text-3">' + r.rma + '</td>' +
           '<td class="mono c-text-4">' + r.order + '</td>' +
@@ -308,7 +403,7 @@ window.renderReturns = function() {
       
       const countSpan = btn.querySelector('.count');
       if(countSpan) countSpan.textContent = count;
-      else if (count > 0 && !btn.querySelector('span')) btn.innerHTML += ' <span class="count">' + count + '</span>';
+      else btn.innerHTML += ' <span class="count">' + count + '</span>';
   });
 };
 
@@ -511,6 +606,8 @@ export default function InventoryPage() {
                         if (window.renderReturns) window.renderReturns();
                     }
                 }
+                
+                if (window.updateKPIs) window.updateKPIs();
 
             } catch (err) {
                 console.error("Failed to fetch inventory data:", err);
