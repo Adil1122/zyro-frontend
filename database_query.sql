@@ -1,0 +1,7 @@
+-- Updates to `products` table
+ALTER TABLE products
+ADD COLUMN IF NOT EXISTS publish_shopify BOOLEAN DEFAULT true,
+ADD COLUMN IF NOT EXISTS publish_daraz BOOLEAN DEFAULT true,
+ADD COLUMN IF NOT EXISTS publish_woocommerce BOOLEAN DEFAULT true,
+ADD COLUMN IF NOT EXISTS barcode TEXT,
+ADD COLUMN IF NOT EXISTS reorder_point INTEGER DEFAULT 0;

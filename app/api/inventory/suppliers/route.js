@@ -9,7 +9,7 @@ export async function GET(request) {
         let query = supabase
             .from('suppliers')
             .select('*')
-            .order('name', { ascending: true });
+            .order('created_at', { ascending: false });
 
         if (userId) {
             query = query.eq('user_id', userId);
