@@ -13,6 +13,7 @@ export default function Icon({ name, size = 16, color = "currentColor" }) {
         customers: <svg {...p}><circle cx="9" cy="7" r="4" /><path d="M3 21v-2a5 5 0 015-5h2a5 5 0 015 5v2" /><circle cx="17" cy="7" r="3" strokeOpacity="0.5" /><path d="M21 21v-1a4 4 0 00-3-3.87" strokeOpacity="0.5" /></svg>,
         automation: <svg {...p}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /><circle cx="12" cy="12" r="4" /></svg>,
         analytics: <svg {...p}><path d="M3 3v18h18" /><path d="M7 14l4-4 4 4 5-6" /></svg>,
+        plans: <svg {...p}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>,
         settings: <svg {...p}><circle cx="12" cy="12" r="3" /><path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8L7 17M17 7l2.8-2.8" /></svg>,
         search: <svg {...p}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>,
         bell: <svg {...p}><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" /></svg>,

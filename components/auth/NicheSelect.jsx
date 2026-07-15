@@ -80,7 +80,8 @@ export default function NicheSelect({ value, onChange, error }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
-            className="absolute top-full left-0 right-0 mt-2 z-50 bg-card border border-border-mid rounded-xl max-h-80 overflow-y-auto shadow-lg"
+            className="absolute top-full left-0 right-0 mt-2 z-50 border border-border-mid rounded-xl max-h-80 overflow-y-auto shadow-lg"
+            style={{ background: "#122720", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}
           >
             {niches.map((niche) => {
               const Icon = niche.icon;
@@ -96,7 +97,7 @@ export default function NicheSelect({ value, onChange, error }) {
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-3",
                     "text-left transition-colors duration-150",
-                    "hover:bg-bg-elev",
+                    "hover:bg-[#17332A]",
                     isSelected && "bg-jade-300/10"
                   )}
                 >

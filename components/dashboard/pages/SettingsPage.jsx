@@ -8,7 +8,12 @@ import WooCommerceManagePage from "./WooCommerceManagePage";
 import DarazManagePage from "./DarazManagePage";
 import ShopifyManagePage from "./ShopifyManagePage";
 import PostExManagePage from "./PostExManagePage";
+import TCSManagePage from "./TCSManagePage";
+import LeopardsManagePage from "./LeopardsManagePage";
 import InstaWorldManagePage from "./InstaWorldManagePage";
+import MPManagePage from "./MPManagePage";
+import PakistanPostManagePage from "./PakistanPostManagePage";
+import DHLManagePage from "./DHLManagePage";
 
 // Add these to navigation
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -162,6 +167,67 @@ function usePostExStats() {
     return { stats, loading, error, refetch: fetchStats };
 }
 
+// ─── TCS Live Stats Hook ─────────────────────────────────────────────────────
+function useTCSStats() {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const fetchStats = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const userId = getCurrentUserId();
+            const res = await fetch("/api/tcs/stats", {
+                headers: { 'x-user-id': userId }
+            });
+            const data = await res.json();
+            if (!data.configured) {
+                setStats({ configured: false });
+            } else if (data.error) {
+                setError(data.error);
+                setStats({ configured: true });
+            } else {
+                setStats({ configured: true, ...data });
+            }
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { fetchStats(); }, []);
+    return { stats, loading, error, refetch: fetchStats };
+}
+
+// ─── Leopards Live Stats Hook ─────────────────────────────────────────────────
+function useLeopardsStats() {
+    const [stats, setStats]   = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError]   = useState(null);
+
+    const fetchStats = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const userId = getCurrentUserId();
+            const res  = await fetch("/api/leopards/stats", { headers: { 'x-user-id': userId } });
+            const data = await res.json();
+            if (!data.configured)  setStats({ configured: false });
+            else if (data.error) { setError(data.error); setStats({ configured: true }); }
+            else                   setStats({ configured: true, ...data });
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { fetchStats(); }, []);
+    return { stats, loading, error, refetch: fetchStats };
+}
+
 // ─── Insta World Live Stats Hook ─────────────────────────────────────────────
 function useInstaWorldStats() {
     const [stats, setStats] = useState(null);
@@ -190,6 +256,75 @@ function useInstaWorldStats() {
         } finally {
             setLoading(false);
         }
+    };
+
+    useEffect(() => { fetchStats(); }, []);
+    return { stats, loading, error, refetch: fetchStats };
+}
+
+// ─── M&P Live Stats Hook ──────────────────────────────────────────────────────
+function useMPStats() {
+    const [stats, setStats]   = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError]   = useState(null);
+
+    const fetchStats = async () => {
+        setLoading(true); setError(null);
+        try {
+            const userId = getCurrentUserId();
+            const res  = await fetch("/api/mp/stats", { headers: { 'x-user-id': userId } });
+            const data = await res.json();
+            if (!data.configured)  setStats({ configured: false });
+            else if (data.error) { setError(data.error); setStats({ configured: true }); }
+            else                   setStats({ configured: true, ...data });
+        } catch (e) { setError(e.message); }
+        finally { setLoading(false); }
+    };
+
+    useEffect(() => { fetchStats(); }, []);
+    return { stats, loading, error, refetch: fetchStats };
+}
+
+// ─── Pakistan Post / TrackingMore Live Stats Hook ────────────────────────────
+function usePakistanPostStats() {
+    const [stats, setStats]   = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError]   = useState(null);
+
+    const fetchStats = async () => {
+        setLoading(true); setError(null);
+        try {
+            const userId = getCurrentUserId();
+            const res  = await fetch("/api/trackingmore/stats", { headers: { 'x-user-id': userId } });
+            const data = await res.json();
+            if (!data.configured)  setStats({ configured: false });
+            else if (data.error) { setError(data.error); setStats({ configured: true }); }
+            else                   setStats({ configured: true, ...data });
+        } catch (e) { setError(e.message); }
+        finally { setLoading(false); }
+    };
+
+    useEffect(() => { fetchStats(); }, []);
+    return { stats, loading, error, refetch: fetchStats };
+}
+
+// ─── DHL Live Stats Hook ──────────────────────────────────────────────────────
+function useDHLStats() {
+    const [stats, setStats]   = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError]   = useState(null);
+
+    const fetchStats = async () => {
+        setLoading(true); setError(null);
+        try {
+            const userId = getCurrentUserId();
+            const res  = await fetch("/api/dhl/stats", { headers: { 'x-user-id': userId } });
+            const data = await res.json();
+            if (!data.configured)  setStats({ configured: false });
+            else if (data.error) { setError(data.error); setStats({ configured: true }); }
+            else                   setStats({ configured: true, ...data });
+        } catch (e) { setError(e.message); }
+        finally { setLoading(false); }
     };
 
     useEffect(() => { fetchStats(); }, []);
@@ -382,7 +517,7 @@ function WooCommerceCard({ onManage }) {
 }
 
 // ─── Daraz Live Card ─────────────────────────────────────────────────────────
-function DarazCard({ onManage }) {
+function DarazCard({ onManage, onSync, isSyncing, syncResult }) {
     const { stats, loading, error } = useDarazStats();
     const isConnected = stats?.configured && !error;
     const DARAZ_ORANGE = "#F57D29";
@@ -471,28 +606,21 @@ function DarazCard({ onManage }) {
                     </span>
                 </div>
 
-                {/* Action button */}
-                {isConnected && !loading
-                    ? (
-                        <button onClick={onManage} style={{
-                            display: "inline-flex", alignItems: "center", gap: 6,
-                            padding: "6px 12px", borderRadius: T.r8,
-                            background: DARAZ_GRAD, color: "#fff",
-                            border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
-                            fontFamily: "inherit", boxShadow: "0 2px 8px rgba(245,125,41,0.35)",
-                            transition: "all 0.15s",
-                        }}>
-                            <Icon name="settings" size={13} color="#fff" />
-                            Manage
-                        </button>
-                    )
-                    : !loading
-                        ? <GradientButton variant="primary" size="sm" icon="plus"
-                            onClick={onManage}>
-                            Connect Store
-                        </GradientButton>
-                        : null
-                }
+                {/* Action buttons */}
+                {isConnected && !loading ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                        <GradientButton variant="primary" size="sm" icon="refresh" onClick={onSync} disabled={isSyncing}>{isSyncing ? "Syncing..." : "Sync"}</GradientButton>
+                        <GradientButton variant="secondary" size="sm" icon="settings" onClick={onManage}>Manage</GradientButton>
+                    </div>
+                ) : !loading ? (
+                    <GradientButton variant="primary" size="sm" icon="plus" onClick={onManage}>Connect Store</GradientButton>
+                ) : null}
+                {syncResult && (
+                    <div style={{ marginTop: 8, padding: 12, borderRadius: T.r8, background: syncResult.success ? T.greenBg : T.redBg, border: `1px solid ${syncResult.success ? T.green : T.red}`, fontSize: 12, color: syncResult.success ? T.green : T.red }}>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>{syncResult.success ? "✓ Sync Complete" : "✗ Sync Failed"}</div>
+                        <div>{syncResult.message}</div>
+                    </div>
+                )}
             </div>
         </Card>
     );
@@ -748,6 +876,213 @@ function PostExCard({ onManage, onSync, isSyncing, syncResult }) {
     );
 }
 
+// ─── TCS Courier Card ───────────────────────────────────────────────────────
+function TCSCard({ onManage, onSync, isSyncing, syncResult }) {
+    const { stats, loading, error } = useTCSStats();
+    const isConnected = stats?.configured && !error;
+    const TCS_GRAD = "linear-gradient(135deg, #C8102E 0%, #E63946 100%)";
+
+    return (
+        <Card style={{ marginBottom: 10, padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <div style={{
+                    width: 44, height: 44, borderRadius: T.r10, flexShrink: 0,
+                    background: TCS_GRAD,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 22, boxShadow: "0 4px 12px rgba(200,16,46,0.35)",
+                }}>🚚</div>
+
+                <div style={{ flex: 1, minWidth: 140 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>TCS Courier</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+                        {loading
+                            ? "Connecting to TCS…"
+                            : stats?.configured === false
+                                ? "Credentials not configured"
+                                : error
+                                    ? `Error: ${error}`
+                                    : stats?.todayShipments !== undefined
+                                        ? `${stats.todayShipments} shipments today`
+                                        : "No data yet"
+                        }
+                    </div>
+                </div>
+
+                {isConnected && !loading && stats?.totalShipments !== undefined && (
+                    <div style={{ display: "flex", gap: 20, marginRight: 12 }}>
+                        <div>
+                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>COD Pending</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginTop: 2 }}>
+                                {formatRevenue(stats.codPending)}
+                            </div>
+                            <div style={{ fontSize: 10, color: T.textFaint, marginTop: 1 }}>
+                                {stats.todayShipments || 0} today
+                            </div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>Total Recovered</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.j200, marginTop: 2 }}>
+                                {formatRevenue(stats.codRecovered)}
+                            </div>
+                            <div style={{ fontSize: 10, color: T.textFaint, marginTop: 1 }}>
+                                {stats.totalShipments || 0} lifetime
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {loading && (
+                    <div style={{ display: "flex", gap: 20, marginRight: 12 }}>
+                        {[80, 80].map((w, i) => (
+                            <div key={i}>
+                                <div style={{ height: 10, width: 60, borderRadius: T.r4, background: T.bgHigh, marginBottom: 6, animation: "pulse 1.4s ease-in-out infinite" }} />
+                                <div style={{ height: 18, width: w, borderRadius: T.r4, background: T.bgHigh, animation: "pulse 1.4s ease-in-out infinite" }} />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 12 }}>
+                    {loading ? (
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: T.textFaint, animation: "pulse 1s ease-in-out infinite" }} />
+                    ) : (
+                        <div style={{
+                            width: 6, height: 6, borderRadius: "50%",
+                            background: isConnected ? T.green : T.red,
+                            boxShadow: isConnected ? `0 0 6px ${T.green}` : `0 0 6px ${T.red}`,
+                        }} />
+                    )}
+                    <span style={{ fontSize: 12, fontWeight: 600, color: loading ? T.textFaint : isConnected ? T.green : T.red }}>
+                        {loading ? "checking…" : isConnected ? "connected" : "disconnected"}
+                    </span>
+                </div>
+
+                {isConnected && !loading ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                        <GradientButton variant="primary" size="sm" icon="refresh" onClick={onSync} disabled={isSyncing}>
+                            {isSyncing ? "Syncing..." : "Sync"}
+                        </GradientButton>
+                        <GradientButton variant="secondary" size="sm" icon="settings" onClick={onManage}>Manage</GradientButton>
+                    </div>
+                ) : !loading ? (
+                    <GradientButton variant="primary" size="sm" icon="plus" onClick={onManage}>
+                        Connect Courier
+                    </GradientButton>
+                ) : null}
+
+                {syncResult && (
+                    <div style={{
+                        marginTop: 8, padding: 12, borderRadius: T.r8,
+                        background: syncResult.success ? T.greenBg : T.redBg,
+                        border: `1px solid ${syncResult.success ? T.green : T.red}`,
+                        fontSize: 12, color: syncResult.success ? T.green : T.red,
+                    }}>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                            {syncResult.success ? "✓ Sync Complete" : "✗ Sync Failed"}
+                        </div>
+                        <div>{syncResult.message}</div>
+                    </div>
+                )}
+            </div>
+        </Card>
+    );
+}
+
+// ─── Leopards Courier Card ──────────────────────────────────────────────────
+function LeopardsCard({ onManage, onSync, isSyncing, syncResult }) {
+    const { stats, loading, error } = useLeopardsStats();
+    const isConnected = stats?.configured && !error;
+    const LEOPARDS_GRAD = "linear-gradient(135deg, #1a472a 0%, #2d6a4f 100%)";
+
+    return (
+        <Card style={{ marginBottom: 10, padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <div style={{
+                    width: 44, height: 44, borderRadius: T.r10, flexShrink: 0,
+                    background: LEOPARDS_GRAD,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 22, boxShadow: "0 4px 12px rgba(26,71,42,0.4)",
+                }}>🐆</div>
+
+                <div style={{ flex: 1, minWidth: 140 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Leopards Courier</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+                        {loading
+                            ? "Connecting to Leopards…"
+                            : stats?.configured === false
+                                ? "Credentials not configured"
+                                : error
+                                    ? `Error: ${error}`
+                                    : stats?.todayShipments !== undefined
+                                        ? `${stats.todayShipments} shipments today`
+                                        : "No data yet"
+                        }
+                    </div>
+                </div>
+
+                {isConnected && !loading && stats?.totalShipments !== undefined && (
+                    <div style={{ display: "flex", gap: 20, marginRight: 12 }}>
+                        <div>
+                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>COD Pending</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginTop: 2 }}>{formatRevenue(stats.codPending)}</div>
+                            <div style={{ fontSize: 10, color: T.textFaint, marginTop: 1 }}>{stats.todayShipments || 0} today</div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>Total Recovered</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.j200, marginTop: 2 }}>{formatRevenue(stats.codRecovered)}</div>
+                            <div style={{ fontSize: 10, color: T.textFaint, marginTop: 1 }}>{stats.totalShipments || 0} lifetime</div>
+                        </div>
+                    </div>
+                )}
+
+                {loading && (
+                    <div style={{ display: "flex", gap: 20, marginRight: 12 }}>
+                        {[80, 80].map((w, i) => (
+                            <div key={i}>
+                                <div style={{ height: 10, width: 60, borderRadius: T.r4, background: T.bgHigh, marginBottom: 6, animation: "pulse 1.4s ease-in-out infinite" }} />
+                                <div style={{ height: 18, width: w, borderRadius: T.r4, background: T.bgHigh, animation: "pulse 1.4s ease-in-out infinite" }} />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 12 }}>
+                    {loading
+                        ? <div style={{ width: 6, height: 6, borderRadius: "50%", background: T.textFaint, animation: "pulse 1s ease-in-out infinite" }} />
+                        : <div style={{ width: 6, height: 6, borderRadius: "50%", background: isConnected ? T.green : T.red, boxShadow: isConnected ? `0 0 6px ${T.green}` : `0 0 6px ${T.red}` }} />
+                    }
+                    <span style={{ fontSize: 12, fontWeight: 600, color: loading ? T.textFaint : isConnected ? T.green : T.red }}>
+                        {loading ? "checking…" : isConnected ? "connected" : "disconnected"}
+                    </span>
+                </div>
+
+                {isConnected && !loading ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                        <GradientButton variant="primary" size="sm" icon="refresh" onClick={onSync} disabled={isSyncing}>
+                            {isSyncing ? "Syncing..." : "Sync"}
+                        </GradientButton>
+                        <GradientButton variant="secondary" size="sm" icon="settings" onClick={onManage}>Manage</GradientButton>
+                    </div>
+                ) : !loading ? (
+                    <GradientButton variant="primary" size="sm" icon="plus" onClick={onManage}>Connect Courier</GradientButton>
+                ) : null}
+
+                {syncResult && (
+                    <div style={{
+                        marginTop: 8, padding: 12, borderRadius: T.r8,
+                        background: syncResult.success ? T.greenBg : T.redBg,
+                        border: `1px solid ${syncResult.success ? T.green : T.red}`,
+                        fontSize: 12, color: syncResult.success ? T.green : T.red,
+                    }}>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>{syncResult.success ? "✓ Sync Complete" : "✗ Sync Failed"}</div>
+                        <div>{syncResult.message}</div>
+                    </div>
+                )}
+            </div>
+        </Card>
+    );
+}
+
 // ─── Insta World Courier Card ───────────────────────────────────────────────
 function InstaWorldCard({ onManage }) {
     const { stats, loading, error } = useInstaWorldStats();
@@ -834,6 +1169,173 @@ function InstaWorldCard({ onManage }) {
     );
 }
 
+// ─── M&P Courier Card ───────────────────────────────────────────────────────
+function MPCard({ onManage, onSync, isSyncing, syncResult }) {
+    const { stats, loading, error } = useMPStats();
+    const isConnected = stats?.configured && !error;
+    const MP_GRAD = "linear-gradient(135deg, #7B2D8B 0%, #9C27B0 100%)";
+
+    return (
+        <Card style={{ marginBottom: 10, padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <div style={{ width: 44, height: 44, borderRadius: T.r10, flexShrink: 0, background: MP_GRAD, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: "0 4px 12px rgba(123,45,139,0.35)" }}>🚐</div>
+                <div style={{ flex: 1, minWidth: 140 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>M&P Courier</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+                        {loading ? "Connecting to M&P…" : stats?.configured === false ? "Credentials not configured" : error ? `Error: ${error}` : stats?.todayShipments !== undefined ? `${stats.todayShipments} shipments today` : "No data yet"}
+                    </div>
+                </div>
+                {isConnected && !loading && stats?.totalShipments !== undefined && (
+                    <div style={{ display: "flex", gap: 20, marginRight: 12 }}>
+                        <div>
+                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>COD Pending</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginTop: 2 }}>{formatRevenue(stats.codPending)}</div>
+                            <div style={{ fontSize: 10, color: T.textFaint, marginTop: 1 }}>{stats.todayShipments || 0} today</div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>Total Recovered</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.j200, marginTop: 2 }}>{formatRevenue(stats.codRecovered)}</div>
+                            <div style={{ fontSize: 10, color: T.textFaint, marginTop: 1 }}>{stats.totalShipments || 0} lifetime</div>
+                        </div>
+                    </div>
+                )}
+                {loading && (
+                    <div style={{ display: "flex", gap: 20, marginRight: 12 }}>
+                        {[80, 80].map((w, i) => (
+                            <div key={i}>
+                                <div style={{ height: 10, width: 60, borderRadius: T.r4, background: T.bgHigh, marginBottom: 6, animation: "pulse 1.4s ease-in-out infinite" }} />
+                                <div style={{ height: 18, width: w, borderRadius: T.r4, background: T.bgHigh, animation: "pulse 1.4s ease-in-out infinite" }} />
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 12 }}>
+                    {loading ? <div style={{ width: 6, height: 6, borderRadius: "50%", background: T.textFaint, animation: "pulse 1s ease-in-out infinite" }} /> : <div style={{ width: 6, height: 6, borderRadius: "50%", background: isConnected ? T.green : T.red, boxShadow: isConnected ? `0 0 6px ${T.green}` : `0 0 6px ${T.red}` }} />}
+                    <span style={{ fontSize: 12, fontWeight: 600, color: loading ? T.textFaint : isConnected ? T.green : T.red }}>{loading ? "checking…" : isConnected ? "connected" : "disconnected"}</span>
+                </div>
+                {isConnected && !loading ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                        <GradientButton variant="primary" size="sm" icon="refresh" onClick={onSync} disabled={isSyncing}>{isSyncing ? "Syncing..." : "Sync"}</GradientButton>
+                        <GradientButton variant="secondary" size="sm" icon="settings" onClick={onManage}>Manage</GradientButton>
+                    </div>
+                ) : !loading ? (
+                    <GradientButton variant="primary" size="sm" icon="plus" onClick={onManage}>Connect Courier</GradientButton>
+                ) : null}
+                {syncResult && (
+                    <div style={{ marginTop: 8, padding: 12, borderRadius: T.r8, background: syncResult.success ? T.greenBg : T.redBg, border: `1px solid ${syncResult.success ? T.green : T.red}`, fontSize: 12, color: syncResult.success ? T.green : T.red }}>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>{syncResult.success ? "✓ Sync Complete" : "✗ Sync Failed"}</div>
+                        <div>{syncResult.message}</div>
+                    </div>
+                )}
+            </div>
+        </Card>
+    );
+}
+
+// ─── Pakistan Post Card ──────────────────────────────────────────────────────
+function PakistanPostCard({ onManage }) {
+    const { stats, loading, error } = usePakistanPostStats();
+    const isConnected = stats?.configured && !error;
+    const PP_GRAD = "linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)";
+
+    return (
+        <Card style={{ marginBottom: 10, padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <div style={{ width: 44, height: 44, borderRadius: T.r10, flexShrink: 0, background: PP_GRAD, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: "0 4px 12px rgba(27,94,32,0.35)" }}>📮</div>
+                <div style={{ flex: 1, minWidth: 140 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Pakistan Post</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+                        {loading ? "Connecting to TrackingMore…" : stats?.configured === false ? "TrackingMore API key not configured" : error ? `Error: ${error}` : stats?.totalTrackings !== undefined ? `${stats.totalTrackings} trackings monitored` : "No data yet"}
+                    </div>
+                </div>
+                {isConnected && !loading && stats?.totalTrackings !== undefined && (
+                    <div style={{ display: "flex", gap: 20, marginRight: 12 }}>
+                        <div>
+                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>In Transit</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.blue, marginTop: 2 }}>{stats.inTransit || 0}</div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>Delivered</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.green, marginTop: 2 }}>{stats.delivered || 0}</div>
+                        </div>
+                    </div>
+                )}
+                {loading && (
+                    <div style={{ display: "flex", gap: 20, marginRight: 12 }}>
+                        {[60, 60].map((w, i) => (
+                            <div key={i}>
+                                <div style={{ height: 10, width: 50, borderRadius: T.r4, background: T.bgHigh, marginBottom: 6, animation: "pulse 1.4s ease-in-out infinite" }} />
+                                <div style={{ height: 18, width: w, borderRadius: T.r4, background: T.bgHigh, animation: "pulse 1.4s ease-in-out infinite" }} />
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 12 }}>
+                    {loading ? <div style={{ width: 6, height: 6, borderRadius: "50%", background: T.textFaint, animation: "pulse 1s ease-in-out infinite" }} /> : <div style={{ width: 6, height: 6, borderRadius: "50%", background: isConnected ? T.green : T.red, boxShadow: isConnected ? `0 0 6px ${T.green}` : `0 0 6px ${T.red}` }} />}
+                    <span style={{ fontSize: 12, fontWeight: 600, color: loading ? T.textFaint : isConnected ? T.green : T.red }}>{loading ? "checking…" : isConnected ? "connected" : "disconnected"}</span>
+                </div>
+                {isConnected && !loading
+                    ? <GradientButton variant="secondary" size="sm" icon="settings" onClick={onManage}>Manage</GradientButton>
+                    : !loading ? <GradientButton variant="primary" size="sm" icon="plus" onClick={onManage}>Connect Courier</GradientButton>
+                    : null}
+            </div>
+        </Card>
+    );
+}
+
+// ─── DHL Express Card ────────────────────────────────────────────────────────
+function DHLCard({ onManage, onSync, isSyncing, syncResult }) {
+    const { stats, loading, error } = useDHLStats();
+    const isConnected = stats?.configured && !error;
+    const DHL_GRAD = "linear-gradient(135deg, #D40511 0%, #FFCC00 100%)";
+
+    return (
+        <Card style={{ marginBottom: 10, padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <div style={{ width: 44, height: 44, borderRadius: T.r10, flexShrink: 0, background: DHL_GRAD, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: "0 4px 12px rgba(212,5,17,0.35)" }}>✈️</div>
+                <div style={{ flex: 1, minWidth: 140 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>DHL Express</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+                        {loading ? "Connecting to DHL…" : stats?.configured === false ? "Credentials not configured" : error ? `Error: ${error}` : stats?.todayShipments !== undefined ? `${stats.todayShipments} shipments today` : "No data yet"}
+                    </div>
+                </div>
+                {isConnected && !loading && stats?.totalShipments !== undefined && (
+                    <div style={{ display: "flex", gap: 20, marginRight: 12 }}>
+                        <div>
+                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>Total Shipments</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.j200, marginTop: 2 }}>{stats.totalShipments || 0}</div>
+                        </div>
+                    </div>
+                )}
+                {loading && (
+                    <div style={{ marginRight: 12 }}>
+                        <div style={{ height: 10, width: 60, borderRadius: T.r4, background: T.bgHigh, marginBottom: 6, animation: "pulse 1.4s ease-in-out infinite" }} />
+                        <div style={{ height: 18, width: 80, borderRadius: T.r4, background: T.bgHigh, animation: "pulse 1.4s ease-in-out infinite" }} />
+                    </div>
+                )}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 12 }}>
+                    {loading ? <div style={{ width: 6, height: 6, borderRadius: "50%", background: T.textFaint, animation: "pulse 1s ease-in-out infinite" }} /> : <div style={{ width: 6, height: 6, borderRadius: "50%", background: isConnected ? T.green : T.red, boxShadow: isConnected ? `0 0 6px ${T.green}` : `0 0 6px ${T.red}` }} />}
+                    <span style={{ fontSize: 12, fontWeight: 600, color: loading ? T.textFaint : isConnected ? T.green : T.red }}>{loading ? "checking…" : isConnected ? "connected" : "disconnected"}</span>
+                </div>
+                {isConnected && !loading ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                        <GradientButton variant="primary" size="sm" icon="refresh" onClick={onSync} disabled={isSyncing}>{isSyncing ? "Syncing..." : "Sync"}</GradientButton>
+                        <GradientButton variant="secondary" size="sm" icon="settings" onClick={onManage}>Manage</GradientButton>
+                    </div>
+                ) : !loading ? (
+                    <GradientButton variant="primary" size="sm" icon="plus" onClick={onManage}>Connect Courier</GradientButton>
+                ) : null}
+                {syncResult && (
+                    <div style={{ marginTop: 8, padding: 12, borderRadius: T.r8, background: syncResult.success ? T.greenBg : T.redBg, border: `1px solid ${syncResult.success ? T.green : T.red}`, fontSize: 12, color: syncResult.success ? T.green : T.red }}>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>{syncResult.success ? "✓ Sync Complete" : "✗ Sync Failed"}</div>
+                        <div>{syncResult.message}</div>
+                    </div>
+                )}
+            </div>
+        </Card>
+    );
+}
+
 // ─── Other placeholder store cards ──────────────────────────────────────────
 function OtherStoreCard({ name, icon, desc, soon }) {
     return (
@@ -887,9 +1389,29 @@ export default function SettingsPage({ tabParam }) {
     const [waSaving, setWaSaving] = useState(false);
     const [waMessage, setWaMessage] = useState(null);
 
+    // ─── Daraz Sync State ───
+    const [isDarazSyncing, setIsDarazSyncing] = useState(false);
+    const [darazSyncResult, setDarazSyncResult] = useState(null);
+
     // ─── PostEx Sync State ───
     const [isPostExSyncing, setIsPostExSyncing] = useState(false);
     const [postExSyncResult, setPostExSyncResult] = useState(null);
+
+    // ─── TCS Sync State ───
+    const [isTCSSyncing, setIsTCSSyncing] = useState(false);
+    const [tcsSyncResult, setTCSSyncResult] = useState(null);
+
+    // ─── Leopards Sync State ───
+    const [isLeopardsSyncing, setIsLeopardsSyncing] = useState(false);
+    const [leopardsSyncResult, setLeopardsSyncResult] = useState(null);
+
+    // ─── M&P Sync State ───
+    const [isMPSyncing, setIsMPSyncing] = useState(false);
+    const [mpSyncResult, setMPSyncResult] = useState(null);
+
+    // ─── DHL Sync State ───
+    const [isDHLSyncing, setIsDHLSyncing] = useState(false);
+    const [dhlSyncResult, setDHLSyncResult] = useState(null);
 
     const handlePostExSync = async () => {
         setIsPostExSyncing(true);
@@ -931,6 +1453,89 @@ export default function SettingsPage({ tabParam }) {
         } finally {
             setIsPostExSyncing(false);
         }
+    };
+
+    const handleTCSSync = async () => {
+        setIsTCSSyncing(true);
+        setTCSSyncResult(null);
+        try {
+            const userId = getCurrentUserId();
+            const response = await fetch("/api/tcs/sync", {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+            });
+            const result = await response.json();
+            if (result.error) {
+                setTCSSyncResult({ success: false, message: result.error });
+            } else {
+                setTCSSyncResult({ success: true, message: result.message || `TCS sync complete. ${result.syncedOrders || 0} orders in database.` });
+            }
+        } catch (e) {
+            setTCSSyncResult({ success: false, message: 'TCS sync failed: ' + e.message });
+        } finally {
+            setIsTCSSyncing(false);
+        }
+    };
+
+    const handleLeopardsSync = async () => {
+        setIsLeopardsSyncing(true);
+        setLeopardsSyncResult(null);
+        try {
+            const userId = getCurrentUserId();
+            const response = await fetch("/api/leopards/sync", {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+            });
+            const result = await response.json();
+            if (result.error) {
+                setLeopardsSyncResult({ success: false, message: result.error });
+            } else {
+                setLeopardsSyncResult({ success: true, message: result.message || `Leopards sync complete. ${result.syncedOrders || 0} orders in database.` });
+            }
+        } catch (e) {
+            setLeopardsSyncResult({ success: false, message: 'Leopards sync failed: ' + e.message });
+        } finally {
+            setIsLeopardsSyncing(false);
+        }
+    };
+
+    const handleDarazSync = async () => {
+        setIsDarazSyncing(true);
+        setDarazSyncResult(null);
+        try {
+            const userId = getCurrentUserId();
+            const response = await fetch("/api/daraz/sync", { method: "POST", headers: { 'Content-Type': 'application/json', 'x-user-id': userId } });
+            const result = await response.json();
+            if (result.error) { setDarazSyncResult({ success: false, message: result.error }); }
+            else { setDarazSyncResult({ success: true, message: result.message || `Daraz sync complete. ${result.syncedOrders || 0} orders in database.` }); }
+        } catch (e) { setDarazSyncResult({ success: false, message: 'Daraz sync failed: ' + e.message }); }
+        finally { setIsDarazSyncing(false); }
+    };
+
+    const handleMPSync = async () => {
+        setIsMPSyncing(true);
+        setMPSyncResult(null);
+        try {
+            const userId = getCurrentUserId();
+            const response = await fetch("/api/mp/sync", { method: "POST", headers: { 'Content-Type': 'application/json', 'x-user-id': userId } });
+            const result = await response.json();
+            if (result.error) { setMPSyncResult({ success: false, message: result.error }); }
+            else { setMPSyncResult({ success: true, message: result.message || `M&P sync complete. ${result.syncedOrders || 0} orders in database.` }); }
+        } catch (e) { setMPSyncResult({ success: false, message: 'M&P sync failed: ' + e.message }); }
+        finally { setIsMPSyncing(false); }
+    };
+
+    const handleDHLSync = async () => {
+        setIsDHLSyncing(true);
+        setDHLSyncResult(null);
+        try {
+            const userId = getCurrentUserId();
+            const response = await fetch("/api/dhl/sync", { method: "POST", headers: { 'Content-Type': 'application/json', 'x-user-id': userId } });
+            const result = await response.json();
+            if (result.error) { setDHLSyncResult({ success: false, message: result.error }); }
+            else { setDHLSyncResult({ success: true, message: result.message || `DHL sync complete. ${result.syncedOrders || 0} shipments in database.` }); }
+        } catch (e) { setDHLSyncResult({ success: false, message: 'DHL sync failed: ' + e.message }); }
+        finally { setIsDHLSyncing(false); }
     };
 
     const fetchWhatsAppConfig = async () => {
@@ -1043,8 +1648,23 @@ export default function SettingsPage({ tabParam }) {
     if (managingStore === "postex") {
         return <PostExManagePage onBack={handleBack} />;
     }
+    if (managingStore === "tcs") {
+        return <TCSManagePage onBack={handleBack} />;
+    }
+    if (managingStore === "leopards") {
+        return <LeopardsManagePage onBack={handleBack} />;
+    }
     if (managingStore === "instaworld") {
         return <InstaWorldManagePage onBack={handleBack} />;
+    }
+    if (managingStore === "mp") {
+        return <MPManagePage onBack={handleBack} />;
+    }
+    if (managingStore === "pakistanpost") {
+        return <PakistanPostManagePage onBack={handleBack} />;
+    }
+    if (managingStore === "dhl") {
+        return <DHLManagePage onBack={handleBack} />;
     }
 
     return (
@@ -1083,7 +1703,7 @@ export default function SettingsPage({ tabParam }) {
                         {/* WooCommerce – live integration */}
                         <WooCommerceCard onManage={() => handleManage("woocommerce")} />
                         {/* Daraz – live integration */}
-                        <DarazCard onManage={() => handleManage("daraz")} />
+                        <DarazCard onManage={() => handleManage("daraz")} onSync={handleDarazSync} isSyncing={isDarazSyncing} syncResult={darazSyncResult} />
                         {/* Shopify – live integration */}
                         <ShopifyCard onManage={() => handleManage("shopify")} />
                         <OtherStoreCard
@@ -1106,8 +1726,23 @@ export default function SettingsPage({ tabParam }) {
                         {/* PostEx – live integration */}
                         <PostExCard onManage={() => handleManage("postex")} onSync={handlePostExSync} isSyncing={isPostExSyncing} syncResult={postExSyncResult} />
 
+                        {/* TCS – live integration */}
+                        <TCSCard onManage={() => handleManage("tcs")} onSync={handleTCSSync} isSyncing={isTCSSyncing} syncResult={tcsSyncResult} />
+
+                        {/* Leopards – live integration */}
+                        <LeopardsCard onManage={() => handleManage("leopards")} onSync={handleLeopardsSync} isSyncing={isLeopardsSyncing} syncResult={leopardsSyncResult} />
+
                         {/* Insta World – live integration */}
                         <InstaWorldCard onManage={() => handleManage("instaworld")} />
+
+                        {/* M&P Courier – live integration */}
+                        <MPCard onManage={() => handleManage("mp")} onSync={handleMPSync} isSyncing={isMPSyncing} syncResult={mpSyncResult} />
+
+                        {/* Pakistan Post via TrackingMore – tracking only */}
+                        <PakistanPostCard onManage={() => handleManage("pakistanpost")} />
+
+                        {/* DHL Express – live integration */}
+                        <DHLCard onManage={() => handleManage("dhl")} onSync={handleDHLSync} isSyncing={isDHLSyncing} syncResult={dhlSyncResult} />
 
                         <Card style={{ marginTop: 24, padding: 20, background: T.bgElev, border: `1px dashed ${T.border}` }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
