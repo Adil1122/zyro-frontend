@@ -13,20 +13,17 @@ export async function POST(request) {
         const wcProduct = await request.json();
         if (!wcProduct?.id) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
 
-        // Only sync published products
         if (wcProduct.status !== 'publish') {
-            return NextResponse.json({ success: true, message: `Skipped — product status is "${wcProduct.status}"` });
+            return NextResponse.json({ success: true, message: `Skipped — status is "${wcProduct.status}"` });
         }
 
-        const sku = wcProduct.sku || '';
+        const sku = wcProduct.sku || `WC-${wcProduct.id}`;
         const name = wcProduct.name || 'Unnamed Product';
         const price = parseFloat(wcProduct.price || wcProduct.regular_price || 0);
         const stock = parseInt(wcProduct.stock_quantity || 0);
-        const manageStock = wcProduct.manage_stock || false;
 
-        console.log(`[WC product.created] New product: ${name} (SKU: ${sku})`);
+        console.log(`[WC product.created] ${name} (SKU: ${sku})`);
 
-        // Check if product already exists by SKU or WC ID
         const { data: existing } = await supabase
             .from('products')
             .select('id')
@@ -43,21 +40,19 @@ export async function POST(request) {
         const { data: newProduct, error } = await supabase.from('products').insert({
             user_id: userId,
             name,
-            sku: sku || `WC-${wcProduct.id}`,
+            sku,
             price,
             cost_price: 0,
-            stock: manageStock ? stock : 0,
+            stock,
             reorder_point: 5,
             status: stockStatus,
             publish_woocommerce: true,
             publish_shopify: false,
             publish_daraz: false,
-            created_at: new Date().toISOString(),
         }).select('id').single();
 
         if (error) throw error;
 
-        console.log(`[WC product.created] Product saved: ${newProduct.id}`);
         return NextResponse.json({ success: true, productId: newProduct.id, action: 'created' });
 
     } catch (error) {

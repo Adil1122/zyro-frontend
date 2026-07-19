@@ -18,11 +18,9 @@ export async function POST(request) {
         const billing = wcCustomer.billing || {};
         const phone = billing.phone || '';
         const city = billing.city || '';
-        const address = [billing.address_1, billing.address_2, billing.state].filter(Boolean).join(', ');
 
-        console.log(`[WC customer.created] New customer: ${name} (${email})`);
+        console.log(`[WC customer.created] ${name} (${email})`);
 
-        // Check if customer already exists
         const { data: existing } = await supabase
             .from('customers')
             .select('id')
@@ -31,35 +29,23 @@ export async function POST(request) {
             .maybeSingle();
 
         if (existing?.id) {
-            // Update existing customer info
-            await supabase.from('customers').update({
-                name,
-                contact: phone || email,
-                city,
-                address,
-                updated_at: new Date().toISOString(),
-            }).eq('id', existing.id);
-
+            await supabase.from('customers').update({ name, contact: phone || email, city }).eq('id', existing.id);
             return NextResponse.json({ success: true, customerId: existing.id, action: 'updated' });
         }
 
-        // Insert new customer
         const { data: newCustomer, error } = await supabase.from('customers').insert({
             user_id: userId,
             name,
             email,
             contact: phone || email,
             city,
-            address,
             total_orders: 0,
             total_spent: 0,
             status: 'active',
-            created_at: new Date().toISOString(),
         }).select('id').single();
 
         if (error) throw error;
 
-        console.log(`[WC customer.created] Customer saved: ${newCustomer.id}`);
         return NextResponse.json({ success: true, customerId: newCustomer.id, action: 'created' });
 
     } catch (error) {

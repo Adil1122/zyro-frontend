@@ -14,15 +14,12 @@ export async function POST(request) {
         const wcOrder = await request.json();
         if (!wcOrder?.id) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
 
-        console.log(`[WC order.updated] Order #${wcOrder.number} → status: ${wcOrder.status}`);
-
-        const billing = wcOrder.billing || {};
-        const newStatus = wcOrder.status;
         const orderNumber = (wcOrder.number || wcOrder.id).toString();
+        const newStatus = wcOrder.status;
         const total = parseFloat(wcOrder.total || 0);
-        const customerName = `${billing.first_name || ''} ${billing.last_name || ''}`.trim() || 'Guest';
 
-        // Find existing order
+        console.log(`[WC order.updated] Order #${orderNumber} → ${newStatus}`);
+
         const { data: existingOrder } = await supabase
             .from('orders')
             .select('id, status')
@@ -36,36 +33,19 @@ export async function POST(request) {
         if (existingOrder?.id) {
             dbOrderId = existingOrder.id;
             statusChanged = existingOrder.status?.toLowerCase() !== newStatus?.toLowerCase();
-
-            await supabase.from('orders').update({
-                status: newStatus,
-                total_amount: total,
-                customer_name: customerName,
-                customer_email: billing.email || null,
-                customer_phone: billing.phone || null,
-                city: billing.city || null,
-                updated_at: new Date().toISOString(),
-            }).eq('id', existingOrder.id);
-
+            await supabase.from('orders').update({ status: newStatus, total_amount: total }).eq('id', existingOrder.id);
         } else {
-            // Order doesn't exist yet — insert it
             const { data: newOrder } = await supabase.from('orders').insert({
                 user_id: userId,
                 order_id: orderNumber,
                 platform_id: 1,
                 status: newStatus,
                 total_amount: total,
-                customer_name: customerName,
-                customer_email: billing.email || null,
-                customer_phone: billing.phone || null,
-                city: billing.city || null,
             }).select('id').single();
-
             dbOrderId = newOrder?.id;
             statusChanged = true;
         }
 
-        // WhatsApp notification on key status changes
         if (statusChanged && dbOrderId && ['processing', 'completed', 'cancelled'].includes(newStatus?.toLowerCase())) {
             try {
                 await whatsappService.sendOrderNotification(userId, dbOrderId, newStatus);

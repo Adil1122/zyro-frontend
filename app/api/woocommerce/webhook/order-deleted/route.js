@@ -14,28 +14,22 @@ export async function POST(request) {
         if (!wcOrder?.id) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
 
         const orderNumber = (wcOrder.number || wcOrder.id).toString();
-        console.log(`[WC order.deleted] Order #${orderNumber} deleted in WooCommerce`);
+        console.log(`[WC order.deleted] Order #${orderNumber}`);
 
         const { data: existingOrder } = await supabase
             .from('orders')
-            .select('id, status')
+            .select('id')
             .eq('user_id', userId)
             .eq('order_id', orderNumber)
             .maybeSingle();
 
         if (!existingOrder?.id) {
-            return NextResponse.json({ success: true, message: 'Order not found in Zyro — nothing to update' });
+            return NextResponse.json({ success: true, message: 'Order not found in Zyro' });
         }
 
-        // Mark as cancelled instead of hard delete to preserve history
-        await supabase.from('orders').update({
-            status: 'cancelled',
-            updated_at: new Date().toISOString(),
-        }).eq('id', existingOrder.id);
+        await supabase.from('orders').update({ status: 'cancelled' }).eq('id', existingOrder.id);
 
-        console.log(`[WC order.deleted] Order #${orderNumber} marked as cancelled in Zyro`);
-
-        return NextResponse.json({ success: true, orderId: existingOrder.id, status: 'cancelled' });
+        return NextResponse.json({ success: true, orderId: existingOrder.id });
 
     } catch (error) {
         console.error('[WC order.deleted Error]', error.message);
