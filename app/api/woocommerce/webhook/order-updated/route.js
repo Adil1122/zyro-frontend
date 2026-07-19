@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { whatsappService } from '@/lib/services/whatsappService';
 
 export async function POST(request) {
     try {
@@ -11,8 +10,14 @@ export async function POST(request) {
         const { data: user } = await supabase.from('users').select('id').eq('id', userId).maybeSingle();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const wcOrder = await request.json();
-        if (!wcOrder?.id) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+        let wcOrder;
+        try {
+            wcOrder = await request.json();
+        } catch {
+            return NextResponse.json({ success: true, message: 'Ping received' });
+        }
+
+        if (!wcOrder?.id) return NextResponse.json({ success: true, message: 'Ping received' });
 
         const orderNumber = (wcOrder.number || wcOrder.id).toString();
         const newStatus = wcOrder.status;
@@ -27,34 +32,20 @@ export async function POST(request) {
             .eq('order_id', orderNumber)
             .maybeSingle();
 
-        let dbOrderId = null;
-        let statusChanged = false;
-
-        if (existingOrder?.id) {
-            dbOrderId = existingOrder.id;
-            statusChanged = existingOrder.status?.toLowerCase() !== newStatus?.toLowerCase();
-            await supabase.from('orders').update({ status: newStatus, total_amount: total }).eq('id', existingOrder.id);
-        } else {
-            const { data: newOrder } = await supabase.from('orders').insert({
-                user_id: userId,
-                order_id: orderNumber,
-                platform_id: 1,
-                status: newStatus,
-                total_amount: total,
-            }).select('id').single();
-            dbOrderId = newOrder?.id;
-            statusChanged = true;
+        if (!existingOrder?.id) {
+            return NextResponse.json({ success: true, message: 'Order not in Zyro yet — skipped' });
         }
 
-        if (statusChanged && dbOrderId && ['processing', 'completed', 'cancelled'].includes(newStatus?.toLowerCase())) {
-            try {
-                await whatsappService.sendOrderNotification(userId, dbOrderId, newStatus);
-            } catch (err) {
-                console.error('[WC order.updated] WhatsApp error:', err.message);
-            }
-        }
+        const statusChanged = existingOrder.status?.toLowerCase() !== newStatus?.toLowerCase();
 
-        return NextResponse.json({ success: true, dbOrderId, newStatus, statusChanged });
+        const { error: updateError } = await supabase
+            .from('orders')
+            .update({ status: newStatus, total_amount: total })
+            .eq('id', existingOrder.id);
+
+        if (updateError) throw updateError;
+
+        return NextResponse.json({ success: true, dbOrderId: existingOrder.id, newStatus, statusChanged });
 
     } catch (error) {
         console.error('[WC order.updated Error]', error.message);

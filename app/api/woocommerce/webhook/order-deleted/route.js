@@ -10,8 +10,13 @@ export async function POST(request) {
         const { data: user } = await supabase.from('users').select('id').eq('id', userId).maybeSingle();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const wcOrder = await request.json();
-        if (!wcOrder?.id) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+        let wcOrder;
+        try {
+            wcOrder = await request.json();
+        } catch {
+            return NextResponse.json({ success: true, message: 'Ping received' });
+        }
+        if (!wcOrder?.id) return NextResponse.json({ success: true, message: 'Ping received' });
 
         const orderNumber = (wcOrder.number || wcOrder.id).toString();
         console.log(`[WC order.deleted] Order #${orderNumber}`);

@@ -10,8 +10,13 @@ export async function POST(request) {
         const { data: user } = await supabase.from('users').select('id').eq('id', userId).maybeSingle();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const wcCustomer = await request.json();
-        if (!wcCustomer?.id) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+        let wcCustomer;
+        try {
+            wcCustomer = await request.json();
+        } catch {
+            return NextResponse.json({ success: true, message: 'Ping received' });
+        }
+        if (!wcCustomer?.id) return NextResponse.json({ success: true, message: 'Ping received' });
 
         const email = wcCustomer.email || '';
         const name = `${wcCustomer.first_name || ''} ${wcCustomer.last_name || ''}`.trim() || wcCustomer.username || 'Guest';
@@ -42,6 +47,7 @@ export async function POST(request) {
             total_orders: 0,
             total_spent: 0,
             status: 'active',
+            last_order_date: new Date().toISOString(),
         }).select('id').single();
 
         if (error) throw error;
