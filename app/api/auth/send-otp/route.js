@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { supabase } from '@/lib/supabase';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -56,6 +54,7 @@ export async function POST(request) {
         ).join('');
 
         // Send OTP email
+        const resend = new Resend(process.env.RESEND_API_KEY);
         const { error: emailError } = await resend.emails.send({
             from: process.env.RESEND_FROM_EMAIL || 'Zyro <noreply@zyro.app>',
             to: email,
