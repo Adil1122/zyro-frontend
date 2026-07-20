@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { whatsappService } from '@/lib/services/whatsappService';
 
 export async function POST(request) {
     try {
@@ -27,7 +28,7 @@ export async function POST(request) {
 
         const { data: existingOrder } = await supabase
             .from('orders')
-            .select('id, status')
+            .select('id, status, total_amount, customers(name, contact)')
             .eq('user_id', userId)
             .eq('order_id', orderNumber)
             .maybeSingle();
@@ -44,6 +45,15 @@ export async function POST(request) {
             .eq('id', existingOrder.id);
 
         if (updateError) throw updateError;
+
+        // Send WhatsApp status update to customer
+        if (statusChanged) {
+            const customerPhone = existingOrder.customers?.contact;
+            const customerName = existingOrder.customers?.name || 'Customer';
+            whatsappService.sendOrderStatusUpdate(
+                userId, orderNumber, newStatus, customerPhone, customerName, existingOrder.total_amount
+            ).catch(err => console.error('[WC order.updated] WA error:', err.message));
+        }
 
         return NextResponse.json({ success: true, dbOrderId: existingOrder.id, newStatus, statusChanged });
 

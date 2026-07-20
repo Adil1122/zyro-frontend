@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { whatsappService } from '@/lib/services/whatsappService';
+
+const LOW_STOCK_THRESHOLD = 5;
 
 export async function POST(request) {
     try {
@@ -45,6 +48,12 @@ export async function POST(request) {
                 stock: manageStock ? stock : existing.stock,
                 status: stockStatus,
             }).eq('id', existing.id);
+
+            // Low stock alert to merchant
+            if (manageStock && stock <= LOW_STOCK_THRESHOLD) {
+                whatsappService.sendLowStockAlert(userId, name, stock)
+                    .catch(err => console.error('[WC product.updated] Low stock WA error:', err.message));
+            }
 
             return NextResponse.json({ success: true, productId: existing.id, action: 'updated', stock });
         }

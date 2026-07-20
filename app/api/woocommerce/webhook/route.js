@@ -217,7 +217,13 @@ export async function POST(request) {
             }
         }
 
-        // 7. Fire WhatsApp notification if triggered
+        // 7. Merchant new-order alert (fires on every new order regardless of status)
+        if (dbOrderId && !existingOrder?.id) {
+            whatsappService.sendMerchantOrderAlert(userId, order.number, order.customerName, order.total)
+                .catch(err => console.error('[WC webhook] Merchant WA alert error:', err));
+        }
+
+        // 8. Fire WhatsApp customer notification if triggered
         if (shouldTriggerNotification && dbOrderId) {
             console.log(`[WooCommerce Webhook] Order ${order.number} status is "${order.status}". Triggering WhatsApp notification...`);
             try {
