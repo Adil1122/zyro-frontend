@@ -240,6 +240,13 @@ export default function SignupPage() {
         }).eq("id", user.id);
       } catch (_) {}
 
+      // Send welcome email (non-blocking)
+      fetch('/api/auth/send-welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: step1Data.email, name: step1Data.fullName, businessName: step4Data.businessName }),
+      }).catch(() => {});
+
       window.dispatchEvent(new Event("authChange"));
       setIsSuccess(true);
     } catch (err) {
