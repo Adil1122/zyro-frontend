@@ -26,11 +26,17 @@ export async function POST(request) {
         }
 
         // 2. Parse WooCommerce webhook body
-        const wcOrder = await request.json();
+        let wcOrder;
+        try {
+            wcOrder = await request.json();
+        } catch {
+            return NextResponse.json({ success: true, message: 'Ping received' });
+        }
+
         console.log(`[WooCommerce Webhook] Received webhook payload for order ${wcOrder?.id || 'unknown'} (User: ${userId})`);
 
         if (!wcOrder || !wcOrder.id) {
-            return NextResponse.json({ error: 'Invalid order payload' }, { status: 400 });
+            return NextResponse.json({ success: true, message: 'Ping received' });
         }
 
         // 3. Normalize Order data
