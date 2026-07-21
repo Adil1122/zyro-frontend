@@ -58,7 +58,7 @@ export default function WhatsAppPage() {
     const supportConv = supportChats.length > 0 ? supportChats[supportActive] : null;
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%", overflowY: "auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
             {/* Top header */}
             <div style={{ padding: "20px 28px 16px", borderBottom: `1px solid ${T.border}`, background: T.bgCard }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
