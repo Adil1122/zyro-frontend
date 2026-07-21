@@ -58,7 +58,7 @@ export default function WhatsAppPage() {
     const supportConv = supportChats.length > 0 ? supportChats[supportActive] : null;
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+        <div style={{ display: "flex", flexDirection: "column", height: "100%", overflowY: "auto" }}>
             {/* Top header */}
             <div style={{ padding: "20px 28px 16px", borderBottom: `1px solid ${T.border}`, background: T.bgCard }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -78,7 +78,7 @@ export default function WhatsAppPage() {
             </div>
 
             {/* Dual frame */}
-            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: T.border, overflow: "hidden" }}>
+            <div style={{ flex: "0 0 600px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: T.border, overflow: "hidden" }}>
 
                 {/* LEFT: BOT */}
                 <div style={{ background: T.bg, display: "flex", flexDirection: "column", overflow: "hidden" }}>
