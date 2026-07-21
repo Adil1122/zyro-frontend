@@ -22,6 +22,20 @@ export default function WhatsAppPage() {
     const [testLoading, setTestLoading] = useState(false);
     const [testResult, setTestResult] = useState(null);
 
+    // ─── Automation Test Panels ─────────────────────────────────
+    const [statusOpen, setStatusOpen] = useState(false);
+    const [merchantOpen, setMerchantOpen] = useState(false);
+    const [stockOpen, setStockOpen] = useState(false);
+
+    const [statusForm, setStatusForm] = useState({ customerPhone: '', customerName: '', orderNumber: '', status: 'processing', total: '' });
+    const [merchantForm, setMerchantForm] = useState({ orderNumber: '', customerName: '', total: '' });
+    const [stockForm, setStockForm] = useState({ productName: '', stock: '3' });
+
+    const [statusResult, setStatusResult] = useState(null);
+    const [merchantResult, setMerchantResult] = useState(null);
+    const [stockResult, setStockResult] = useState(null);
+    const [autoLoading, setAutoLoading] = useState(false);
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -350,6 +364,145 @@ export default function WhatsAppPage() {
                     </span>
                 </div>
                 <GradientButton variant="ghost" size="sm" icon="settings">Configure Rules</GradientButton>
+            </div>
+
+            {/* ═══ TEST PANEL: Order Status Update ═══ */}
+            <div style={{ borderTop: `1px solid ${T.border}` }}>
+                <button onClick={() => setStatusOpen(!statusOpen)} style={{
+                    width: '100%', padding: '12px 28px', background: 'linear-gradient(90deg, rgba(59,130,246,0.06) 0%, rgba(16,185,129,0.06) 100%)',
+                    border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'inherit',
+                }}>
+                    <div style={{ width: 26, height: 26, borderRadius: T.r6, background: 'linear-gradient(135deg, #3B82F6 0%, #10B981 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon name="refresh" size={13} color="#fff" />
+                    </div>
+                    <span style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 700, color: '#3B82F6' }}>🔄 Test: Order Status Update → Customer WhatsApp</span>
+                    <span style={{ fontSize: 18, color: T.textFaint, transform: statusOpen ? 'rotate(180deg)' : 'none' }}>▼</span>
+                </button>
+                {statusOpen && (
+                    <div style={{ padding: '20px 28px', background: T.bgCard, borderTop: `1px solid ${T.border}` }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+                            {[
+                                ['customerPhone', 'Customer Phone', '03001234567'],
+                                ['customerName', 'Customer Name', 'Ahmed Raza'],
+                                ['orderNumber', 'Order Number', 'WC-1001'],
+                                ['total', 'Total Amount (Rs)', '3500'],
+                            ].map(([key, label, ph]) => (
+                                <div key={key}>
+                                    <label style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>{label}</label>
+                                    <input placeholder={ph} value={statusForm[key]} onChange={e => setStatusForm(f => ({ ...f, [key]: e.target.value }))}
+                                        style={{ width: '100%', padding: '8px 10px', borderRadius: T.r6, border: `1px solid ${T.borderMid}`, background: T.bg, color: T.text, fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                                </div>
+                            ))}
+                            <div>
+                                <label style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Status</label>
+                                <select value={statusForm.status} onChange={e => setStatusForm(f => ({ ...f, status: e.target.value }))}
+                                    style={{ width: '100%', padding: '8px 10px', borderRadius: T.r6, border: `1px solid ${T.borderMid}`, background: T.bg, color: T.text, fontSize: 12, fontFamily: 'inherit', outline: 'none' }}>
+                                    {['processing', 'shipped', 'completed', 'cancelled', 'refunded', 'on-hold'].map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <GradientButton variant="primary" size="sm" disabled={autoLoading} onClick={async () => {
+                            setAutoLoading(true); setStatusResult(null);
+                            try {
+                                const userId = getCurrentUserId();
+                                const res = await fetch('/api/whatsapp/test-automations', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-user-id': userId }, body: JSON.stringify({ action: 'send_status_update', ...statusForm }) });
+                                setStatusResult(await res.json());
+                            } catch (err) { setStatusResult({ error: err.message }); }
+                            setAutoLoading(false);
+                        }}>📲 Send Status Update</GradientButton>
+                        {statusResult && (
+                            <div style={{ marginTop: 12, padding: 12, borderRadius: T.r8, background: statusResult.success ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)', border: `1px solid ${statusResult.success ? T.green + '33' : T.red + '33'}` }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: statusResult.success ? T.green : T.red }}>{statusResult.success ? '✅' : '❌'} {statusResult.message || statusResult.error}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* ═══ TEST PANEL: Merchant New Order Alert ═══ */}
+            <div style={{ borderTop: `1px solid ${T.border}` }}>
+                <button onClick={() => setMerchantOpen(!merchantOpen)} style={{
+                    width: '100%', padding: '12px 28px', background: 'linear-gradient(90deg, rgba(16,185,129,0.06) 0%, rgba(92,168,124,0.06) 100%)',
+                    border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'inherit',
+                }}>
+                    <div style={{ width: 26, height: 26, borderRadius: T.r6, background: 'linear-gradient(135deg, #10B981 0%, #5CA87C 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon name="bell" size={13} color="#fff" />
+                    </div>
+                    <span style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 700, color: T.green }}>🛒 Test: New Order Alert → Merchant WhatsApp</span>
+                    <span style={{ fontSize: 18, color: T.textFaint, transform: merchantOpen ? 'rotate(180deg)' : 'none' }}>▼</span>
+                </button>
+                {merchantOpen && (
+                    <div style={{ padding: '20px 28px', background: T.bgCard, borderTop: `1px solid ${T.border}` }}>
+                        <p style={{ margin: '0 0 14px', fontSize: 12, color: T.textMuted }}>Sends a new order alert to your personal WhatsApp (<code style={{ color: T.green }}>wa_merchant_phone</code> in Supabase users table).</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+                            {[['orderNumber', 'Order Number', 'WC-2001'], ['customerName', 'Customer Name', 'Sara Khan'], ['total', 'Total Amount (Rs)', '7500']].map(([key, label, ph]) => (
+                                <div key={key}>
+                                    <label style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>{label}</label>
+                                    <input placeholder={ph} value={merchantForm[key]} onChange={e => setMerchantForm(f => ({ ...f, [key]: e.target.value }))}
+                                        style={{ width: '100%', padding: '8px 10px', borderRadius: T.r6, border: `1px solid ${T.borderMid}`, background: T.bg, color: T.text, fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                                </div>
+                            ))}
+                        </div>
+                        <GradientButton variant="primary" size="sm" disabled={autoLoading} onClick={async () => {
+                            setAutoLoading(true); setMerchantResult(null);
+                            try {
+                                const userId = getCurrentUserId();
+                                const res = await fetch('/api/whatsapp/test-automations', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-user-id': userId }, body: JSON.stringify({ action: 'send_merchant_alert', ...merchantForm }) });
+                                setMerchantResult(await res.json());
+                            } catch (err) { setMerchantResult({ error: err.message }); }
+                            setAutoLoading(false);
+                        }}>📩 Send Merchant Alert</GradientButton>
+                        {merchantResult && (
+                            <div style={{ marginTop: 12, padding: 12, borderRadius: T.r8, background: merchantResult.success ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)', border: `1px solid ${merchantResult.success ? T.green + '33' : T.red + '33'}` }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: merchantResult.success ? T.green : T.red }}>{merchantResult.success ? '✅' : '❌'} {merchantResult.message || merchantResult.error}</div>
+                                {merchantResult.merchantPhone && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>Merchant phone: {merchantResult.merchantPhone}</div>}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* ═══ TEST PANEL: Low Stock Alert ═══ */}
+            <div style={{ borderTop: `1px solid ${T.border}` }}>
+                <button onClick={() => setStockOpen(!stockOpen)} style={{
+                    width: '100%', padding: '12px 28px', background: 'linear-gradient(90deg, rgba(245,158,11,0.06) 0%, rgba(239,68,68,0.06) 100%)',
+                    border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'inherit',
+                }}>
+                    <div style={{ width: 26, height: 26, borderRadius: T.r6, background: 'linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon name="alert" size={13} color="#fff" />
+                    </div>
+                    <span style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 700, color: T.yellow }}>⚠️ Test: Low Stock Alert → Merchant WhatsApp</span>
+                    <span style={{ fontSize: 18, color: T.textFaint, transform: stockOpen ? 'rotate(180deg)' : 'none' }}>▼</span>
+                </button>
+                {stockOpen && (
+                    <div style={{ padding: '20px 28px', background: T.bgCard, borderTop: `1px solid ${T.border}` }}>
+                        <p style={{ margin: '0 0 14px', fontSize: 12, color: T.textMuted }}>Sends a low stock alert to your personal WhatsApp when a product is running low.</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                            {[['productName', 'Product Name', 'Blue Shirt (Size M)'], ['stock', 'Current Stock', '3']].map(([key, label, ph]) => (
+                                <div key={key}>
+                                    <label style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>{label}</label>
+                                    <input placeholder={ph} value={stockForm[key]} onChange={e => setStockForm(f => ({ ...f, [key]: e.target.value }))}
+                                        style={{ width: '100%', padding: '8px 10px', borderRadius: T.r6, border: `1px solid ${T.borderMid}`, background: T.bg, color: T.text, fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                                </div>
+                            ))}
+                        </div>
+                        <GradientButton variant="primary" size="sm" disabled={autoLoading} onClick={async () => {
+                            setAutoLoading(true); setStockResult(null);
+                            try {
+                                const userId = getCurrentUserId();
+                                const res = await fetch('/api/whatsapp/test-automations', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-user-id': userId }, body: JSON.stringify({ action: 'send_low_stock_alert', ...stockForm }) });
+                                setStockResult(await res.json());
+                            } catch (err) { setStockResult({ error: err.message }); }
+                            setAutoLoading(false);
+                        }}>⚠️ Send Low Stock Alert</GradientButton>
+                        {stockResult && (
+                            <div style={{ marginTop: 12, padding: 12, borderRadius: T.r8, background: stockResult.success ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)', border: `1px solid ${stockResult.success ? T.green + '33' : T.red + '33'}` }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: stockResult.success ? T.green : T.red }}>{stockResult.success ? '✅' : '❌'} {stockResult.message || stockResult.error}</div>
+                                {stockResult.merchantPhone && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>Merchant phone: {stockResult.merchantPhone}</div>}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* ═══ TEST PANEL: Order Confirmation Flow ═══ */}
