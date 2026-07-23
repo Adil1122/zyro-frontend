@@ -133,11 +133,11 @@ async function handleOrderConfirmation(senderPhone, response, phoneNumberId) {
             .from('wa_pending_orders')
             .select('*')
             .eq('phone', phone)
-            .eq('status', 'pending_confirmation')
+            .in('status', ['pending_confirmation', 'pending_cancellation'])
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
-        
+
         if (data) {
             pendingOrder = data;
             break;
@@ -150,6 +150,38 @@ async function handleOrderConfirmation(senderPhone, response, phoneNumberId) {
     }
 
     const userId = pendingOrder.user_id;
+
+    // Handle cancellation YES/NO separately
+    if (pendingOrder.status === 'pending_cancellation') {
+        if (response === 'YES') {
+            // Customer wants to restore the order
+            await supabase
+                .from('orders')
+                .update({ status: 'processing' })
+                .eq('user_id', userId)
+                .eq('order_id', pendingOrder.order_ref);
+
+            await supabase
+                .from('wa_pending_orders')
+                .update({ status: 'restored' })
+                .eq('id', pendingOrder.id);
+
+            await sendWhatsAppTextMessage(userId, senderPhone,
+                `✅ Great news! Your order #${pendingOrder.order_ref} has been restored and is being processed. Thank you!`
+            );
+        } else {
+            // Customer confirms cancellation
+            await supabase
+                .from('wa_pending_orders')
+                .update({ status: 'cancelled_confirmed' })
+                .eq('id', pendingOrder.id);
+
+            await sendWhatsAppTextMessage(userId, senderPhone,
+                `Your order #${pendingOrder.order_ref} has been cancelled as requested. We hope to serve you again soon!`
+            );
+        }
+        return;
+    }
 
     if (response === 'NO') {
         // Mark as rejected
