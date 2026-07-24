@@ -100,6 +100,7 @@ export default function GoogleButton({ onClick, disabled, className }) {
               const { data: newUser, error: insertError } = await supabase
                 .from("users")
                 .insert({
+                  id: crypto.randomUUID(),
                   name: googleUser.name || googleUser.given_name || "Google User",
                   email: googleUser.email,
                   password: null, // OAuth users have no password
