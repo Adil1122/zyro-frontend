@@ -152,8 +152,9 @@ async function handleOrderConfirmation(senderPhone, response, phoneNumberId) {
     const userId = pendingOrder.user_id;
 
     // Handle cancellation YES/NO separately
+    // YES = confirm cancel, NO = restore order
     if (pendingOrder.status === 'pending_cancellation') {
-        if (response === 'YES') {
+        if (response === 'NO') {
             // Customer wants to restore the order
             await supabase
                 .from('orders')
@@ -170,7 +171,7 @@ async function handleOrderConfirmation(senderPhone, response, phoneNumberId) {
                 `✅ Great news! Your order #${pendingOrder.order_ref} has been restored and is being processed. Thank you!`
             );
         } else {
-            // Customer confirms cancellation — mark in Zyro and try to cancel PostEx
+            // Customer confirms cancellation (YES) — mark in Zyro and try to cancel PostEx
             await supabase
                 .from('wa_pending_orders')
                 .update({ status: 'cancelled_confirmed' })
