@@ -1382,8 +1382,14 @@ export default function SettingsPage({ tabParam }) {
         phoneNumberId: "",
         wabaId: "",
         accessToken: "",
-        templateName: "order_confirmation",
-        isActive: false
+        templateName: "order_created",
+        isActive: false,
+        tplCancelled: "order_canceled",
+        tplPayment: "payment_received",
+        tplShipped: "order_shipped",
+        tplStatus: "order_status_update",
+        tplMerchant: "new_order_merchant",
+        tplLowStock: "low_stock_alert",
     });
     const [waLoading, setWaLoading] = useState(false);
     const [waSaving, setWaSaving] = useState(false);
@@ -1544,18 +1550,24 @@ export default function SettingsPage({ tabParam }) {
             const userId = getCurrentUserId();
             const { data, error } = await supabase
                 .from('users')
-                .select('wa_phone_number_id, wa_waba_id, wa_access_token, wa_template_name, wa_is_active')
+                .select('wa_phone_number_id, wa_waba_id, wa_access_token, wa_template_name, wa_is_active, wa_template_cancelled, wa_template_payment, wa_template_shipped, wa_template_status, wa_template_merchant, wa_template_low_stock')
                 .eq('id', userId)
                 .single();
-            
+
             if (error) throw error;
             if (data) {
                 setWaConfig({
                     phoneNumberId: data.wa_phone_number_id || "",
                     wabaId: data.wa_waba_id || "",
                     accessToken: data.wa_access_token || "",
-                    templateName: data.wa_template_name || "order_confirmation",
-                    isActive: !!data.wa_is_active
+                    templateName: data.wa_template_name || "order_created",
+                    isActive: !!data.wa_is_active,
+                    tplCancelled: data.wa_template_cancelled || "order_canceled",
+                    tplPayment: data.wa_template_payment || "payment_received",
+                    tplShipped: data.wa_template_shipped || "order_shipped",
+                    tplStatus: data.wa_template_status || "order_status_update",
+                    tplMerchant: data.wa_template_merchant || "new_order_merchant",
+                    tplLowStock: data.wa_template_low_stock || "low_stock_alert",
                 });
             }
         } catch (e) {
@@ -1578,7 +1590,13 @@ export default function SettingsPage({ tabParam }) {
                     wa_waba_id: waConfig.wabaId,
                     wa_access_token: waConfig.accessToken,
                     wa_template_name: waConfig.templateName,
-                    wa_is_active: waConfig.isActive
+                    wa_is_active: waConfig.isActive,
+                    wa_template_cancelled: waConfig.tplCancelled,
+                    wa_template_payment: waConfig.tplPayment,
+                    wa_template_shipped: waConfig.tplShipped,
+                    wa_template_status: waConfig.tplStatus,
+                    wa_template_merchant: waConfig.tplMerchant,
+                    wa_template_low_stock: waConfig.tplLowStock,
                 })
                 .eq('id', userId);
 
@@ -1859,20 +1877,35 @@ export default function SettingsPage({ tabParam }) {
                                     </div>
 
                                     <div style={{ marginBottom: 24 }}>
-                                        <label style={{ fontSize: 12, fontWeight: 700, color: T.textMuted }}>Approved Template Name</label>
-                                        <input 
-                                            type="text" 
-                                            placeholder="e.g. order_confirmation"
-                                            value={waConfig.templateName} 
-                                            onChange={e => setWaConfig({ ...waConfig, templateName: e.target.value })} 
-                                            required={waConfig.isActive}
-                                            style={{
-                                                width: "100%", padding: "10px 14px", background: T.bgElev,
-                                                color: T.text, border: `1px solid ${T.border}`, borderRadius: T.r8,
-                                                fontSize: 13, fontFamily: "inherit", marginTop: 6, outline: "none",
-                                            }} 
-                                        />
-                                        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4 }}>Must match a pre-approved template in your Meta Business Suite, configured with 3 body parameters (Customer Name, Order Number, Grand Total).</div>
+                                        <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 14, paddingBottom: 8, borderBottom: `1px solid ${T.border}` }}>Approved Template Names</div>
+                                        <div style={{ fontSize: 11, color: T.textFaint, marginBottom: 14 }}>Each name must exactly match a pre-approved template in your Meta Business Manager.</div>
+                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                                            {[
+                                                ["templateName",  "🛍️ New Order (order_created)",        "order_created",         "3 params: name, order#, total"],
+                                                ["tplPayment",    "💳 Payment Received",                  "payment_received",      "3 params: name, order#, total"],
+                                                ["tplCancelled",  "❌ Order Cancelled",                   "order_canceled",        "3 params: name, order#, total"],
+                                                ["tplShipped",    "🚚 Order Shipped / Completed",         "order_shipped",         "2 params: name, order#"],
+                                                ["tplStatus",     "🔄 Generic Status Update",             "order_status_update",   "3 params: name, order#, status"],
+                                                ["tplMerchant",   "🛒 New Order Alert (Merchant)",        "new_order_merchant",    "3 params: order#, customer, total"],
+                                                ["tplLowStock",   "⚠️ Low Stock Alert (Merchant)",        "low_stock_alert",       "2 params: product, stock"],
+                                            ].map(([key, label, placeholder, hint]) => (
+                                                <div key={key}>
+                                                    <label style={{ fontSize: 11, fontWeight: 700, color: T.textMuted }}>{label}</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder={placeholder}
+                                                        value={waConfig[key]}
+                                                        onChange={e => setWaConfig({ ...waConfig, [key]: e.target.value })}
+                                                        style={{
+                                                            width: "100%", padding: "8px 12px", background: T.bgElev,
+                                                            color: T.text, border: `1px solid ${T.border}`, borderRadius: T.r8,
+                                                            fontSize: 12, fontFamily: "inherit", marginTop: 4, outline: "none",
+                                                        }}
+                                                    />
+                                                    <div style={{ fontSize: 10, color: T.textFaint, marginTop: 3 }}>{hint}</div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
 
                                     <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
