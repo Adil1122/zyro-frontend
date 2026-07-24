@@ -1388,6 +1388,7 @@ export default function SettingsPage({ tabParam }) {
         tplPayment: "payment_received",
         tplShipped: "order_shipped",
         tplStatus: "order_status_update",
+        merchantPhone: "",
         tplMerchant: "new_order_merchant",
         tplLowStock: "low_stock_alert",
     });
@@ -1550,7 +1551,7 @@ export default function SettingsPage({ tabParam }) {
             const userId = getCurrentUserId();
             const { data, error } = await supabase
                 .from('users')
-                .select('wa_phone_number_id, wa_waba_id, wa_access_token, wa_template_name, wa_is_active, wa_template_cancelled, wa_template_payment, wa_template_shipped, wa_template_status, wa_template_merchant, wa_template_low_stock')
+                .select('wa_phone_number_id, wa_waba_id, wa_access_token, wa_template_name, wa_is_active, wa_template_cancelled, wa_template_payment, wa_template_shipped, wa_template_status, wa_template_merchant, wa_template_low_stock, wa_merchant_phone')
                 .eq('id', userId)
                 .single();
 
@@ -1566,6 +1567,7 @@ export default function SettingsPage({ tabParam }) {
                     tplPayment: data.wa_template_payment || "payment_received",
                     tplShipped: data.wa_template_shipped || "order_shipped",
                     tplStatus: data.wa_template_status || "order_status_update",
+                    merchantPhone: data.wa_merchant_phone || "",
                     tplMerchant: data.wa_template_merchant || "new_order_merchant",
                     tplLowStock: data.wa_template_low_stock || "low_stock_alert",
                 });
@@ -1595,6 +1597,7 @@ export default function SettingsPage({ tabParam }) {
                     wa_template_payment: waConfig.tplPayment,
                     wa_template_shipped: waConfig.tplShipped,
                     wa_template_status: waConfig.tplStatus,
+                    wa_merchant_phone: waConfig.merchantPhone,
                     wa_template_merchant: waConfig.tplMerchant,
                     wa_template_low_stock: waConfig.tplLowStock,
                 })
@@ -1874,6 +1877,22 @@ export default function SettingsPage({ tabParam }) {
                                                 fontSize: 13, fontFamily: "inherit", marginTop: 6, outline: "none",
                                             }} 
                                         />
+                                    </div>
+
+                                    <div style={{ marginBottom: 24 }}>
+                                        <label style={{ fontSize: 12, fontWeight: 700, color: T.textMuted }}>📱 Merchant WhatsApp Number</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. 923001234567"
+                                            value={waConfig.merchantPhone}
+                                            onChange={e => setWaConfig({ ...waConfig, merchantPhone: e.target.value })}
+                                            style={{
+                                                width: "100%", padding: "10px 14px", background: T.bgElev,
+                                                color: T.text, border: `1px solid ${T.border}`, borderRadius: T.r8,
+                                                fontSize: 13, fontFamily: "inherit", marginTop: 6, outline: "none",
+                                            }}
+                                        />
+                                        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4 }}>Your personal WhatsApp number for new order alerts and low stock alerts. Format: 923001234567 (no + or spaces).</div>
                                     </div>
 
                                     <div style={{ marginBottom: 24 }}>
