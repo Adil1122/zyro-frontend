@@ -412,7 +412,10 @@ export default function WhatsAppPage() {
                         }}>📲 Send Status Update</GradientButton>
                         {statusResult && (
                             <div style={{ marginTop: 12, padding: 12, borderRadius: T.r8, background: statusResult.success ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)', border: `1px solid ${statusResult.success ? T.green + '33' : T.red + '33'}` }}>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: statusResult.success ? T.green : T.red }}>{statusResult.success ? '✅' : '❌'} {statusResult.message || statusResult.error}</span>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: statusResult.success ? T.green : T.red, marginBottom: 6 }}>{statusResult.success ? '✅' : '❌'} {statusResult.message || statusResult.error}</div>
+                                {!statusResult.success && statusResult.result && (
+                                    <pre style={{ fontSize: 10, color: T.textMuted, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{JSON.stringify(statusResult.result, null, 2)}</pre>
+                                )}
                             </div>
                         )}
                     </div>
