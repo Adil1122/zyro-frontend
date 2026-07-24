@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { createPostExOrder, isPostExConfigured } from '@/lib/services/postexService';
+import { createPostExOrder, cancelPostExOrder, isPostExConfigured } from '@/lib/services/postexService';
 import { whatsappService } from '@/lib/services/whatsappService';
 import { generatePostExSlipPDF } from '@/lib/services/postexPdfService';
 
@@ -170,14 +170,60 @@ async function handleOrderConfirmation(senderPhone, response, phoneNumberId) {
                 `✅ Great news! Your order #${pendingOrder.order_ref} has been restored and is being processed. Thank you!`
             );
         } else {
-            // Customer confirms cancellation
+            // Customer confirms cancellation — mark in Zyro and try to cancel PostEx
             await supabase
                 .from('wa_pending_orders')
                 .update({ status: 'cancelled_confirmed' })
                 .eq('id', pendingOrder.id);
 
+            // Update order status in Zyro orders table
+            await supabase
+                .from('orders')
+                .update({ status: 'cancelled' })
+                .eq('user_id', userId)
+                .eq('order_id', pendingOrder.order_ref);
+
+            // Try to cancel PostEx shipment if one was booked
+            let postexCancelMsg = '';
+            try {
+                const { data: user } = await supabase
+                    .from('users')
+                    .select('postex_api_key')
+                    .eq('id', userId)
+                    .single();
+
+                if (user?.postex_api_key) {
+                    // Find the confirmed wa_pending_orders entry for this order to get tracking number
+                    const { data: confirmedEntry } = await supabase
+                        .from('wa_pending_orders')
+                        .select('postex_tracking_number')
+                        .eq('user_id', userId)
+                        .eq('order_ref', pendingOrder.order_ref)
+                        .eq('status', 'confirmed')
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+
+                    const trackingNumber = confirmedEntry?.postex_tracking_number;
+                    if (trackingNumber) {
+                        console.log(`[WhatsApp Webhook] Cancelling PostEx shipment: ${trackingNumber}`);
+                        const cancelResult = await cancelPostExOrder(user.postex_api_key, trackingNumber);
+                        if (cancelResult?.success) {
+                            postexCancelMsg = `\n📦 PostEx shipment (${trackingNumber}) has been cancelled.`;
+                            console.log(`[WhatsApp Webhook] PostEx shipment ${trackingNumber} cancelled.`);
+                        } else {
+                            console.warn(`[WhatsApp Webhook] PostEx cancel failed for ${trackingNumber}:`, cancelResult?.error);
+                        }
+                    } else {
+                        console.log(`[WhatsApp Webhook] No PostEx tracking found for order ${pendingOrder.order_ref}`);
+                    }
+                }
+            } catch (postexErr) {
+                console.error('[WhatsApp Webhook] PostEx cancel error:', postexErr.message);
+            }
+
             await sendWhatsAppTextMessage(userId, senderPhone,
-                `Your order #${pendingOrder.order_ref} has been cancelled as requested. We hope to serve you again soon!`
+                `Your order #${pendingOrder.order_ref} has been cancelled as requested. We hope to serve you again soon!${postexCancelMsg}`
             );
         }
         return;
