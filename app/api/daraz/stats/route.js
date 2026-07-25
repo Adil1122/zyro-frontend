@@ -1,26 +1,26 @@
 import { NextResponse } from 'next/server';
-import { getDarazStats, isDarazConfigured } from '@/lib/services/darazService';
+import { getDarazStats, isDarazConfigured, getCredentials } from '@/lib/services/darazService';
+import { supabase } from '@/lib/supabase';
 
-/**
- * GET /api/daraz/stats
- * Returns live Daraz stats: total orders (last 90 days), today's orders & revenue
- */
-export async function GET() {
+export async function GET(request) {
+    const userId = request.headers.get('x-user-id');
+    if (!userId) return NextResponse.json({ configured: false }, { status: 200 });
+
     try {
-        if (!isDarazConfigured()) {
-            return NextResponse.json({
-                configured: false,
-                message: 'Daraz credentials not set in .env.local. Set DARAZ_APP_KEY, DARAZ_APP_SECRET, DARAZ_ACCESS_TOKEN.',
-            }, { status: 200 });
+        const { data: user } = await supabase
+            .from('users')
+            .select('daraz_app_key, daraz_app_secret, daraz_access_token, daraz_region')
+            .eq('id', userId)
+            .single();
+
+        if (!isDarazConfigured(user)) {
+            return NextResponse.json({ configured: false });
         }
 
-        const stats = await getDarazStats();
+        const stats = await getDarazStats(getCredentials(user));
         return NextResponse.json({ configured: true, ...stats });
     } catch (error) {
         console.error('[Daraz Stats Error]', error.message);
-        return NextResponse.json(
-            { configured: true, error: error.message },
-            { status: 500 }
-        );
+        return NextResponse.json({ configured: true, error: error.message }, { status: 500 });
     }
 }

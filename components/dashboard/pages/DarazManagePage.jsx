@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton } from "../Primitives";
+import { getCurrentUserId } from "@/lib/supabase";
 
 // ─── Daraz-specific status config ──────────────────────────────────────────
 const DARAZ_STATUS = {
@@ -95,6 +96,14 @@ export default function DarazManagePage({ onBack }) {
     const [searchInput, setSearchInput] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [expandedRow, setExpandedRow] = useState(null);
+    const [isConfigured, setIsConfigured] = useState(null);
+
+    // Credentials form state
+    const [creds, setCreds] = useState({ appKey: "", appSecret: "", accessToken: "", region: "pk" });
+    const [saving, setSaving] = useState(false);
+    const [saveMsg, setSaveMsg] = useState(null);
+
+    const userId = getCurrentUserId();
 
     const fetchOrders = useCallback(async (page = 1) => {
         setLoading(true);
@@ -106,17 +115,21 @@ export default function DarazManagePage({ onBack }) {
                 status: statusFilter,
                 ...(search ? { search } : {}),
             });
-            const res = await fetch(`/api/daraz/orders?${params}`);
+            const res = await fetch(`/api/daraz/orders?${params}`, {
+                headers: { 'x-user-id': userId }
+            });
             const data = await res.json();
 
             if (!data.configured) {
-                setError("Daraz is not configured. Please add DARAZ_APP_KEY, DARAZ_APP_SECRET and DARAZ_ACCESS_TOKEN to your .env.local and restart the server.");
+                setIsConfigured(false);
+                setLoading(false);
                 return;
             }
             if (data.error) {
                 setError(data.error);
                 return;
             }
+            setIsConfigured(true);
             setOrders(data.orders || []);
             setPagination(data.pagination || { page: 1, perPage: 10, totalOrders: 0, totalPages: 1 });
         } catch (e) {
@@ -124,7 +137,32 @@ export default function DarazManagePage({ onBack }) {
         } finally {
             setLoading(false);
         }
-    }, [search, statusFilter, pagination.perPage]);
+    }, [search, statusFilter, pagination.perPage, userId]);
+
+    const handleSaveCredentials = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        setSaveMsg(null);
+        try {
+            const res = await fetch('/api/daraz/save-credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                body: JSON.stringify(creds),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setSaveMsg({ success: true, text: data.message });
+                setIsConfigured(true);
+                fetchOrders(1);
+            } else {
+                setSaveMsg({ success: false, text: data.error || 'Failed to save' });
+            }
+        } catch (err) {
+            setSaveMsg({ success: false, text: err.message });
+        } finally {
+            setSaving(false);
+        }
+    };
 
     useEffect(() => { fetchOrders(1); }, [search, statusFilter]);
 
@@ -282,7 +320,94 @@ export default function DarazManagePage({ onBack }) {
 
             {/* ── TABLE ── */}
             <div style={{ flex: 1, overflow: "auto" }}>
-                {error ? (
+                {isConfigured === false ? (
+                    /* ── CREDENTIALS SETUP FORM ── */
+                    <div style={{ display: "flex", justifyContent: "center", padding: "40px 24px" }}>
+                        <div style={{
+                            width: "100%", maxWidth: 520,
+                            background: T.bgCard, border: `1px solid ${T.border}`,
+                            borderRadius: 14, padding: 28,
+                        }}>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 6 }}>Connect Your Daraz Store</div>
+                            <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 20, lineHeight: 1.6 }}>
+                                Get your credentials from{" "}
+                                <span style={{ color: "#F57D29" }}>open.daraz.com</span>
+                                {" "}→ My Apps → your app → App Info
+                            </div>
+
+                            <form onSubmit={handleSaveCredentials} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                                {[
+                                    { key: "appKey", label: "App Key", placeholder: "e.g. 123456" },
+                                    { key: "appSecret", label: "App Secret", placeholder: "Paste your App Secret" },
+                                    { key: "accessToken", label: "Access Token", placeholder: "Paste your Self-Authorization Token" },
+                                ].map(({ key, label, placeholder }) => (
+                                    <div key={key}>
+                                        <div style={{ fontSize: 12, fontWeight: 600, color: T.textMuted, marginBottom: 5 }}>{label}</div>
+                                        <input
+                                            type={key === "appSecret" || key === "accessToken" ? "password" : "text"}
+                                            value={creds[key]}
+                                            onChange={e => setCreds(p => ({ ...p, [key]: e.target.value }))}
+                                            placeholder={placeholder}
+                                            required
+                                            style={{
+                                                width: "100%", padding: "9px 12px", fontSize: 13,
+                                                background: T.bgElev, border: `1px solid ${T.borderMid}`,
+                                                borderRadius: 8, color: T.text, outline: "none",
+                                                fontFamily: "inherit", boxSizing: "border-box",
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+
+                                <div>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: T.textMuted, marginBottom: 5 }}>Region</div>
+                                    <select
+                                        value={creds.region}
+                                        onChange={e => setCreds(p => ({ ...p, region: e.target.value }))}
+                                        style={{
+                                            width: "100%", padding: "9px 12px", fontSize: 13,
+                                            background: T.bgElev, border: `1px solid ${T.borderMid}`,
+                                            borderRadius: 8, color: T.text, outline: "none",
+                                            fontFamily: "inherit", boxSizing: "border-box",
+                                        }}
+                                    >
+                                        <option value="pk">Pakistan (pk)</option>
+                                        <option value="bd">Bangladesh (bd)</option>
+                                        <option value="lk">Sri Lanka (lk)</option>
+                                        <option value="my">Malaysia (my)</option>
+                                        <option value="sg">Singapore (sg)</option>
+                                    </select>
+                                </div>
+
+                                {saveMsg && (
+                                    <div style={{
+                                        padding: "10px 14px", borderRadius: 8, fontSize: 12,
+                                        background: saveMsg.success ? T.greenBg : T.redBg,
+                                        border: `1px solid ${saveMsg.success ? T.green : T.red}`,
+                                        color: saveMsg.success ? T.green : T.red,
+                                    }}>{saveMsg.text}</div>
+                                )}
+
+                                <button type="submit" disabled={saving} style={{
+                                    padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+                                    background: saving ? T.bgHigh : "linear-gradient(135deg,#F57D29,#E85D04)",
+                                    color: saving ? T.textMuted : "#fff", border: "none",
+                                    cursor: saving ? "not-allowed" : "pointer", fontFamily: "inherit",
+                                }}>
+                                    {saving ? "Connecting…" : "Connect Daraz Store"}
+                                </button>
+                            </form>
+
+                            <div style={{ marginTop: 20, padding: "12px 14px", background: "rgba(245,125,41,0.07)", borderRadius: 8, fontSize: 11, color: "#F57D29", lineHeight: 1.6 }}>
+                                <strong>How to get credentials:</strong><br />
+                                1. Go to open.daraz.com → sign in<br />
+                                2. Create an app (or open existing)<br />
+                                3. Copy <strong>App Key</strong> and <strong>App Secret</strong><br />
+                                4. Click <strong>Self Authorization</strong> to get <strong>Access Token</strong>
+                            </div>
+                        </div>
+                    </div>
+                ) : error ? (
                     <div style={{
                         display: "flex", flexDirection: "column", alignItems: "center",
                         justifyContent: "center", padding: "80px 40px", textAlign: "center",
