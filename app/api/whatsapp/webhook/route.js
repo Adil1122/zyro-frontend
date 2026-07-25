@@ -261,6 +261,9 @@ async function handleOrderConfirmation(senderPhone, response, phoneNumberId) {
         if (!user?.postex_api_key) {
             console.error('[WhatsApp Webhook] PostEx API key not configured for user:', userId);
             await supabase.from('wa_pending_orders').update({ status: 'confirmed' }).eq('id', pendingOrder.id);
+            await sendWhatsAppTextMessage(userId, senderPhone,
+                `✅ Your order #${pendingOrder.order_ref} has been confirmed!\n\n💰 Total: Rs ${pendingOrder.total_amount}\n\nOur team will process your shipment shortly. Thank you!`
+            );
             return;
         }
 
@@ -402,8 +405,11 @@ async function handleOrderConfirmation(senderPhone, response, phoneNumberId) {
 
     } catch (err) {
         console.error('[WhatsApp Webhook] Error processing YES confirmation:', err);
-        // Still mark as confirmed to avoid re-processing
         await supabase.from('wa_pending_orders').update({ status: 'confirmed' }).eq('id', pendingOrder.id);
+        // Always send a fallback reply so the customer isn't left waiting
+        await sendWhatsAppTextMessage(userId, senderPhone,
+            `✅ Your order #${pendingOrder.order_ref} has been confirmed!\n\n💰 Total: Rs ${pendingOrder.total_amount}\n\nThank you for your order!`
+        );
     }
 }
 
