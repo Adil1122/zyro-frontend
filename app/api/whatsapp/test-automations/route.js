@@ -20,7 +20,14 @@ export async function POST(request) {
                 const result = await whatsappService.sendOrderStatusUpdate(
                     userId, orderNumber, status, customerPhone, customerName || 'Customer', total || 0
                 );
-                return NextResponse.json({ success: true, result, message: `Status update (${status}) sent to ${customerPhone}` });
+                const ok = !result?.error && !result?.reason;
+                return NextResponse.json({
+                    success: ok,
+                    result,
+                    message: ok
+                        ? `Status update (${status}) sent to ${customerPhone}`
+                        : result?.error || result?.reason || 'WhatsApp send failed',
+                });
             }
 
             case 'send_merchant_alert': {

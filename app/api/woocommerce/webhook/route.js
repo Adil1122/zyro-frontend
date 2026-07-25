@@ -60,13 +60,13 @@ export async function POST(request) {
             })),
         };
 
-        // 4. Upsert/Find Customer
+        // 4. Upsert/Find Customer — works with email-only, phone-only, or both
         let customerId = null;
-        if (order.customerEmail) {
+        if (order.customerEmail || order.customerPhone) {
             const customerData = {
                 user_id: userId,
                 name: order.customerName,
-                email: order.customerEmail,
+                email: order.customerEmail || null,
                 contact: order.customerPhone || order.customerEmail,
                 city: order.city,
                 total_orders: 1,
@@ -75,26 +75,36 @@ export async function POST(request) {
                 last_order_date: order.date
             };
 
-            const { data: existingCustomer } = await supabase
-                .from('customers')
-                .select('id')
-                .eq('user_id', userId)
-                .eq('email', order.customerEmail)
-                .maybeSingle();
+            // Try matching by email first, then by phone
+            let existingCustomer = null;
+            if (order.customerEmail) {
+                const { data } = await supabase
+                    .from('customers')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .eq('email', order.customerEmail)
+                    .maybeSingle();
+                existingCustomer = data;
+            }
+            if (!existingCustomer && order.customerPhone) {
+                const { data } = await supabase
+                    .from('customers')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .eq('contact', order.customerPhone)
+                    .maybeSingle();
+                existingCustomer = data;
+            }
 
             if (existingCustomer?.id) {
                 customerId = existingCustomer.id;
-                await supabase
-                    .from('customers')
-                    .update(customerData)
-                    .eq('id', existingCustomer.id);
+                await supabase.from('customers').update(customerData).eq('id', existingCustomer.id);
             } else {
                 const { data: newCustomer, error: customerInsertError } = await supabase
                     .from('customers')
                     .insert(customerData)
                     .select('id')
                     .single();
-                
                 if (customerInsertError) {
                     console.error('[WooCommerce Webhook] Customer insert error:', customerInsertError);
                 } else {
@@ -129,19 +139,18 @@ export async function POST(request) {
 
         if (existingOrder?.id) {
             dbOrderId = existingOrder.id;
-            
-            // Update order
+
             const { error: updateError } = await supabase
                 .from('orders')
                 .update(orderData)
                 .eq('id', existingOrder.id);
 
-            if (updateError) {
-                console.error('[WooCommerce Webhook] Error updating order:', updateError);
-            }
+            if (updateError) console.error('[WooCommerce Webhook] Error updating order:', updateError);
 
-            // Trigger notification if status changed to completed
-            if (existingOrder.status?.toLowerCase() !== order.status?.toLowerCase() && order.status?.toLowerCase() === 'completed') {
+            // For existing orders, only notify on meaningful status changes (not new order)
+            const oldStatus = existingOrder.status?.toLowerCase();
+            const newStatus = order.status?.toLowerCase();
+            if (oldStatus !== newStatus && ['processing', 'completed', 'cancelled', 'refunded', 'on-hold'].includes(newStatus)) {
                 shouldTriggerNotification = true;
             }
         } else {
@@ -158,10 +167,8 @@ export async function POST(request) {
                 dbOrderId = newOrder?.id;
             }
 
-            // Trigger notification if new order is pending, processing, or completed
-            if (['pending', 'processing', 'completed'].includes(order.status?.toLowerCase())) {
-                shouldTriggerNotification = true;
-            }
+            // Always trigger WA for new orders — any status
+            shouldTriggerNotification = true;
         }
 
         // 6. Sync Order Items
@@ -229,17 +236,33 @@ export async function POST(request) {
                 .catch(err => console.error('[WC webhook] Merchant WA alert error:', err));
         }
 
-        // 8. Fire WhatsApp customer notification if triggered
-        if (shouldTriggerNotification && dbOrderId) {
-            console.log(`[WooCommerce Webhook] Order ${order.number} status is "${order.status}". Triggering WhatsApp notification...`);
+        // 8. Fire WhatsApp customer notification
+        if (shouldTriggerNotification && order.customerPhone) {
+            console.log(`[WooCommerce Webhook] Firing WA for order ${order.number} (status: ${order.status})`);
             try {
-                const res = await whatsappService.sendOrderNotification(userId, dbOrderId, order.status);
-                console.log('[WooCommerce Webhook] WhatsApp notification response:', res);
+                if (!existingOrder?.id) {
+                    // New order → order_created template + creates wa_pending_orders for YES/NO flow
+                    whatsappService.sendOrderCreated(userId, {
+                        customerPhone: order.customerPhone,
+                        customerName: order.customerName,
+                        orderNumber: order.number,
+                        total: order.total,
+                        deliveryAddress: wcOrder.shipping?.address_1 || wcOrder.billing?.address_1 || 'N/A',
+                        cityName: wcOrder.shipping?.city || wcOrder.billing?.city || 'Karachi',
+                        orderDetail: (wcOrder.line_items || []).map(i => i.name).join(', ') || '',
+                    }).catch(err => console.error('[WC webhook] sendOrderCreated error:', err.message));
+                } else {
+                    // Existing order status changed → status-based template
+                    whatsappService.sendOrderStatusUpdate(
+                        userId, order.number, order.status,
+                        order.customerPhone, order.customerName, order.total
+                    ).catch(err => console.error('[WC webhook] sendOrderStatusUpdate error:', err.message));
+                }
             } catch (err) {
-                console.error('[WooCommerce Webhook] WhatsApp notification error:', err);
+                console.error('[WooCommerce Webhook] WhatsApp notification error:', err.message);
             }
-        } else {
-            console.log(`[WooCommerce Webhook] Order ${order.number} status is "${order.status}". WhatsApp notification not triggered.`);
+        } else if (!order.customerPhone) {
+            console.warn(`[WooCommerce Webhook] Order ${order.number} has no customer phone — WA skipped`);
         }
 
         return NextResponse.json({ success: true, dbOrderId, status: order.status });

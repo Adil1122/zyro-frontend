@@ -84,6 +84,9 @@ export async function POST(request) {
             // Handle YES / NO
             if (responseText === 'YES' || responseText === 'NO') {
                 await handleOrderConfirmation(senderPhone, responseText, phoneNumberId);
+            } else if (message.type === 'text' && message.text?.body) {
+                // Run complaint detection on all other free-text messages
+                await handleComplaintDetection(senderPhone, message.text.body, phoneNumberId);
             }
         }
 
@@ -529,6 +532,77 @@ async function sendWhatsAppDocumentMessage(userId, recipientPhone, caption, medi
     }
 }
 
+
+// Keywords that signal a customer complaint (English + Roman Urdu)
+const COMPLAINT_KEYWORDS = [
+    // English
+    'complaint', 'problem', 'issue', 'broken', 'damaged', 'not working', 'defective',
+    'wrong item', 'wrong product', 'refund', 'return', 'fraud', 'fake', 'cheated',
+    'scam', 'worst', 'terrible', 'pathetic', 'disgusting', 'angry', 'very bad',
+    'not received', 'missing', 'lost', 'stolen', 'late delivery', 'where is my order',
+    'still not delivered', 'not delivered', 'where is my parcel', 'waste of money',
+    // Roman Urdu
+    'farzi', 'dhoka', 'naqli', 'kharab', 'wapas karo', 'paisa wapas', 'bohat bura',
+    'galat cheez', 'wrong cheez', 'complaint karna', 'jhooth', 'bekaar', 'barbaad',
+    'zabardasti', 'paisa loot', 'chori', 'nahi mila', 'order nahi aya',
+];
+
+/**
+ * Returns true if the message text contains complaint signals
+ */
+function isComplaint(text) {
+    if (!text) return false;
+    const lower = text.toLowerCase();
+    return COMPLAINT_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+/**
+ * Detect complaints in incoming text messages and alert the merchant
+ */
+async function handleComplaintDetection(senderPhone, messageText, phoneNumberId) {
+    if (!isComplaint(messageText)) return;
+
+    console.log(`[WhatsApp Webhook] Complaint detected from ${senderPhone}: "${messageText.substring(0, 80)}..."`);
+
+    try {
+        // Find the merchant who owns this WhatsApp Business phone number
+        const { data: user } = await supabase
+            .from('users')
+            .select('id, wa_is_active')
+            .eq('wa_phone_number_id', phoneNumberId)
+            .maybeSingle();
+
+        if (!user?.id || !user?.wa_is_active) return;
+
+        // Try to get customer name from wa_pending_orders
+        const phoneVariants = generatePhoneVariants(senderPhone);
+        let customerName = null;
+        for (const phone of phoneVariants) {
+            const { data: pending } = await supabase
+                .from('wa_pending_orders')
+                .select('customer_name')
+                .eq('user_id', user.id)
+                .eq('phone', phone)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (pending?.customer_name) { customerName = pending.customer_name; break; }
+        }
+
+        const customerIdentifier = customerName
+            ? `${customerName} (${senderPhone})`
+            : senderPhone;
+
+        await whatsappService.sendComplaintAlert(user.id, {
+            customerIdentifier,
+            messageSnippet: messageText,
+        });
+
+        console.log(`[WhatsApp Webhook] Complaint alert sent to merchant for user ${user.id}`);
+    } catch (err) {
+        console.error('[WhatsApp Webhook] handleComplaintDetection error:', err.message);
+    }
+}
 
 /**
  * Generate phone number variants for matching
