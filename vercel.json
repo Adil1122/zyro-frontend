@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/analytics/daily-pnl/cron",
+      "schedule": "0 19 * * *"
+    }
+  ]
+}
