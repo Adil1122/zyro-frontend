@@ -3,6 +3,10 @@
     {
       "path": "/api/analytics/daily-pnl/cron",
       "schedule": "0 19 * * *"
+    },
+    {
+      "path": "/api/cod/cron",
+      "schedule": "0 5 * * *"
     }
   ]
 }
