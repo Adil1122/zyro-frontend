@@ -235,18 +235,16 @@ export async function POST(request) {
 
         // 7. Merchant new-order alert (fires on every new order regardless of status)
         if (dbOrderId && isNewOrder) {
-            whatsappService.sendMerchantOrderAlert(userId, order.number, order.customerName, order.total)
+            await whatsappService.sendMerchantOrderAlert(userId, order.number, order.customerName, order.total)
                 .catch(err => console.error('[WC webhook] Merchant WA alert error:', err));
         }
 
         // 8. Fire WhatsApp customer notification
         if (shouldTriggerNotification && customerPhone) {
             console.log(`[WC Webhook] Firing WA — order ${order.number} | status: ${newStatus} | isNew: ${isNewOrder} | phone: ${customerPhone}`);
-            // Only send order_created (with YES/NO PostEx flow) for brand-new orders at "pending/processing" status.
-            // If the order arrives at "completed" from the start (webhook delivery race), send order_shipped instead.
             const useOrderCreated = isNewOrder && !['cancelled', 'refunded', 'completed'].includes(newStatus);
             if (useOrderCreated) {
-                whatsappService.sendOrderCreated(userId, {
+                await whatsappService.sendOrderCreated(userId, {
                     customerPhone,
                     customerName: order.customerName,
                     orderNumber: order.number,
@@ -256,8 +254,7 @@ export async function POST(request) {
                     orderDetail: (wcOrder.line_items || []).map(i => i.name).join(', ') || '',
                 }).catch(err => console.error('[WC webhook] sendOrderCreated error:', err.message));
             } else {
-                // Status update OR new order already at terminal status (completed/cancelled/refunded)
-                whatsappService.sendOrderStatusUpdate(
+                await whatsappService.sendOrderStatusUpdate(
                     userId, order.number, newStatus,
                     customerPhone, order.customerName, order.total
                 ).catch(err => console.error('[WC webhook] sendOrderStatusUpdate error:', err.message));
