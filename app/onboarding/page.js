@@ -71,9 +71,9 @@ export default function OnboardingPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState(null);
   
-  // Interactive choices
-  const [selectedPlatform, setSelectedPlatform] = useState(null);
-  const [selectedCourier, setSelectedCourier] = useState(null);
+  // Interactive choices (multi-select)
+  const [selectedPlatforms, setSelectedPlatforms] = useState([]);
+  const [selectedCouriers, setSelectedCouriers] = useState([]);
 
   const {
     register,
@@ -129,8 +129,8 @@ export default function OnboardingPage() {
         business_name: businessName,
         business_type: businessType,
         monthly_orders: monthlyOrders,
-        connected_source: selectedPlatform || "skipped",
-        connected_courier: selectedCourier || "skipped",
+        connected_source: selectedPlatforms.length > 0 ? selectedPlatforms.join(',') : "skipped",
+        connected_courier: selectedCouriers.length > 0 ? selectedCouriers.join(',') : "skipped",
         onboarding_completed: true,
         onboarding_step: 3
       };
@@ -380,31 +380,43 @@ export default function OnboardingPage() {
                     </p>
                   </div>
 
-                  <div className="grid gap-3 mt-8">
+                  <p className="text-[12px] font-semibold text-text-faint text-center -mt-2">
+                    Select all that apply
+                  </p>
+
+                  <div className="grid gap-3 mt-4">
                     {[
                       { id: "Shopify", label: "Shopify Integration", desc: "Sync Shopify products and listings instantly" },
                       { id: "WooCommerce", label: "WooCommerce Plugin", desc: "Sync catalog from WordPress WooCommerce" },
                       { id: "Daraz", label: "Daraz Seller Center", desc: "Connect Daraz seller API catalog" },
                       { id: "CSV", label: "Manual CSV Upload", desc: "Import products via standard Excel/CSV templates" }
-                    ].map((platform) => (
-                      <button
-                        key={platform.id}
-                        type="button"
-                        onClick={() => setSelectedPlatform(platform.id)}
-                        className={cn(
-                          "flex items-center justify-between rounded-[11px] border p-4 text-left transition-all duration-200 cursor-pointer",
-                          selectedPlatform === platform.id
-                            ? "border-jade-300 bg-jade-300/[0.08] text-jade-300 shadow-[inset_0_0_12px_rgba(92,168,124,0.1)]"
-                            : "border-border bg-bg-elev hover:border-border-mid hover:bg-bg-high text-text"
-                        )}
-                      >
-                        <div className="flex flex-col">
-                          <span className="text-[14px] font-bold">{platform.label}</span>
-                          <span className="text-[11px] text-text-faint mt-0.5">{platform.desc}</span>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-text-faint" />
-                      </button>
-                    ))}
+                    ].map((platform) => {
+                      const isSelected = selectedPlatforms.includes(platform.id);
+                      return (
+                        <button
+                          key={platform.id}
+                          type="button"
+                          onClick={() => setSelectedPlatforms(prev =>
+                            isSelected ? prev.filter(p => p !== platform.id) : [...prev, platform.id]
+                          )}
+                          className={cn(
+                            "flex items-center justify-between rounded-[11px] border p-4 text-left transition-all duration-200 cursor-pointer",
+                            isSelected
+                              ? "border-jade-300 bg-jade-300/[0.08] text-jade-300 shadow-[inset_0_0_12px_rgba(92,168,124,0.1)]"
+                              : "border-border bg-bg-elev hover:border-border-mid hover:bg-bg-high text-text"
+                          )}
+                        >
+                          <div className="flex flex-col">
+                            <span className="text-[14px] font-bold">{platform.label}</span>
+                            <span className="text-[11px] text-text-faint mt-0.5">{platform.desc}</span>
+                          </div>
+                          {isSelected
+                            ? <CheckCircle2 className="w-5 h-5 text-jade-300 shrink-0" />
+                            : <div className="w-5 h-5 rounded-full border-2 border-border-mid shrink-0" />
+                          }
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <div className="flex items-center justify-between gap-4 mt-8 pt-2">
@@ -420,7 +432,7 @@ export default function OnboardingPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedPlatform("skipped");
+                        setSelectedPlatforms([]);
                         goNext();
                       }}
                       className="text-[13px] font-semibold text-jade-200 hover:underline cursor-pointer"
@@ -431,7 +443,7 @@ export default function OnboardingPage() {
                     <motion.button
                       type="button"
                       onClick={goNext}
-                      disabled={!selectedPlatform}
+                      disabled={selectedPlatforms.length === 0}
                       whileHover={{ y: -1 }}
                       whileTap={{ scale: 0.98 }}
                       className="h-12 px-6 flex items-center justify-center gap-2 rounded-[11px] text-sm font-bold text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -468,32 +480,44 @@ export default function OnboardingPage() {
                     </p>
                   </div>
 
-                  <div className="grid gap-3 mt-8">
+                  <p className="text-[12px] font-semibold text-text-faint text-center -mt-2">
+                    Select all that apply
+                  </p>
+
+                  <div className="grid gap-3 mt-4">
                     {[
                       { id: "TCS", label: "TCS Express", desc: "Pakistan's premium courier & logistics network" },
                       { id: "Leopards", label: "Leopards Courier", desc: "Nationwide retail delivery & swift COD settlements" },
                       { id: "M&P", label: "M&P Express", desc: "Reliable logistics and cargo shipping services" },
                       { id: "PostEx", label: "PostEx Payments", desc: "Advance COD payouts & delivery support" },
                       { id: "Trax", label: "Trax Logistics", desc: "Tech-enabled logistics with real-time status API" }
-                    ].map((courier) => (
-                      <button
-                        key={courier.id}
-                        type="button"
-                        onClick={() => setSelectedCourier(courier.id)}
-                        className={cn(
-                          "flex items-center justify-between rounded-[11px] border p-4 text-left transition-all duration-200 cursor-pointer",
-                          selectedCourier === courier.id
-                            ? "border-jade-300 bg-jade-300/[0.08] text-jade-300 shadow-[inset_0_0_12px_rgba(92,168,124,0.1)]"
-                            : "border-border bg-bg-elev hover:border-border-mid hover:bg-bg-high text-text"
-                        )}
-                      >
-                        <div className="flex flex-col">
-                          <span className="text-[14px] font-bold">{courier.label}</span>
-                          <span className="text-[11px] text-text-faint mt-0.5">{courier.desc}</span>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-text-faint" />
-                      </button>
-                    ))}
+                    ].map((courier) => {
+                      const isSelected = selectedCouriers.includes(courier.id);
+                      return (
+                        <button
+                          key={courier.id}
+                          type="button"
+                          onClick={() => setSelectedCouriers(prev =>
+                            isSelected ? prev.filter(c => c !== courier.id) : [...prev, courier.id]
+                          )}
+                          className={cn(
+                            "flex items-center justify-between rounded-[11px] border p-4 text-left transition-all duration-200 cursor-pointer",
+                            isSelected
+                              ? "border-jade-300 bg-jade-300/[0.08] text-jade-300 shadow-[inset_0_0_12px_rgba(92,168,124,0.1)]"
+                              : "border-border bg-bg-elev hover:border-border-mid hover:bg-bg-high text-text"
+                          )}
+                        >
+                          <div className="flex flex-col">
+                            <span className="text-[14px] font-bold">{courier.label}</span>
+                            <span className="text-[11px] text-text-faint mt-0.5">{courier.desc}</span>
+                          </div>
+                          {isSelected
+                            ? <CheckCircle2 className="w-5 h-5 text-jade-300 shrink-0" />
+                            : <div className="w-5 h-5 rounded-full border-2 border-border-mid shrink-0" />
+                          }
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <div className="flex items-center justify-between gap-4 mt-8 pt-2">
@@ -509,7 +533,7 @@ export default function OnboardingPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedCourier("skipped");
+                        setSelectedCouriers([]);
                         handleCompleteSetup();
                       }}
                       className="text-[13px] font-semibold text-jade-200 hover:underline cursor-pointer"
@@ -520,7 +544,7 @@ export default function OnboardingPage() {
                     <motion.button
                       type="button"
                       onClick={handleCompleteSetup}
-                      disabled={!selectedCourier || isLoading}
+                      disabled={selectedCouriers.length === 0 || isLoading}
                       whileHover={{ y: -1 }}
                       whileTap={{ scale: 0.98 }}
                       className="h-12 px-6 flex items-center justify-center gap-2 rounded-[11px] text-sm font-bold text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
