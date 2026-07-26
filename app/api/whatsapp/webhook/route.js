@@ -108,15 +108,16 @@ export async function GET(request) {
     const token = searchParams.get('hub.verify_token');
     const challenge = searchParams.get('hub.challenge');
 
-    // You should set a VERIFY_TOKEN in your env
     const verifyToken = process.env.WA_VERIFY_TOKEN || 'zyro_verify_token';
+
+    console.log(`[WA Verify] mode="${mode}" | received_token="${token}" | expected="${verifyToken}" | match=${token === verifyToken}`);
 
     if (mode === 'subscribe' && token === verifyToken) {
         console.log('[WhatsApp Webhook] Verification successful');
         return new Response(challenge, { status: 200 });
     }
 
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return NextResponse.json({ error: 'Forbidden', mode, tokenMatch: token === verifyToken }, { status: 403 });
 }
 
 
