@@ -81,12 +81,21 @@ export async function GET(request) {
         const recipientPhone = whatsappService.formatPhoneNumber(testPhone);
         if (recipientPhone) {
             try {
+                const { searchParams: sp } = new URL(request.url);
+                const testTemplate = sp.get('template') || 'order_created';
+                const templateParams = {
+                    'order_created':  ['Test Customer', 'TEST-001', `${user.currency || 'PKR'} 1,500`],
+                    'order_shipped':  ['Test Customer', 'TEST-001'],
+                    'payment_received': ['Test Customer', 'TEST-001', `${user.currency || 'PKR'} 1,500`],
+                    'order_canceled': ['Test Customer', 'TEST-001', '1,500'],
+                    'order_status_update': ['Test Customer', 'TEST-001', 'Payment Failed'],
+                };
                 testMessageResult = await whatsappService.sendMetaWhatsAppTemplate({
                     phoneNumberId: user.wa_phone_number_id,
                     accessToken: user.wa_access_token,
                     recipientPhone,
-                    templateName: 'order_created',
-                    params: ['Test Customer', 'TEST-001', `${user.currency || 'PKR'} 1,500`],
+                    templateName: testTemplate,
+                    params: templateParams[testTemplate] || templateParams['order_created'],
                 });
             } catch (err) {
                 testMessageResult = { success: false, error: err.message };
