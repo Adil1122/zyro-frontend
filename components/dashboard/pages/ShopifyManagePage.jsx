@@ -241,19 +241,19 @@ export default function ShopifyManagePage({ onBack }) {
 
                     {/* Actions */}
                     <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-                        {config.domain && (
+                        {connectedDomain && (
                             <button onClick={handleDisconnect} style={{
                                 padding: "5px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
                                 background: T.redBg, color: T.red, border: `1px solid ${T.red}44`,
                                 cursor: "pointer", fontFamily: "inherit",
                             }}>Disconnect</button>
                         )}
-                        <button onClick={() => { setSaveMsg(null); setIsConfiguring(v => !v); }} style={{
+                        <button onClick={() => setIsConfiguring(v => !v)} style={{
                             padding: "5px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
                             background: SHOPIFY_GRAD, color: "#fff", border: "none",
                             cursor: "pointer", fontFamily: "inherit",
                             boxShadow: "0 2px 8px rgba(150,191,72,0.35)",
-                        }}>{isConfiguring ? "Cancel" : config.domain ? "Edit Credentials" : "Connect Store"}</button>
+                        }}>{isConfiguring ? "Cancel" : connectedDomain ? "Edit Connection" : "Connect Store"}</button>
                     </div>
                 </div>
 
