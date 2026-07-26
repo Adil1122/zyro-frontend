@@ -150,9 +150,11 @@ export async function POST(request) {
             // For existing orders, only notify on meaningful status changes (not new order)
             const oldStatus = existingOrder.status?.toLowerCase();
             const newStatus = order.status?.toLowerCase();
+            console.log(`[WC Webhook] Order ${order.number} status: DB="${oldStatus}" → WC="${newStatus}" | phone="${order.customerPhone}"`);
             if (oldStatus !== newStatus && ['processing', 'completed', 'cancelled', 'refunded', 'on-hold'].includes(newStatus)) {
                 shouldTriggerNotification = true;
             }
+            console.log(`[WC Webhook] shouldTriggerNotification=${shouldTriggerNotification}`);
         } else {
             // Insert new order
             const { data: newOrder, error: insertError } = await supabase
