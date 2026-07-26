@@ -20,9 +20,11 @@ export async function POST(request) {
 
         if (!wcOrder?.id) return NextResponse.json({ success: true, message: 'Ping received' });
 
+        const billing = wcOrder.billing || {};
         const orderNumber = (wcOrder.number || wcOrder.id).toString();
-        const newStatus = wcOrder.status;
+        const newStatus = (wcOrder.status || '').replace(/^wc-/, ''); // strip wc- prefix
         const total = parseFloat(wcOrder.total || 0);
+        const wcPhone = billing.phone || '';
 
         console.log(`[WC order.updated] Order #${orderNumber} → ${newStatus}`);
 
@@ -48,8 +50,13 @@ export async function POST(request) {
 
         // Send WhatsApp status update to customer
         if (statusChanged) {
-            const customerPhone = existingOrder.customers?.contact;
-            const customerName = existingOrder.customers?.name || 'Customer';
+            // Prefer phone from webhook payload; fall back to DB
+            const customerPhone = wcPhone || existingOrder.customers?.contact || '';
+            const customerName = `${billing.first_name || ''} ${billing.last_name || ''}`.trim()
+                || existingOrder.customers?.name || 'Customer';
+
+            console.log(`[WC order.updated] WA — order #${orderNumber} ${existingOrder.status} → ${newStatus} | phone="${customerPhone}"`);
+
             whatsappService.sendOrderStatusUpdate(
                 userId, orderNumber, newStatus, customerPhone, customerName, existingOrder.total_amount
             ).catch(err => console.error('[WC order.updated] WA error:', err.message));
