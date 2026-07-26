@@ -518,11 +518,12 @@ export default function MarketingPage() {
                 }
             />
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10, marginBottom: 20 }}>
-                {[meta].map((pl, idx) => {
-                    const isActive = platform === "meta";
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+                {[meta, google].map((pl, idx) => {
+                    const isGoogle = idx === 1;
+                    const isActive = (idx === 0 && platform === "meta") || (idx === 1 && platform === "google");
                     return (
-                        <button key={pl.brand} onClick={() => { setPlatform("meta"); setPage(1); }}
+                        <button key={pl.brand} onClick={() => { if (!isGoogle) { setPlatform(idx === 0 ? "meta" : "google"); setPage(1); } }} disabled={isGoogle}
                             style={{
                                 padding: "16px 20px",
                                 background: isActive ? `linear-gradient(135deg, ${pl.accent}22 0%, ${pl.accent}08 100%)` : T.bgCard,
@@ -544,6 +545,7 @@ export default function MarketingPage() {
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                         <span style={{ fontSize: 16, fontWeight: 800, color: T.text, letterSpacing: "-0.3px" }}>{pl.brand}</span>
+                                        {isGoogle && <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", background: "#f59e0b", borderRadius: 4, padding: "2px 7px", letterSpacing: "0.5px" }}>COMING SOON</span>}
                                     </div>
                                     <div style={{ fontSize: 11, color: T.textFaint, marginTop: 3 }}>{pl.subtitle}</div>
                                     <div style={{ display: "flex", gap: 18, marginTop: 10 }}>
