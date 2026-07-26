@@ -18,9 +18,7 @@ export default function ProfilePage() {
         email: "",
         phone: "",
         timezone: "Asia/Karachi",
-        currency: "PKR",
-        stripe_publishable_key: "",
-        stripe_secret_key: ""
+        currency: "PKR"
     });
 
     useEffect(() => {
@@ -49,8 +47,6 @@ export default function ProfilePage() {
                         phone: latestUserData.phone || "",
                         timezone: latestUserData.timezone || "Asia/Karachi",
                         currency: latestUserData.currency || "PKR",
-                        stripe_publishable_key: latestUserData.stripe_publishable_key || "",
-                        stripe_secret_key: latestUserData.stripe_secret_key || ""
                     });
                 } else {
                     setUser(userData);
@@ -59,9 +55,7 @@ export default function ProfilePage() {
                         email: userData.email || "",
                         phone: userData.phone || "",
                         timezone: userData.timezone || "Asia/Karachi",
-                        currency: userData.currency || "PKR",
-                        stripe_publishable_key: userData.stripe_publishable_key || "",
-                        stripe_secret_key: userData.stripe_secret_key || ""
+                        currency: userData.currency || "PKR"
                     });
                 }
             } catch (err) {
@@ -87,9 +81,7 @@ export default function ProfilePage() {
                     email: formData.email,
                     phone: formData.phone,
                     timezone: formData.timezone,
-                    currency: formData.currency,
-                    stripe_publishable_key: formData.stripe_publishable_key,
-                    stripe_secret_key: formData.stripe_secret_key
+                    currency: formData.currency
                 })
                 .eq('id', user.id)
                 .select()
@@ -189,32 +181,6 @@ export default function ProfilePage() {
                             >
                                 {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
-                        </div>
-                    </div>
-
-                    <div style={{ marginTop: 30, paddingBottom: 10, borderBottom: `1px solid ${T.border}` }}>
-                        <h3 style={{ fontSize: 16, fontWeight: 700, color: T.text, margin: 0 }}>Stripe Configuration</h3>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-                        <div style={inputGroupStyle}>
-                            <label style={labelStyle}>Stripe Publishable Key</label>
-                            <input
-                                type="text"
-                                style={inputStyle}
-                                value={formData.stripe_publishable_key || ""}
-                                onChange={e => setFormData({ ...formData, stripe_publishable_key: e.target.value })}
-                                placeholder="pk_test_..."
-                            />
-                        </div>
-                        <div style={inputGroupStyle}>
-                            <label style={labelStyle}>Stripe Secret Key</label>
-                            <input
-                                type="password"
-                                style={inputStyle}
-                                value={formData.stripe_secret_key || ""}
-                                onChange={e => setFormData({ ...formData, stripe_secret_key: e.target.value })}
-                                placeholder="sk_test_..."
-                            />
                         </div>
                     </div>
 
