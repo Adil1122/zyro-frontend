@@ -518,11 +518,11 @@ export default function MarketingPage() {
                 }
             />
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
-                {[meta, google].map((pl, idx) => {
-                    const isActive = (idx === 0 && platform === "meta") || (idx === 1 && platform === "google");
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10, marginBottom: 20 }}>
+                {[meta].map((pl, idx) => {
+                    const isActive = platform === "meta";
                     return (
-                        <button key={pl.brand} onClick={() => { setPlatform(idx === 0 ? "meta" : "google"); setPage(1); }}
+                        <button key={pl.brand} onClick={() => { setPlatform("meta"); setPage(1); }}
                             style={{
                                 padding: "16px 20px",
                                 background: isActive ? `linear-gradient(135deg, ${pl.accent}22 0%, ${pl.accent}08 100%)` : T.bgCard,
