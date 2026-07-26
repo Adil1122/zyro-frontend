@@ -1629,6 +1629,22 @@ export default function SettingsPage({ tabParam }) {
         }
     }, [searchParams]);
 
+    // Handle Shopify OAuth callback redirect (?shopify=connected or ?shopify=error)
+    useEffect(() => {
+        const shopifyStatus = searchParams.get("shopify");
+        if (shopifyStatus === "connected") {
+            const shop = searchParams.get("shop");
+            setManagingStore("shopify");
+            setTab("stores");
+            // Clean URL
+            router.replace("/settings/stores");
+        } else if (shopifyStatus === "error") {
+            const reason = searchParams.get("reason");
+            console.error("[Shopify OAuth] Error:", reason);
+            router.replace("/settings/stores");
+        }
+    }, []);
+
     const handleTabChange = (newTab) => {
         setTab(newTab);
         setManagingStore(null);
