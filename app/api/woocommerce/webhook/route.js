@@ -139,7 +139,7 @@ export async function POST(request) {
         const isNewOrder = !existingOrder?.id;
         const oldStatus = existingOrder?.status?.toLowerCase() || null;
         const newStatus = order.status?.toLowerCase();
-        const NOTIFIABLE = ['processing', 'completed', 'cancelled', 'refunded', 'on-hold'];
+        const NOTIFIABLE = ['processing', 'completed', 'cancelled', 'refunded', 'on-hold', 'failed'];
 
         // Phone fallback: use billing phone first, then look up from customer record in DB
         let customerPhone = order.customerPhone;
