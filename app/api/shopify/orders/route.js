@@ -1,21 +1,25 @@
 import { NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
 import { getShopifyOrders, isShopifyConfigured } from '@/lib/services/shopifyService';
 
-/**
- * GET /api/shopify/orders
- * Query params:
- *   page      (default: 1)
- *   perPage   (default: 10, max: 250)
- *   search    (optional: order name/number)
- *   status    (optional: all | open | closed | cancelled | any)
- */
 export async function GET(request) {
+    const userId = request.headers.get('x-user-id');
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     try {
-        if (!isShopifyConfigured()) {
-            return NextResponse.json({
-                configured: false,
-                message: 'Shopify credentials not set in .env.local.',
-            }, { status: 200 });
+        const { data: user } = await supabase
+            .from('users')
+            .select('shopify_store_domain, shopify_access_token')
+            .eq('id', userId)
+            .single();
+
+        const creds = {
+            domain: user?.shopify_store_domain,
+            accessToken: user?.shopify_access_token,
+        };
+
+        if (!isShopifyConfigured(creds)) {
+            return NextResponse.json({ configured: false, message: 'Shopify credentials not configured.' });
         }
 
         const { searchParams } = new URL(request.url);
@@ -24,13 +28,10 @@ export async function GET(request) {
         const search = searchParams.get('search') || '';
         const status = searchParams.get('status') || 'all';
 
-        const data = await getShopifyOrders({ page, perPage, search, status });
+        const data = await getShopifyOrders({ page, perPage, search, status, creds });
         return NextResponse.json({ configured: true, ...data });
     } catch (error) {
         console.error('[Shopify Orders Error]', error.message);
-        return NextResponse.json(
-            { configured: true, error: error.message },
-            { status: 500 }
-        );
+        return NextResponse.json({ configured: true, error: error.message }, { status: 500 });
     }
 }

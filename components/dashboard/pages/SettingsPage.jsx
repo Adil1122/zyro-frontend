@@ -110,20 +110,18 @@ function useShopifyStats() {
         setError(null);
         try {
             const userId = getCurrentUserId();
-            const res = await fetch("/api/shopify/stats", {
-                headers: { 'x-user-id': userId }
-            });
-            const data = await res.json();
-            if (!data.configured) {
-                setStats({ configured: false });
-            } else if (data.error) {
-                setError(data.error);
-                setStats({ configured: true });
-            } else {
-                setStats({ configured: true, ...data });
-            }
+            // Check DB credentials only (no live Shopify call on the card)
+            const { data: user } = await supabase
+                .from('users')
+                .select('shopify_store_domain, shopify_access_token')
+                .eq('id', userId)
+                .single();
+
+            const configured = !!(user?.shopify_store_domain && user?.shopify_access_token);
+            setStats({ configured });
         } catch (e) {
             setError(e.message);
+            setStats({ configured: false });
         } finally {
             setLoading(false);
         }
