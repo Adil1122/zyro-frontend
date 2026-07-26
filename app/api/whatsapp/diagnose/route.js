@@ -81,8 +81,7 @@ export async function GET(request) {
         const recipientPhone = whatsappService.formatPhoneNumber(testPhone);
         if (recipientPhone) {
             try {
-                const { searchParams: sp } = new URL(request.url);
-                const testTemplate = sp.get('template') || 'order_created';
+                const testTemplate = searchParams.get('template') || 'order_created';
                 const templateParams = {
                     'order_created':  ['Test Customer', 'TEST-001', `${user.currency || 'PKR'} 1,500`],
                     'order_shipped':  ['Test Customer', 'TEST-001'],
