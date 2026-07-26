@@ -7,10 +7,6 @@
     {
       "path": "/api/cod/cron",
       "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/postex/sync-status",
-      "schedule": "0 */2 * * *"
     }
   ]
 }
