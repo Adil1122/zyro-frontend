@@ -136,42 +136,43 @@ export async function POST(request) {
 
         let dbOrderId = null;
         let shouldTriggerNotification = false;
+        const isNewOrder = !existingOrder?.id;
+        const oldStatus = existingOrder?.status?.toLowerCase() || null;
+        const newStatus = order.status?.toLowerCase();
+        const NOTIFIABLE = ['processing', 'completed', 'cancelled', 'refunded', 'on-hold'];
 
-        if (existingOrder?.id) {
-            dbOrderId = existingOrder.id;
+        // Phone fallback: use billing phone first, then look up from customer record in DB
+        let customerPhone = order.customerPhone;
+        if (!customerPhone && customerId) {
+            const { data: custData } = await supabase
+                .from('customers').select('contact').eq('id', customerId).maybeSingle();
+            customerPhone = custData?.contact || '';
+        }
 
-            const { error: updateError } = await supabase
-                .from('orders')
-                .update(orderData)
-                .eq('id', existingOrder.id);
+        console.log(`[WC Webhook] Order ${order.number}: isNew=${isNewOrder} | DB="${oldStatus}" → WC="${newStatus}" | phone="${customerPhone}"`);
 
-            if (updateError) console.error('[WooCommerce Webhook] Error updating order:', updateError);
-
-            // For existing orders, only notify on meaningful status changes (not new order)
-            const oldStatus = existingOrder.status?.toLowerCase();
-            const newStatus = order.status?.toLowerCase();
-            console.log(`[WC Webhook] Order ${order.number} status: DB="${oldStatus}" → WC="${newStatus}" | phone="${order.customerPhone}"`);
-            if (oldStatus !== newStatus && ['processing', 'completed', 'cancelled', 'refunded', 'on-hold'].includes(newStatus)) {
-                shouldTriggerNotification = true;
-            }
-            console.log(`[WC Webhook] shouldTriggerNotification=${shouldTriggerNotification}`);
-        } else {
-            // Insert new order
+        if (isNewOrder) {
             const { data: newOrder, error: insertError } = await supabase
-                .from('orders')
-                .insert(orderData)
-                .select('id')
-                .single();
-
+                .from('orders').insert(orderData).select('id').single();
             if (insertError) {
                 console.error('[WooCommerce Webhook] Error inserting new order:', insertError);
             } else {
                 dbOrderId = newOrder?.id;
+                shouldTriggerNotification = true;
             }
+        } else {
+            dbOrderId = existingOrder.id;
+            const { error: updateError } = await supabase
+                .from('orders').update(orderData).eq('id', existingOrder.id);
+            if (updateError) console.error('[WooCommerce Webhook] Error updating order:', updateError);
 
-            // Always trigger WA for new orders — any status
-            shouldTriggerNotification = true;
+            // Notify on meaningful status change
+            if (NOTIFIABLE.includes(newStatus) && oldStatus !== newStatus) {
+                shouldTriggerNotification = true;
+            }
         }
+
+        console.log(`[WC Webhook] shouldTriggerNotification=${shouldTriggerNotification}`);
 
         // 6. Sync Order Items
         if (dbOrderId && order.items.length > 0) {
@@ -233,38 +234,34 @@ export async function POST(request) {
         }
 
         // 7. Merchant new-order alert (fires on every new order regardless of status)
-        if (dbOrderId && !existingOrder?.id) {
+        if (dbOrderId && isNewOrder) {
             whatsappService.sendMerchantOrderAlert(userId, order.number, order.customerName, order.total)
                 .catch(err => console.error('[WC webhook] Merchant WA alert error:', err));
         }
 
         // 8. Fire WhatsApp customer notification
-        if (shouldTriggerNotification && order.customerPhone) {
-            console.log(`[WooCommerce Webhook] Firing WA for order ${order.number} (status: ${order.status})`);
-            try {
-                if (!existingOrder?.id) {
-                    // New order → order_created template + creates wa_pending_orders for YES/NO flow
-                    whatsappService.sendOrderCreated(userId, {
-                        customerPhone: order.customerPhone,
-                        customerName: order.customerName,
-                        orderNumber: order.number,
-                        total: order.total,
-                        deliveryAddress: wcOrder.shipping?.address_1 || wcOrder.billing?.address_1 || 'N/A',
-                        cityName: wcOrder.shipping?.city || wcOrder.billing?.city || 'Karachi',
-                        orderDetail: (wcOrder.line_items || []).map(i => i.name).join(', ') || '',
-                    }).catch(err => console.error('[WC webhook] sendOrderCreated error:', err.message));
-                } else {
-                    // Existing order status changed → status-based template
-                    whatsappService.sendOrderStatusUpdate(
-                        userId, order.number, order.status,
-                        order.customerPhone, order.customerName, order.total
-                    ).catch(err => console.error('[WC webhook] sendOrderStatusUpdate error:', err.message));
-                }
-            } catch (err) {
-                console.error('[WooCommerce Webhook] WhatsApp notification error:', err.message);
+        if (shouldTriggerNotification && customerPhone) {
+            console.log(`[WC Webhook] Firing WA — order ${order.number} | status: ${newStatus} | isNew: ${isNewOrder} | phone: ${customerPhone}`);
+            if (isNewOrder && !['cancelled', 'refunded'].includes(newStatus)) {
+                // New order (not already cancelled) → order_created template + YES/NO PostEx flow
+                whatsappService.sendOrderCreated(userId, {
+                    customerPhone,
+                    customerName: order.customerName,
+                    orderNumber: order.number,
+                    total: order.total,
+                    deliveryAddress: wcOrder.shipping?.address_1 || wcOrder.billing?.address_1 || 'N/A',
+                    cityName: wcOrder.shipping?.city || wcOrder.billing?.city || 'Karachi',
+                    orderDetail: (wcOrder.line_items || []).map(i => i.name).join(', ') || '',
+                }).catch(err => console.error('[WC webhook] sendOrderCreated error:', err.message));
+            } else {
+                // Status update (cancel, complete, etc.) OR new order already cancelled
+                whatsappService.sendOrderStatusUpdate(
+                    userId, order.number, newStatus,
+                    customerPhone, order.customerName, order.total
+                ).catch(err => console.error('[WC webhook] sendOrderStatusUpdate error:', err.message));
             }
-        } else if (!order.customerPhone) {
-            console.warn(`[WooCommerce Webhook] Order ${order.number} has no customer phone — WA skipped`);
+        } else if (!customerPhone) {
+            console.warn(`[WC Webhook] Order ${order.number} has no customer phone — WA skipped`);
         }
 
         return NextResponse.json({ success: true, dbOrderId, status: order.status });
