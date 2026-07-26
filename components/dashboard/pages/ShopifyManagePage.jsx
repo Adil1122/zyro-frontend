@@ -4,8 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton } from "../Primitives";
-import { supabase } from "@/lib/supabase";
-import { getCurrentUserId } from "@/lib/auth";
+import { supabase, getCurrentUserId } from "@/lib/supabase";
 
 // ─── Shopify brand colors ───────────────────────────────────────────────────
 const SHOPIFY_GREEN = "#96BF48";
