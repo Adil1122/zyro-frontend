@@ -1633,11 +1633,9 @@ export default function SettingsPage({ tabParam }) {
     useEffect(() => {
         const shopifyStatus = searchParams.get("shopify");
         if (shopifyStatus === "connected") {
-            const shop = searchParams.get("shop");
-            setManagingStore("shopify");
             setTab("stores");
-            // Clean URL
-            router.replace("/settings/stores");
+            // Include manage=shopify so the URL-watcher sets managingStore correctly
+            router.replace("/settings/stores?manage=shopify");
         } else if (shopifyStatus === "error") {
             const reason = searchParams.get("reason");
             console.error("[Shopify OAuth] Error:", reason);
