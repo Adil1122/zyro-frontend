@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 
 const SCOPES = [
-    'read_all_orders',
     'read_orders', 'write_orders',
     'read_products', 'write_products',
     'read_customers', 'write_customers',
