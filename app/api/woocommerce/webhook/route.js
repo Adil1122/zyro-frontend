@@ -45,7 +45,7 @@ export async function POST(request) {
         const order = {
             id: wcOrder.id,
             number: (wcOrder.number || wcOrder.id).toString(),
-            status: wcOrder.status,
+            status: (wcOrder.status || '').replace(/^wc-/, ''),
             date: wcOrder.date_created || new Date().toISOString(),
             customerName,
             customerEmail: billing.email || '',
