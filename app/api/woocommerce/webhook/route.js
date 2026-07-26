@@ -242,8 +242,10 @@ export async function POST(request) {
         // 8. Fire WhatsApp customer notification
         if (shouldTriggerNotification && customerPhone) {
             console.log(`[WC Webhook] Firing WA — order ${order.number} | status: ${newStatus} | isNew: ${isNewOrder} | phone: ${customerPhone}`);
-            if (isNewOrder && !['cancelled', 'refunded'].includes(newStatus)) {
-                // New order (not already cancelled) → order_created template + YES/NO PostEx flow
+            // Only send order_created (with YES/NO PostEx flow) for brand-new orders at "pending/processing" status.
+            // If the order arrives at "completed" from the start (webhook delivery race), send order_shipped instead.
+            const useOrderCreated = isNewOrder && !['cancelled', 'refunded', 'completed'].includes(newStatus);
+            if (useOrderCreated) {
                 whatsappService.sendOrderCreated(userId, {
                     customerPhone,
                     customerName: order.customerName,
@@ -254,7 +256,7 @@ export async function POST(request) {
                     orderDetail: (wcOrder.line_items || []).map(i => i.name).join(', ') || '',
                 }).catch(err => console.error('[WC webhook] sendOrderCreated error:', err.message));
             } else {
-                // Status update (cancel, complete, etc.) OR new order already cancelled
+                // Status update OR new order already at terminal status (completed/cancelled/refunded)
                 whatsappService.sendOrderStatusUpdate(
                     userId, order.number, newStatus,
                     customerPhone, order.customerName, order.total
