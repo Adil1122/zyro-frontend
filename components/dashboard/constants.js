@@ -77,7 +77,7 @@ export const NAV = [
     { id: "inventory", label: "Inventory", badge: 3, warn: true },
     { id: "marketing", label: "Marketing" },
     { id: "customers", label: "Customers" },
-    { id: "automation", label: "Automation" },
+    { id: "automation", label: "Automation", badge: "SOON", warn: true },
     { id: "analytics", label: "Analytics" },
     { id: "plans", label: "Plans" },
     { id: "settings", label: "Settings" },
