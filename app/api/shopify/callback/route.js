@@ -85,6 +85,27 @@ export async function GET(request) {
         }
 
         console.log(`[Shopify Callback] Connected ${cleanDomain} for user ${userId}`);
+
+        // Register webhooks for this store
+        const webhookTopics = ['orders/create', 'orders/updated', 'orders/cancelled'];
+        const webhookAddress = `${appUrl}/api/shopify/webhook`;
+        for (const wTopic of webhookTopics) {
+            const wRes = await fetch(`https://${cleanDomain}/admin/api/2026-07/webhooks.json`, {
+                method: 'POST',
+                headers: {
+                    'X-Shopify-Access-Token': access_token,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ webhook: { topic: wTopic, address: webhookAddress, format: 'json' } }),
+            });
+            if (!wRes.ok) {
+                const wErr = await wRes.text();
+                console.warn(`[Shopify Callback] Webhook registration failed (${wTopic}):`, wErr);
+            } else {
+                console.log(`[Shopify Callback] Webhook registered: ${wTopic}`);
+            }
+        }
+
         return NextResponse.redirect(`${appUrl}/settings?shopify=connected&shop=${cleanDomain}`);
 
     } catch (err) {
