@@ -1629,6 +1629,15 @@ export default function SettingsPage({ tabParam }) {
         }
     }, [searchParams]);
 
+    // Detect Shopify OAuth callback redirect
+    useEffect(() => {
+        const shopifyStatus = searchParams.get("shopify");
+        if (shopifyStatus === "connected") {
+            setManagingStore("shopify");
+            router.replace(`/settings/stores?manage=shopify`);
+        }
+    }, []);
+
 
     const handleTabChange = (newTab) => {
         setTab(newTab);

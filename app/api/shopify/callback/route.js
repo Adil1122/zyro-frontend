@@ -24,12 +24,12 @@ export async function GET(request) {
         const message = Object.keys(params).sort().map(k => `${k}=${params[k]}`).join('&');
         const digest = createHmac('sha256', apiSecret).update(message).digest('hex');
         if (digest !== hmac) {
-            return NextResponse.redirect(`${appUrl}/settings?shopify=error&reason=invalid_hmac`);
+            return NextResponse.redirect(`${appUrl}/settings/stores?shopify=error&reason=invalid_hmac`);
         }
     }
 
     if (!code || !shop || !state) {
-        return NextResponse.redirect(`${appUrl}/settings?shopify=error&reason=missing_params`);
+        return NextResponse.redirect(`${appUrl}/settings/stores?shopify=error&reason=missing_params`);
     }
 
     // --- Decode userId from state ---
@@ -38,11 +38,11 @@ export async function GET(request) {
         const decoded = JSON.parse(Buffer.from(state, 'base64url').toString());
         userId = decoded.userId;
     } catch {
-        return NextResponse.redirect(`${appUrl}/settings?shopify=error&reason=invalid_state`);
+        return NextResponse.redirect(`${appUrl}/settings/stores?shopify=error&reason=invalid_state`);
     }
 
     if (!userId) {
-        return NextResponse.redirect(`${appUrl}/settings?shopify=error&reason=no_user`);
+        return NextResponse.redirect(`${appUrl}/settings/stores?shopify=error&reason=no_user`);
     }
 
     // --- Exchange code for access token ---
@@ -60,13 +60,13 @@ export async function GET(request) {
         if (!tokenRes.ok) {
             const err = await tokenRes.text();
             console.error('[Shopify Callback] Token exchange failed:', err);
-            return NextResponse.redirect(`${appUrl}/settings?shopify=error&reason=token_exchange`);
+            return NextResponse.redirect(`${appUrl}/settings/stores?shopify=error&reason=token_exchange`);
         }
 
         const { access_token } = await tokenRes.json();
 
         if (!access_token) {
-            return NextResponse.redirect(`${appUrl}/settings?shopify=error&reason=no_token`);
+            return NextResponse.redirect(`${appUrl}/settings/stores?shopify=error&reason=no_token`);
         }
 
         // --- Save to Supabase ---
@@ -81,7 +81,7 @@ export async function GET(request) {
 
         if (dbError) {
             console.error('[Shopify Callback] DB save error:', dbError);
-            return NextResponse.redirect(`${appUrl}/settings?shopify=error&reason=db_error`);
+            return NextResponse.redirect(`${appUrl}/settings/stores?shopify=error&reason=db_error`);
         }
 
         console.log(`[Shopify Callback] Connected ${cleanDomain} for user ${userId}`);
@@ -106,10 +106,10 @@ export async function GET(request) {
             }
         }
 
-        return NextResponse.redirect(`${appUrl}/settings?shopify=connected&shop=${cleanDomain}`);
+        return NextResponse.redirect(`${appUrl}/settings/stores?shopify=connected&shop=${cleanDomain}`);
 
     } catch (err) {
         console.error('[Shopify Callback] Unexpected error:', err.message);
-        return NextResponse.redirect(`${appUrl}/settings?shopify=error&reason=unexpected`);
+        return NextResponse.redirect(`${appUrl}/settings/stores?shopify=error&reason=unexpected`);
     }
 }
