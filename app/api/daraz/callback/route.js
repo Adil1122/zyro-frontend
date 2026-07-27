@@ -4,22 +4,13 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-const REGION_TOKEN_URL = {
-    pk: 'https://api.daraz.pk/rest/auth/token/create',
-    bd: 'https://api.daraz.com.bd/rest/auth/token/create',
-    lk: 'https://api.daraz.lk/rest/auth/token/create',
-    my: 'https://api.lazada.com.my/rest/auth/token/create',
-    sg: 'https://api.lazada.sg/rest/auth/token/create',
-    th: 'https://api.lazada.co.th/rest/auth/token/create',
-    ph: 'https://api.lazada.com.ph/rest/auth/token/create',
-    id: 'https://api.lazada.co.id/rest/auth/token/create',
-    vn: 'https://api.lazada.vn/rest/auth/token/create',
-};
-
 function buildSign(apiPath, params, appSecret) {
-    const sorted = Object.keys(params).sort().map(k => `${k}${params[k]}`).join('');
-    const message = apiPath + sorted;
-    return crypto.createHmac('sha256', appSecret).update(message, 'utf-8').digest('hex').toUpperCase();
+    const sortedKeys = Object.keys(params).sort();
+    let base = apiPath;
+    for (const key of sortedKeys) {
+        base += key + params[key];
+    }
+    return crypto.createHmac('sha256', appSecret).update(base, 'utf-8').digest('hex').toUpperCase();
 }
 
 export async function GET(request) {
@@ -52,22 +43,28 @@ export async function GET(request) {
 
     const appKey = user.daraz_app_key;
     const appSecret = user.daraz_app_secret;
-    const region = user.daraz_region || 'pk';
     const timestamp = Date.now().toString();
-    const tokenUrl = REGION_TOKEN_URL[region] || REGION_TOKEN_URL['pk'];
 
     const params = { app_key: appKey, code, sign_method: 'sha256', timestamp };
     const sign = buildSign('/auth/token/create', params, appSecret);
+    const qs = new URLSearchParams({ ...params, sign }).toString();
 
-    const fullUrl = `${tokenUrl}?${new URLSearchParams({ ...params, sign })}`;
-    console.log('[Daraz Callback] Token URL:', fullUrl.replace(appSecret, '***'));
+    // Lazada auth server handles token creation for all Daraz/Lazada regions
+    const tokenUrl = `https://auth.lazada.com/rest/auth/token/create?${qs}`;
+    console.log('[Daraz Callback] Requesting token from:', tokenUrl.replace(appSecret, '***'));
 
     try {
-        const tokenRes = await fetch(fullUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-        });
-        const tokenData = await tokenRes.json();
+        // Try POST first (Lazada standard), fall back to GET
+        let tokenData;
+        const postRes = await fetch(tokenUrl, { method: 'POST' });
+        tokenData = await postRes.json();
+
+        // If POST failed with server error, try GET
+        if (!tokenData.access_token && tokenData.code !== '0') {
+            console.log('[Daraz Callback] POST failed, trying GET. Response was:', JSON.stringify(tokenData));
+            const getRes = await fetch(tokenUrl, { method: 'GET' });
+            tokenData = await getRes.json();
+        }
 
         console.log('[Daraz Callback] Token response:', JSON.stringify(tokenData));
 
@@ -87,7 +84,6 @@ export async function GET(request) {
 
     } catch (err) {
         console.error('[Daraz Callback] Error:', err.message);
-        const msg = encodeURIComponent(err.message);
-        return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=${msg}`);
+        return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=${encodeURIComponent(err.message)}`);
     }
 }
