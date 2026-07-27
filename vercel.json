@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/woocommerce/auto-poll",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 1 * * *"
     }
   ]
 }
