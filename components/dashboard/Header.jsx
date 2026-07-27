@@ -64,11 +64,22 @@ export default function Header({ user }) {
                 )}
                 
                 {user?.plan_id && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px", background: "rgba(59,130,246,0.1)", borderRadius: 12, border: "1px solid rgba(59,130,246,0.2)" }}>
-                         <span style={{ fontSize: 12, fontWeight: 700, color: "#3B82F6" }}>
+                    <button
+                        onClick={() => router.push("/plans")}
+                        style={{
+                            display: "flex", alignItems: "center", gap: 8,
+                            padding: "6px 14px", background: "rgba(59,130,246,0.1)",
+                            borderRadius: 12, border: "1px solid rgba(59,130,246,0.2)",
+                            cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(59,130,246,0.18)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.45)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(59,130,246,0.1)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.2)"; }}
+                    >
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#3B82F6" }}>
                             {user.plans?.name || 'Active Plan'}
                         </span>
-                    </div>
+                        <span style={{ fontSize: 10, color: "#3B82F6", opacity: 0.65 }}>↗ Upgrade</span>
+                    </button>
                 )}
             </div>
 
