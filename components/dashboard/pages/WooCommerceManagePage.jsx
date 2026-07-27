@@ -88,6 +88,8 @@ export default function WooCommerceManagePage({ onBack }) {
         key: "",
         secret: ""
     });
+    const [webhookUrl, setWebhookUrl] = useState("");
+    const [copied, setCopied] = useState(false);
 
     const fetchConfig = async () => {
         try {
@@ -97,7 +99,7 @@ export default function WooCommerceManagePage({ onBack }) {
                 .select('wc_store_url, wc_consumer_key, wc_consumer_secret')
                 .eq('id', userId)
                 .single();
-            
+
             if (data) {
                 setConfig({
                     url: data.wc_store_url || "",
@@ -105,9 +107,18 @@ export default function WooCommerceManagePage({ onBack }) {
                     secret: data.wc_consumer_secret || ""
                 });
             }
+            const appUrl = window.location.origin;
+            setWebhookUrl(`${appUrl}/api/woocommerce/webhook?userId=${userId}`);
         } catch (e) {
             console.error("Failed to fetch WooCommerce config:", e);
         }
+    };
+
+    const copyWebhookUrl = () => {
+        navigator.clipboard.writeText(webhookUrl).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
     };
 
     const fetchOrders = useCallback(async (page = 1) => {
@@ -367,13 +378,47 @@ export default function WooCommerceManagePage({ onBack }) {
                             </GradientButton>
                         </div>
 
-                        <div style={{ marginTop: 32, padding: 16, background: "rgba(127,84,179,0.05)", borderRadius: T.r10, border: `1px solid ${T.border}` }}>
+                        <div style={{ marginTop: 24, padding: 16, background: "rgba(127,84,179,0.05)", borderRadius: T.r10, border: `1px solid ${T.border}` }}>
                             <div style={{ fontSize: 13, fontWeight: 700, color: T.purple, marginBottom: 6 }}>How to get these keys?</div>
                             <ol style={{ fontSize: 12, color: T.textMuted, paddingLeft: 18, lineHeight: 1.6 }}>
                                 <li>Go to your <strong>WooCommerce Store Admin</strong>.</li>
                                 <li>Navigate to <strong>WooCommerce → Settings → Advanced → REST API</strong>.</li>
                                 <li>Click <strong>Add Key</strong> → Permissions: <strong>Read/Write</strong>.</li>
                                 <li>Generate and copy the <strong>Consumer Key</strong> and <strong>Consumer Secret</strong>.</li>
+                            </ol>
+                        </div>
+
+                        {/* ── Webhook Setup ── */}
+                        <div style={{ marginTop: 20, padding: 16, background: "rgba(34,197,94,0.05)", borderRadius: T.r10, border: `1px solid rgba(34,197,94,0.2)` }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: T.green, marginBottom: 4 }}>
+                                Auto WhatsApp — Webhook Setup
+                            </div>
+                            <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 12, lineHeight: 1.6 }}>
+                                Paste this URL in WooCommerce to automatically send WhatsApp messages on new orders:
+                            </div>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+                                <code style={{
+                                    flex: 1, padding: "8px 12px", borderRadius: T.r8,
+                                    background: T.bgElev, border: `1px solid ${T.borderMid}`,
+                                    fontSize: 11, color: T.text, fontFamily: "monospace",
+                                    wordBreak: "break-all", lineHeight: 1.5,
+                                }}>{webhookUrl || "Loading…"}</code>
+                                <button onClick={copyWebhookUrl} style={{
+                                    padding: "8px 14px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
+                                    background: copied ? T.greenBg : T.bgElev,
+                                    color: copied ? T.green : T.textMuted,
+                                    border: `1px solid ${copied ? T.green + "44" : T.borderMid}`,
+                                    cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0,
+                                    transition: "all 0.15s",
+                                }}>{copied ? "✓ Copied" : "Copy"}</button>
+                            </div>
+                            <ol style={{ fontSize: 12, color: T.textMuted, paddingLeft: 18, lineHeight: 1.8, margin: 0 }}>
+                                <li>Go to <strong>WooCommerce → Settings → Advanced → Webhooks</strong></li>
+                                <li>Click <strong>Add webhook</strong></li>
+                                <li>Set <strong>Topic</strong> to <strong>Order created</strong></li>
+                                <li>Paste the URL above into the <strong>Delivery URL</strong> field</li>
+                                <li>Set Status to <strong>Active</strong> → Save</li>
+                                <li>Repeat for <strong>Order updated</strong> (same URL)</li>
                             </ol>
                         </div>
                     </Card>
