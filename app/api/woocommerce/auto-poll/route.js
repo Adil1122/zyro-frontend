@@ -152,13 +152,6 @@ async function pollUser(user) {
 }
 
 export async function GET(request) {
-    // Vercel cron passes the CRON_SECRET as Authorization header
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     try {
         // Find all users with WooCommerce configured and WhatsApp active
         const { data: users, error } = await supabase
