@@ -13,10 +13,19 @@ function buildSign(apiPath, params, appSecret) {
     return crypto.createHmac('sha256', appSecret).update(base, 'utf-8').digest('hex').toUpperCase();
 }
 
+// Lazada auth codes have format: {version}_{app_key}_{random}
+// e.g. 4_505264_tj7FJLqIno1tfkhLs0XydvVA63
+function extractAppKeyFromCode(code) {
+    if (!code) return null;
+    const parts = code.split('_');
+    if (parts.length >= 2) return parts[1];
+    return null;
+}
+
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
-    const state = searchParams.get('state'); // userId
+    let state = searchParams.get('state'); // userId — may be null if coming from Daraz portal directly
 
     console.log('[Daraz Callback] code:', code, '| state:', state);
 
@@ -25,20 +34,40 @@ export async function GET(request) {
     if (!code) {
         return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=no_code`);
     }
-    if (!state) {
-        return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=no_state`);
-    }
 
-    // Look up app credentials saved during initiation
-    const { data: user, error: userErr } = await supabase
-        .from('users')
-        .select('daraz_app_key, daraz_app_secret, daraz_region')
-        .eq('id', state)
-        .maybeSingle();
+    let user;
 
-    if (userErr || !user?.daraz_app_key || !user?.daraz_app_secret) {
-        console.error('[Daraz Callback] Missing credentials for user:', state, userErr?.message);
-        return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=no_credentials`);
+    if (state) {
+        // Normal flow: state = userId from our initiate route
+        const { data, error: userErr } = await supabase
+            .from('users')
+            .select('daraz_app_key, daraz_app_secret, daraz_region')
+            .eq('id', state)
+            .maybeSingle();
+        if (userErr || !data?.daraz_app_key) {
+            console.error('[Daraz Callback] No user found by state:', state, userErr?.message);
+            return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=no_credentials`);
+        }
+        user = data;
+    } else {
+        // Fallback: state missing (user came from Daraz portal "Show Auth Page")
+        // Extract app_key from code format: {version}_{app_key}_{token}
+        const appKeyFromCode = extractAppKeyFromCode(code);
+        console.log('[Daraz Callback] No state — extracted app_key from code:', appKeyFromCode);
+        if (!appKeyFromCode) {
+            return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=no_state_or_appkey`);
+        }
+        const { data, error: userErr } = await supabase
+            .from('users')
+            .select('id, daraz_app_key, daraz_app_secret, daraz_region')
+            .eq('daraz_app_key', appKeyFromCode)
+            .maybeSingle();
+        if (userErr || !data?.daraz_app_key) {
+            console.error('[Daraz Callback] No user found by app_key:', appKeyFromCode, userErr?.message);
+            return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=no_user_for_appkey`);
+        }
+        user = data;
+        state = data.id; // Use the found user's ID going forward
     }
 
     const appKey = user.daraz_app_key;
@@ -49,33 +78,37 @@ export async function GET(request) {
     const sign = buildSign('/auth/token/create', params, appSecret);
     const qs = new URLSearchParams({ ...params, sign }).toString();
 
-    // Lazada auth server handles token creation for all Daraz/Lazada regions
+    // Lazada auth server for all regions
     const tokenUrl = `https://auth.lazada.com/rest/auth/token/create?${qs}`;
-    console.log('[Daraz Callback] Requesting token from:', tokenUrl.replace(appSecret, '***'));
+    console.log('[Daraz Callback] Requesting token, params:', JSON.stringify({ ...params, sign }));
 
     try {
-        // Try POST first (Lazada standard), fall back to GET
+        // Official Lazada PHP SDK sends params in both URL query string AND form body
+        const formBody = qs;
+        const tokenRes = await fetch(tokenUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formBody,
+        });
+
+        const raw = await tokenRes.text();
+        console.log('[Daraz Callback] Raw token response:', raw);
+
         let tokenData;
-        const postRes = await fetch(tokenUrl, { method: 'POST' });
-        tokenData = await postRes.json();
+        try { tokenData = JSON.parse(raw); } catch { tokenData = {}; }
 
-        // If POST failed with server error, try GET
-        if (!tokenData.access_token && tokenData.code !== '0') {
-            console.log('[Daraz Callback] POST failed, trying GET. Response was:', JSON.stringify(tokenData));
-            const getRes = await fetch(tokenUrl, { method: 'GET' });
-            tokenData = await getRes.json();
-        }
+        // Token can be at top level or nested under result
+        const accessToken = tokenData.access_token || tokenData.result?.access_token;
 
-        console.log('[Daraz Callback] Token response:', JSON.stringify(tokenData));
-
-        if (!tokenData.access_token) {
-            const msg = encodeURIComponent(tokenData.message || tokenData.code || 'token_exchange_failed');
-            return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=${msg}`);
+        if (!accessToken) {
+            const errMsg = tokenData.message || tokenData.result?.message || raw || 'token_exchange_failed';
+            console.error('[Daraz Callback] No access_token:', raw);
+            return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=${encodeURIComponent(errMsg)}`);
         }
 
         // Save access token to DB
         await supabase.from('users').update({
-            daraz_access_token: tokenData.access_token,
+            daraz_access_token: accessToken,
             daraz_is_active: true,
         }).eq('id', state);
 
@@ -83,7 +116,7 @@ export async function GET(request) {
         return NextResponse.redirect(`${appUrl}/settings/stores?daraz=connected`);
 
     } catch (err) {
-        console.error('[Daraz Callback] Error:', err.message);
+        console.error('[Daraz Callback] Fetch error:', err.message);
         return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=${encodeURIComponent(err.message)}`);
     }
 }
