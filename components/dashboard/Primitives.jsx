@@ -39,7 +39,7 @@ export function ZyroLogo({ size = 34, showText = true }) {
     );
 }
 
-export function GradientButton({ children, onClick, variant = "primary", size = "md", icon, iconRight, full, disabled }) {
+export function GradientButton({ children, onClick, variant = "primary", size = "md", icon, iconRight, full, disabled, type = "button" }) {
     const [hover, setHover] = useState(false);
     const [active, setActive] = useState(false);
     const sizes = {
@@ -55,7 +55,7 @@ export function GradientButton({ children, onClick, variant = "primary", size = 
         danger: { bg: active ? "#FCA5A5" : hover ? "#991B1B" : "rgba(248,113,113,0.15)", color: active ? T.bg : T.red, border: `1px solid ${T.red}44`, shadow: "none" },
     }[variant];
     return (
-        <button onClick={onClick} disabled={disabled}
+        <button type={type} onClick={onClick} disabled={disabled}
             onMouseEnter={() => setHover(true)}
             onMouseLeave={() => { setHover(false); setActive(false); }}
             onMouseDown={() => setActive(true)}

@@ -78,7 +78,7 @@ function parseCSV(text) {
 
 // ── New Order Modal ──────────────────────────────────────────────────────────
 
-function NewOrderModal({ onClose, onCreated }) {
+export function NewOrderModal({ onClose, onCreated }) {
     const [form, setForm] = useState({ customerName: '', customerPhone: '', city: '', amount: '', status: 'pending' });
     const [saving, setSaving] = useState(false);
     const [err, setErr] = useState('');
@@ -341,11 +341,14 @@ export default function OrdersPage() {
             const res = await fetch(url);
             if (!res.ok) throw new Error('Export failed');
             const blob = await res.blob();
+            const objectUrl = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
+            a.href = objectUrl;
             a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a);
             a.click();
-            URL.revokeObjectURL(a.href);
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
             showToast('Export downloaded');
         } catch (e) {
             showToast(e.message, 'error');

@@ -11,12 +11,15 @@ import { T, salesData, revenueData, platformData, orders } from "../constants";
 import Icon from "../Icon";
 import { GradientButton, Badge, PlatformBadge, Card, KPI, ChartTip, PageHeader } from "../Primitives";
 import { getCurrentUserId } from "../../../lib/auth";
+import { NewOrderModal } from "./OrdersPage";
 
 export default function DashboardPage() {
     const [range, setRange] = useState("7d");
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState(null);
+    const [showNewOrder, setShowNewOrder] = useState(false);
+    const [exporting, setExporting] = useState(false);
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -56,6 +59,29 @@ export default function DashboardPage() {
         return () => clearInterval(interval);
     }, []);
 
+    const handleExport = async () => {
+        setExporting(true);
+        try {
+            const userId = getCurrentUserId();
+            const url = `/api/orders/export?userId=${encodeURIComponent(userId)}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Export failed');
+            const blob = await res.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = objectUrl;
+            a.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
+        } catch (e) {
+            console.error('Export failed:', e);
+        } finally {
+            setExporting(false);
+        }
+    };
+
     const formatTime = (dateStr) => {
         const date = new Date(dateStr);
         const now = new Date();
@@ -78,6 +104,12 @@ export default function DashboardPage() {
 
     return (
         <div style={{ padding: "28px 32px", maxWidth: 1280 }}>
+            {showNewOrder && (
+                <NewOrderModal
+                    onClose={() => setShowNewOrder(false)}
+                    onCreated={() => setShowNewOrder(false)}
+                />
+            )}
             <PageHeader
                 title={`Good morning, ${user?.name?.split(' ')[0] || 'User'}`}
                 subtitle={`${new Date().toLocaleDateString('en-PK', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} · Here's your Zyro overview`}
@@ -94,8 +126,8 @@ export default function DashboardPage() {
                             }}>{r}</button>
                         ))}
                     </div>
-                    <GradientButton variant="secondary" size="sm" icon="download">Export</GradientButton>
-                    <GradientButton variant="primary" size="sm" icon="plus">Manual Order</GradientButton>
+                    <GradientButton variant="secondary" size="sm" icon="download" onClick={handleExport} disabled={exporting}>{exporting ? 'Exporting...' : 'Export'}</GradientButton>
+                    <GradientButton variant="primary" size="sm" icon="plus" onClick={() => setShowNewOrder(true)}>Manual Order</GradientButton>
                 </>}
             />
             <div style={{
