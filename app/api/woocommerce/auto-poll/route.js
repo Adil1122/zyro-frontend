@@ -17,29 +17,42 @@ async function pollUser(user) {
         queryStringAuth: true,
     });
 
-    // Fetch orders created in the last 15 minutes
-    const after = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-    let wcOrders;
+    const windowStart = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    let wcOrders = [];
     try {
-        const res = await api.get('orders', { after, per_page: 20, orderby: 'date', order: 'desc', status: 'any' });
-        wcOrders = res.data || [];
+        // Fetch newly created orders
+        const newRes = await api.get('orders', { after: windowStart, per_page: 20, orderby: 'date', order: 'desc', status: 'any' });
+        // Fetch recently modified orders (catches status changes like cancellations)
+        const modRes = await api.get('orders', { modified_after: windowStart, per_page: 20, orderby: 'modified', order: 'desc', status: 'any' });
+        // Merge and deduplicate by order ID
+        const seen = new Set();
+        for (const o of [...(newRes.data || []), ...(modRes.data || [])]) {
+            const key = (o.number || o.id).toString();
+            if (!seen.has(key)) { seen.add(key); wcOrders.push(o); }
+        }
     } catch (err) {
         console.error(`[WC Poll] API error for user ${userId}:`, err.message);
         return { userId, error: err.message };
     }
 
-    if (wcOrders.length === 0) return { userId, newOrders: 0 };
+    if (wcOrders.length === 0) return { userId, newOrders: 0, updatedOrders: 0 };
 
     let newCount = 0;
+    let updatedCount = 0;
+    const NOTIFIABLE = ['processing', 'completed', 'cancelled', 'refunded', 'on-hold', 'failed'];
 
     for (const wcOrder of wcOrders) {
         const orderNumber = (wcOrder.number || wcOrder.id).toString();
 
-        // Skip if already in DB
         const { data: existing } = await supabase
-            .from('orders').select('id')
+            .from('orders').select('id, status')
             .eq('user_id', userId).eq('order_id', orderNumber).maybeSingle();
-        if (existing?.id) continue;
+        const isNewOrder = !existing?.id;
+        const oldStatus = existing?.status?.toLowerCase().replace(/^wc-/, '') || null;
+        const newStatus = (wcOrder.status || '').replace(/^wc-/, '').toLowerCase();
+
+        // Skip if already in DB and status hasn't changed
+        if (!isNewOrder && oldStatus === newStatus) continue;
 
         const billing = wcOrder.billing || {};
         const customerName = `${billing.first_name || ''} ${billing.last_name || ''}`.trim() || 'Guest';
@@ -85,40 +98,32 @@ async function pollUser(user) {
             }
         }
 
-        // Insert order
-        const { data: newOrder, error: insertErr } = await supabase
-            .from('orders')
-            .insert({
-                user_id: userId,
-                customer_id: customerId,
-                order_id: orderNumber,
-                platform_id: 1,
-                status: orderStatus,
-                total_amount: orderTotal,
-            })
-            .select('id').single();
-
-        if (insertErr) {
-            console.error(`[WC Poll] Order insert error for #${orderNumber}:`, insertErr.message);
-            continue;
+        // Upsert order
+        let dbOrderId;
+        const orderPayload = { user_id: userId, customer_id: customerId, order_id: orderNumber, platform_id: 1, status: newStatus, total_amount: orderTotal };
+        if (isNewOrder) {
+            const { data: newOrder, error: insertErr } = await supabase.from('orders').insert(orderPayload).select('id').single();
+            if (insertErr) { console.error(`[WC Poll] Order insert error #${orderNumber}:`, insertErr.message); continue; }
+            dbOrderId = newOrder.id;
+            newCount++;
+        } else {
+            await supabase.from('orders').update({ status: newStatus, total_amount: orderTotal }).eq('id', existing.id);
+            dbOrderId = existing.id;
+            updatedCount++;
         }
 
-        const dbOrderId = newOrder.id;
-
-        // Insert order items
+        // Sync order items for new orders
         const items = wcOrder.line_items || [];
-        if (items.length > 0) {
+        if (isNewOrder && items.length > 0) {
             const orderItems = [];
             for (const item of items) {
                 let productId = null;
                 if (item.sku) {
-                    const { data: p } = await supabase.from('products').select('id')
-                        .eq('user_id', userId).eq('sku', item.sku).maybeSingle();
+                    const { data: p } = await supabase.from('products').select('id').eq('user_id', userId).eq('sku', item.sku).maybeSingle();
                     productId = p?.id || null;
                 }
                 if (!productId && item.name) {
-                    const { data: p } = await supabase.from('products').select('id')
-                        .eq('user_id', userId).eq('name', item.name).maybeSingle();
+                    const { data: p } = await supabase.from('products').select('id').eq('user_id', userId).eq('name', item.name).maybeSingle();
                     productId = p?.id || null;
                 }
                 orderItems.push({ order_id: dbOrderId, product_id: productId, quantity: item.quantity, price: parseFloat(item.price || 0) });
@@ -126,29 +131,28 @@ async function pollUser(user) {
             await supabase.from('order_items').insert(orderItems);
         }
 
-        console.log(`[WC Poll] New order #${orderNumber} saved for user ${userId}`);
-        newCount++;
+        console.log(`[WC Poll] #${orderNumber} isNew=${isNewOrder} | ${oldStatus} → ${newStatus} | user ${userId}`);
 
-        // Merchant WhatsApp alert
-        await whatsappService.sendMerchantOrderAlert(userId, orderNumber, customerName, orderTotal)
-            .catch(err => console.error(`[WC Poll] Merchant WA error for #${orderNumber}:`, err.message));
-
-        // Customer WhatsApp notification
-        if (customerPhone) {
-            const shipping = wcOrder.shipping || {};
-            await whatsappService.sendOrderCreated(userId, {
-                customerPhone,
-                customerName,
-                orderNumber,
-                total: orderTotal,
-                deliveryAddress: shipping.address_1 || billing.address_1 || 'N/A',
-                cityName: shipping.city || billing.city || '',
-                orderDetail: items.map(i => i.name).join(', ') || '',
-            }).catch(err => console.error(`[WC Poll] sendOrderCreated error for #${orderNumber}:`, err.message));
+        // WhatsApp notifications
+        if (isNewOrder) {
+            await whatsappService.sendMerchantOrderAlert(userId, orderNumber, customerName, orderTotal)
+                .catch(err => console.error(`[WC Poll] Merchant WA error #${orderNumber}:`, err.message));
+            if (customerPhone && !['cancelled', 'refunded', 'failed'].includes(newStatus)) {
+                const shipping = wcOrder.shipping || {};
+                await whatsappService.sendOrderCreated(userId, {
+                    customerPhone, customerName, orderNumber, total: orderTotal,
+                    deliveryAddress: shipping.address_1 || billing.address_1 || 'N/A',
+                    cityName: shipping.city || billing.city || '',
+                    orderDetail: items.map(i => i.name).join(', ') || '',
+                }).catch(err => console.error(`[WC Poll] sendOrderCreated error #${orderNumber}:`, err.message));
+            }
+        } else if (NOTIFIABLE.includes(newStatus) && customerPhone) {
+            await whatsappService.sendOrderStatusUpdate(userId, orderNumber, newStatus, customerPhone, customerName, orderTotal)
+                .catch(err => console.error(`[WC Poll] sendStatusUpdate error #${orderNumber}:`, err.message));
         }
     }
 
-    return { userId, newOrders: newCount, checked: wcOrders.length };
+    return { userId, newOrders: newCount, updatedOrders: updatedCount, checked: wcOrders.length };
 }
 
 export async function GET(request) {
@@ -168,9 +172,9 @@ export async function GET(request) {
         }
 
         const results = await Promise.all(users.map(u => pollUser(u)));
-        const total = results.reduce((sum, r) => sum + (r.newOrders || 0), 0);
+        const total = results.reduce((sum, r) => sum + (r.newOrders || 0) + (r.updatedOrders || 0), 0);
 
-        console.log(`[WC Poll] Done. ${total} new orders across ${users.length} users.`);
+        console.log(`[WC Poll] Done. ${total} new/updated orders across ${users.length} users.`);
         return NextResponse.json({ success: true, total, results });
 
     } catch (err) {
