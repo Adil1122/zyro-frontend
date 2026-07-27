@@ -185,6 +185,19 @@ export default function WooCommerceManagePage({ onBack }) {
         fetchOrders(1);
     }, [search, statusFilter]);
 
+    // Auto-poll for new/updated orders every 5 minutes while page is open
+    useEffect(() => {
+        const runPoll = () => {
+            fetch('/api/woocommerce/auto-poll')
+                .then(r => r.json())
+                .then(data => { if (data.total > 0) fetchOrders(1); })
+                .catch(() => {});
+        };
+        runPoll();
+        const interval = setInterval(runPoll, 5 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, []);
+
     const handleSearch = (e) => {
         e.preventDefault();
         setSearch(searchInput.trim());
