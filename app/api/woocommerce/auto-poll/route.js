@@ -133,22 +133,43 @@ async function pollUser(user) {
 
         console.log(`[WC Poll] #${orderNumber} isNew=${isNewOrder} | ${oldStatus} → ${newStatus} | user ${userId}`);
 
+        // Resolve phone — use billing.phone first, fall back to DB customer record
+        let resolvedPhone = customerPhone;
+        if (!resolvedPhone && customerId) {
+            const { data: c } = await supabase.from('customers').select('contact').eq('id', customerId).maybeSingle();
+            resolvedPhone = c?.contact || '';
+        }
+        if (!resolvedPhone && existing?.id) {
+            const { data: dbOrder } = await supabase
+                .from('orders').select('customer_id').eq('id', existing.id).maybeSingle();
+            if (dbOrder?.customer_id) {
+                const { data: c } = await supabase.from('customers').select('contact').eq('id', dbOrder.customer_id).maybeSingle();
+                resolvedPhone = c?.contact || '';
+            }
+        }
+
+        console.log(`[WC Poll] #${orderNumber} phone=${resolvedPhone || 'MISSING'} isNew=${isNewOrder} ${oldStatus}→${newStatus}`);
+
         // WhatsApp notifications
         if (isNewOrder) {
             await whatsappService.sendMerchantOrderAlert(userId, orderNumber, customerName, orderTotal)
                 .catch(err => console.error(`[WC Poll] Merchant WA error #${orderNumber}:`, err.message));
-            if (customerPhone && !['cancelled', 'refunded', 'failed'].includes(newStatus)) {
+            if (resolvedPhone && !['cancelled', 'refunded', 'failed'].includes(newStatus)) {
                 const shipping = wcOrder.shipping || {};
                 await whatsappService.sendOrderCreated(userId, {
-                    customerPhone, customerName, orderNumber, total: orderTotal,
+                    customerPhone: resolvedPhone, customerName, orderNumber, total: orderTotal,
                     deliveryAddress: shipping.address_1 || billing.address_1 || 'N/A',
                     cityName: shipping.city || billing.city || '',
                     orderDetail: items.map(i => i.name).join(', ') || '',
                 }).catch(err => console.error(`[WC Poll] sendOrderCreated error #${orderNumber}:`, err.message));
             }
-        } else if (NOTIFIABLE.includes(newStatus) && customerPhone) {
-            await whatsappService.sendOrderStatusUpdate(userId, orderNumber, newStatus, customerPhone, customerName, orderTotal)
-                .catch(err => console.error(`[WC Poll] sendStatusUpdate error #${orderNumber}:`, err.message));
+        } else if (NOTIFIABLE.includes(newStatus)) {
+            if (resolvedPhone) {
+                await whatsappService.sendOrderStatusUpdate(userId, orderNumber, newStatus, resolvedPhone, customerName, orderTotal)
+                    .catch(err => console.error(`[WC Poll] sendStatusUpdate error #${orderNumber}:`, err.message));
+            } else {
+                console.warn(`[WC Poll] No phone for order #${orderNumber} — status update WA skipped`);
+            }
         }
     }
 
