@@ -99,7 +99,7 @@ export default function DarazManagePage({ onBack }) {
     const [isConfigured, setIsConfigured] = useState(null);
 
     // Credentials form state
-    const [creds, setCreds] = useState({ appKey: "", appSecret: "", accessToken: "", region: "pk" });
+    const [creds, setCreds] = useState({ appKey: "", appSecret: "", region: "pk" });
     const [saving, setSaving] = useState(false);
     const [saveMsg, setSaveMsg] = useState(null);
 
@@ -139,27 +139,25 @@ export default function DarazManagePage({ onBack }) {
         }
     }, [search, statusFilter, pagination.perPage, userId]);
 
-    const handleSaveCredentials = async (e) => {
+    const handleConnectOAuth = async (e) => {
         e.preventDefault();
         setSaving(true);
         setSaveMsg(null);
         try {
-            const res = await fetch('/api/daraz/save-credentials', {
+            const res = await fetch('/api/daraz/initiate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
                 body: JSON.stringify(creds),
             });
             const data = await res.json();
-            if (data.success) {
-                setSaveMsg({ success: true, text: data.message });
-                setIsConfigured(true);
-                fetchOrders(1);
+            if (data.authUrl) {
+                window.location.href = data.authUrl;
             } else {
-                setSaveMsg({ success: false, text: data.error || 'Failed to save' });
+                setSaveMsg({ success: false, text: data.error || 'Failed to start OAuth' });
+                setSaving(false);
             }
         } catch (err) {
             setSaveMsg({ success: false, text: err.message });
-        } finally {
             setSaving(false);
         }
     };
@@ -335,16 +333,15 @@ export default function DarazManagePage({ onBack }) {
                                 {" "}→ My Apps → your app → App Info
                             </div>
 
-                            <form onSubmit={handleSaveCredentials} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                            <form onSubmit={handleConnectOAuth} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                                 {[
-                                    { key: "appKey", label: "App Key", placeholder: "e.g. 123456" },
-                                    { key: "appSecret", label: "App Secret", placeholder: "Paste your App Secret" },
-                                    { key: "accessToken", label: "Access Token", placeholder: "Paste your Self-Authorization Token" },
-                                ].map(({ key, label, placeholder }) => (
+                                    { key: "appKey", label: "App Key", placeholder: "e.g. 505264", type: "text" },
+                                    { key: "appSecret", label: "App Secret", placeholder: "Paste your App Secret", type: "password" },
+                                ].map(({ key, label, placeholder, type }) => (
                                     <div key={key}>
                                         <div style={{ fontSize: 12, fontWeight: 600, color: T.textMuted, marginBottom: 5 }}>{label}</div>
                                         <input
-                                            type={key === "appSecret" || key === "accessToken" ? "password" : "text"}
+                                            type={type}
                                             value={creds[key]}
                                             onChange={e => setCreds(p => ({ ...p, [key]: e.target.value }))}
                                             placeholder={placeholder}
@@ -394,16 +391,16 @@ export default function DarazManagePage({ onBack }) {
                                     color: saving ? T.textMuted : "#fff", border: "none",
                                     cursor: saving ? "not-allowed" : "pointer", fontFamily: "inherit",
                                 }}>
-                                    {saving ? "Connecting…" : "Connect Daraz Store"}
+                                    {saving ? "Redirecting to Daraz…" : "🔗 Connect with Daraz OAuth"}
                                 </button>
                             </form>
 
                             <div style={{ marginTop: 20, padding: "12px 14px", background: "rgba(245,125,41,0.07)", borderRadius: 8, fontSize: 11, color: "#F57D29", lineHeight: 1.6 }}>
-                                <strong>How to get credentials:</strong><br />
-                                1. Go to open.daraz.com → sign in<br />
-                                2. Create an app (or open existing)<br />
-                                3. Copy <strong>App Key</strong> and <strong>App Secret</strong><br />
-                                4. Click <strong>Self Authorization</strong> to get <strong>Access Token</strong>
+                                <strong>How to connect:</strong><br />
+                                1. Go to <strong>open.daraz.com</strong> → sign in → My Apps<br />
+                                2. Open your app → copy <strong>App Key</strong> and <strong>App Secret</strong><br />
+                                3. Paste them above and click <strong>Connect with Daraz OAuth</strong><br />
+                                4. You will be redirected to Daraz to authorize — the token is saved automatically
                             </div>
                         </div>
                     </div>

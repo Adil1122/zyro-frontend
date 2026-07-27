@@ -1638,6 +1638,18 @@ export default function SettingsPage({ tabParam }) {
         }
     }, []);
 
+    // Detect Daraz OAuth callback redirect
+    useEffect(() => {
+        const darazStatus = searchParams.get("daraz");
+        if (darazStatus === "connected") {
+            setManagingStore("daraz");
+            router.replace(`/settings/stores?manage=daraz`);
+        } else if (darazStatus === "error") {
+            const msg = searchParams.get("msg") || "OAuth failed";
+            console.error("[Daraz OAuth] Error:", msg);
+        }
+    }, []);
+
 
     const handleTabChange = (newTab) => {
         setTab(newTab);
