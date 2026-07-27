@@ -5,6 +5,13 @@ import { getDarazOrderById, getCredentials, isDarazConfigured } from '@/lib/serv
 
 export const dynamic = 'force-dynamic';
 
+// GET handler — Daraz sends a verification ping to confirm the URL is reachable
+export async function GET(request) {
+    const { searchParams } = new URL(request.url);
+    const code = searchParams.get('code') || searchParams.get('challenge') || 'ok';
+    return NextResponse.json({ code });
+}
+
 // Order statuses that trigger customer WhatsApp
 const NOTIFIABLE = ['processing', 'packed', 'shipped', 'delivered', 'cancelled', 'returned'];
 
@@ -17,6 +24,11 @@ export async function POST(request) {
     }
 
     console.log('[Daraz Webhook] Raw payload:', JSON.stringify(body));
+
+    // Verification challenge — echo code back
+    if (body.code && !body.event && !body.data) {
+        return NextResponse.json({ code: body.code });
+    }
 
     // Parse event type and seller identifier
     const event = body.event || body.type || '';
