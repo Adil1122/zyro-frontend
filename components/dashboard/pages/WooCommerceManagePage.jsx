@@ -108,7 +108,7 @@ export default function WooCommerceManagePage({ onBack }) {
                 });
             }
             const appUrl = window.location.origin;
-            setWebhookUrl(`${appUrl}/api/woocommerce/webhook?userId=${userId}`);
+            setWebhookUrl(`${appUrl}/api/woocommerce/webhook/${userId}`);
         } catch (e) {
             console.error("Failed to fetch WooCommerce config:", e);
         }
