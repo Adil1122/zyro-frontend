@@ -99,9 +99,10 @@ export default function DarazManagePage({ onBack }) {
     const [isConfigured, setIsConfigured] = useState(null);
 
     // Credentials form state
-    const [creds, setCreds] = useState({ appKey: "", appSecret: "", region: "pk" });
+    const [creds, setCreds] = useState({ appKey: "", appSecret: "", accessToken: "", region: "pk" });
     const [saving, setSaving] = useState(false);
     const [saveMsg, setSaveMsg] = useState(null);
+    const [showManualToken, setShowManualToken] = useState(false);
 
     const userId = getCurrentUserId();
 
@@ -144,6 +145,25 @@ export default function DarazManagePage({ onBack }) {
         setSaving(true);
         setSaveMsg(null);
         try {
+            // If user pasted an access token manually, save directly
+            if (creds.accessToken.trim()) {
+                const res = await fetch('/api/daraz/save-credentials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                    body: JSON.stringify(creds),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    setSaveMsg({ success: true, text: 'Daraz connected successfully!' });
+                    setIsConfigured(true);
+                    fetchOrders(1);
+                } else {
+                    setSaveMsg({ success: false, text: data.error || 'Failed to save' });
+                }
+                setSaving(false);
+                return;
+            }
+            // Otherwise redirect to Daraz OAuth
             const res = await fetch('/api/daraz/initiate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
@@ -376,6 +396,32 @@ export default function DarazManagePage({ onBack }) {
                                     </select>
                                 </div>
 
+                                {/* Optional manual Access Token */}
+                                <div>
+                                    <button type="button" onClick={() => setShowManualToken(p => !p)} style={{
+                                        background: "none", border: "none", padding: 0, cursor: "pointer",
+                                        fontSize: 12, color: "#F57D29", fontFamily: "inherit", textDecoration: "underline",
+                                    }}>
+                                        {showManualToken ? "▾ Hide" : "▸ Have an Access Token? Paste it manually"}
+                                    </button>
+                                    {showManualToken && (
+                                        <div style={{ marginTop: 8 }}>
+                                            <input
+                                                type="password"
+                                                value={creds.accessToken}
+                                                onChange={e => setCreds(p => ({ ...p, accessToken: e.target.value }))}
+                                                placeholder="Paste Access Token from API Explorer or Daraz portal"
+                                                style={{
+                                                    width: "100%", padding: "9px 12px", fontSize: 13,
+                                                    background: T.bgElev, border: `1px solid ${T.borderMid}`,
+                                                    borderRadius: 8, color: T.text, outline: "none",
+                                                    fontFamily: "inherit", boxSizing: "border-box",
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
                                 {saveMsg && (
                                     <div style={{
                                         padding: "10px 14px", borderRadius: 8, fontSize: 12,
@@ -391,16 +437,19 @@ export default function DarazManagePage({ onBack }) {
                                     color: saving ? T.textMuted : "#fff", border: "none",
                                     cursor: saving ? "not-allowed" : "pointer", fontFamily: "inherit",
                                 }}>
-                                    {saving ? "Redirecting to Daraz…" : "🔗 Connect with Daraz OAuth"}
+                                    {saving
+                                        ? (creds.accessToken.trim() ? "Connecting…" : "Redirecting to Daraz…")
+                                        : (creds.accessToken.trim() ? "✓ Save & Connect" : "🔗 Connect with Daraz OAuth")}
                                 </button>
                             </form>
 
                             <div style={{ marginTop: 20, padding: "12px 14px", background: "rgba(245,125,41,0.07)", borderRadius: 8, fontSize: 11, color: "#F57D29", lineHeight: 1.6 }}>
-                                <strong>How to connect:</strong><br />
-                                1. Go to <strong>open.daraz.com</strong> → sign in → My Apps<br />
-                                2. Open your app → copy <strong>App Key</strong> and <strong>App Secret</strong><br />
-                                3. Paste them above and click <strong>Connect with Daraz OAuth</strong><br />
-                                4. You will be redirected to Daraz to authorize — the token is saved automatically
+                                <strong>Option A — OAuth (for Daraz sellers):</strong><br />
+                                Enter App Key + App Secret → click Connect → authorize on Daraz<br /><br />
+                                <strong>Option B — Manual token (for developers/ISV):</strong><br />
+                                1. Go to <strong>open.daraz.com</strong> → your app → <strong>API Explorer</strong><br />
+                                2. Find the Access Token shown there (or generate one)<br />
+                                3. Click "Have an Access Token?" above → paste it → Save
                             </div>
                         </div>
                     </div>
