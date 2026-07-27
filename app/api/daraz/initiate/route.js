@@ -22,8 +22,9 @@ export async function POST(request) {
     if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
 
     const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.zyroocloud.com'}/api/daraz/callback`;
-    // All Daraz/Lazada regions use the same Lazada auth server
-    const authUrl = `https://auth.lazada.com/oauth/authorize?response_type=code&redirect_uri=${encodeURIComponent(callbackUrl)}&client_id=${appKey}&state=${userId}`;
+    // No state param — Lazada's auth server may reject unknown/long state values.
+    // Callback looks up user by app_key extracted from the code instead.
+    const authUrl = `https://auth.lazada.com/oauth/authorize?response_type=code&redirect_uri=${encodeURIComponent(callbackUrl)}&client_id=${appKey}`;
 
     return NextResponse.json({ authUrl });
 }

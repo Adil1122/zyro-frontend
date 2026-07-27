@@ -83,26 +83,39 @@ export async function GET(request) {
     console.log('[Daraz Callback] Requesting token, params:', JSON.stringify({ ...params, sign }));
 
     try {
-        // Official Lazada PHP SDK sends params in both URL query string AND form body
-        const formBody = qs;
-        const tokenRes = await fetch(tokenUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formBody,
-        });
+        // Try GET first (simpler, used in many Lazada examples), fall back to POST
+        let raw;
+        const getRes = await fetch(tokenUrl, { method: 'GET' });
+        raw = await getRes.text();
+        console.log('[Daraz Callback] GET response:', raw);
 
-        const raw = await tokenRes.text();
+        let tokenDataCheck;
+        try { tokenDataCheck = JSON.parse(raw); } catch { tokenDataCheck = {}; }
+        const hasToken = tokenDataCheck.access_token || tokenDataCheck.result?.access_token;
+
+        if (!hasToken) {
+            // Fallback: POST with form body (official Lazada PHP SDK pattern)
+            const postRes = await fetch(tokenUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: qs,
+            });
+            raw = await postRes.text();
+            console.log('[Daraz Callback] POST response:', raw);
+        }
+
+        const rawFinal = raw;
         console.log('[Daraz Callback] Raw token response:', raw);
 
         let tokenData;
-        try { tokenData = JSON.parse(raw); } catch { tokenData = {}; }
+        try { tokenData = JSON.parse(rawFinal); } catch { tokenData = {}; }
 
         // Token can be at top level or nested under result
         const accessToken = tokenData.access_token || tokenData.result?.access_token;
 
         if (!accessToken) {
-            const errMsg = tokenData.message || tokenData.result?.message || raw || 'token_exchange_failed';
-            console.error('[Daraz Callback] No access_token:', raw);
+            const errMsg = tokenData.message || tokenData.result?.message || rawFinal || 'token_exchange_failed';
+            console.error('[Daraz Callback] No access_token:', rawFinal);
             return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=${encodeURIComponent(errMsg)}`);
         }
 
