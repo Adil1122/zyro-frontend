@@ -4,10 +4,22 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
+const REGION_TOKEN_URL = {
+    pk: 'https://api.daraz.pk/rest/auth/token/create',
+    bd: 'https://api.daraz.com.bd/rest/auth/token/create',
+    lk: 'https://api.daraz.lk/rest/auth/token/create',
+    my: 'https://api.lazada.com.my/rest/auth/token/create',
+    sg: 'https://api.lazada.sg/rest/auth/token/create',
+    th: 'https://api.lazada.co.th/rest/auth/token/create',
+    ph: 'https://api.lazada.com.ph/rest/auth/token/create',
+    id: 'https://api.lazada.co.id/rest/auth/token/create',
+    vn: 'https://api.lazada.vn/rest/auth/token/create',
+};
+
 function buildSign(apiPath, params, appSecret) {
     const sorted = Object.keys(params).sort().map(k => `${k}${params[k]}`).join('');
     const message = apiPath + sorted;
-    return crypto.createHmac('sha256', appSecret).update(message).digest('hex').toUpperCase();
+    return crypto.createHmac('sha256', appSecret).update(message, 'utf-8').digest('hex').toUpperCase();
 }
 
 export async function GET(request) {
@@ -29,7 +41,7 @@ export async function GET(request) {
     // Look up app credentials saved during initiation
     const { data: user, error: userErr } = await supabase
         .from('users')
-        .select('daraz_app_key, daraz_app_secret')
+        .select('daraz_app_key, daraz_app_secret, daraz_region')
         .eq('id', state)
         .maybeSingle();
 
@@ -40,16 +52,21 @@ export async function GET(request) {
 
     const appKey = user.daraz_app_key;
     const appSecret = user.daraz_app_secret;
+    const region = user.daraz_region || 'pk';
     const timestamp = Date.now().toString();
+    const tokenUrl = REGION_TOKEN_URL[region] || REGION_TOKEN_URL['pk'];
 
     const params = { app_key: appKey, code, sign_method: 'sha256', timestamp };
     const sign = buildSign('/auth/token/create', params, appSecret);
 
+    const fullUrl = `${tokenUrl}?${new URLSearchParams({ ...params, sign })}`;
+    console.log('[Daraz Callback] Token URL:', fullUrl.replace(appSecret, '***'));
+
     try {
-        const tokenRes = await fetch(
-            `https://auth.lazada.com/rest/auth/token/create?${new URLSearchParams({ ...params, sign })}`,
-            { method: 'POST' }
-        );
+        const tokenRes = await fetch(fullUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
         const tokenData = await tokenRes.json();
 
         console.log('[Daraz Callback] Token response:', JSON.stringify(tokenData));

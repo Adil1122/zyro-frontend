@@ -1374,6 +1374,7 @@ export default function SettingsPage({ tabParam }) {
     
     const initialManaging = searchParams.get("manage");
     const [managingStore, setManagingStore] = useState(initialManaging);
+    const [darazOAuthError, setDarazOAuthError] = useState(null);
 
     // ─── WhatsApp Integration State ───
     const [waConfig, setWaConfig] = useState({
@@ -1647,6 +1648,8 @@ export default function SettingsPage({ tabParam }) {
         } else if (darazStatus === "error") {
             const msg = searchParams.get("msg") || "OAuth failed";
             console.error("[Daraz OAuth] Error:", msg);
+            setDarazOAuthError(msg);
+            router.replace(`/settings/stores`);
         }
     }, []);
 
@@ -1740,6 +1743,25 @@ export default function SettingsPage({ tabParam }) {
                         <p style={{ fontSize: 13, color: T.textMuted, margin: "0 0 24px" }}>
                             Connect your sales channels. Orders and inventory sync automatically.
                         </p>
+
+                        {/* Daraz OAuth error banner */}
+                        {darazOAuthError && (
+                            <div style={{
+                                marginBottom: 16, padding: "12px 16px",
+                                background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)",
+                                borderRadius: 10, fontSize: 12, color: "#ef4444",
+                                display: "flex", alignItems: "flex-start", gap: 10,
+                            }}>
+                                <span style={{ flexShrink: 0, fontSize: 15 }}>⚠️</span>
+                                <div>
+                                    <strong>Daraz OAuth Error:</strong> {decodeURIComponent(darazOAuthError)}
+                                    <button onClick={() => setDarazOAuthError(null)} style={{
+                                        marginLeft: 12, background: "transparent", border: "none",
+                                        color: "#ef4444", cursor: "pointer", fontSize: 12, fontFamily: "inherit",
+                                    }}>✕ Dismiss</button>
+                                </div>
+                            </div>
+                        )}
 
                         {/* WooCommerce – live integration */}
                         <WooCommerceCard onManage={() => handleManage("woocommerce")} />
