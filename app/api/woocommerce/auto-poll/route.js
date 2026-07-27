@@ -39,6 +39,7 @@ async function pollUser(user) {
 
     let newCount = 0;
     let updatedCount = 0;
+    const waResults = [];
     const NOTIFIABLE = ['processing', 'completed', 'cancelled', 'refunded', 'on-hold', 'failed'];
 
     for (const wcOrder of wcOrders) {
@@ -152,28 +153,32 @@ async function pollUser(user) {
 
         // WhatsApp notifications
         if (isNewOrder) {
-            await whatsappService.sendMerchantOrderAlert(userId, orderNumber, customerName, orderTotal)
-                .catch(err => console.error(`[WC Poll] Merchant WA error #${orderNumber}:`, err.message));
+            const merchantResult = await whatsappService.sendMerchantOrderAlert(userId, orderNumber, customerName, orderTotal)
+                .catch(err => ({ success: false, error: err.message }));
+            waResults.push({ order: orderNumber, type: 'merchant', ...merchantResult });
+
             if (resolvedPhone && !['cancelled', 'refunded', 'failed'].includes(newStatus)) {
                 const shipping = wcOrder.shipping || {};
-                await whatsappService.sendOrderCreated(userId, {
+                const customerResult = await whatsappService.sendOrderCreated(userId, {
                     customerPhone: resolvedPhone, customerName, orderNumber, total: orderTotal,
                     deliveryAddress: shipping.address_1 || billing.address_1 || 'N/A',
                     cityName: shipping.city || billing.city || '',
                     orderDetail: items.map(i => i.name).join(', ') || '',
-                }).catch(err => console.error(`[WC Poll] sendOrderCreated error #${orderNumber}:`, err.message));
+                }).catch(err => ({ success: false, error: err.message }));
+                waResults.push({ order: orderNumber, type: 'customer', phone: resolvedPhone, ...customerResult });
             }
         } else if (NOTIFIABLE.includes(newStatus)) {
             if (resolvedPhone) {
-                await whatsappService.sendOrderStatusUpdate(userId, orderNumber, newStatus, resolvedPhone, customerName, orderTotal)
-                    .catch(err => console.error(`[WC Poll] sendStatusUpdate error #${orderNumber}:`, err.message));
+                const statusResult = await whatsappService.sendOrderStatusUpdate(userId, orderNumber, newStatus, resolvedPhone, customerName, orderTotal)
+                    .catch(err => ({ success: false, error: err.message }));
+                waResults.push({ order: orderNumber, type: 'status_update', status: newStatus, phone: resolvedPhone, ...statusResult });
             } else {
-                console.warn(`[WC Poll] No phone for order #${orderNumber} — status update WA skipped`);
+                waResults.push({ order: orderNumber, type: 'status_update', skipped: 'no_phone' });
             }
         }
     }
 
-    return { userId, newOrders: newCount, updatedOrders: updatedCount, checked: wcOrders.length };
+    return { userId, newOrders: newCount, updatedOrders: updatedCount, checked: wcOrders.length, waResults };
 }
 
 export async function GET(request) {

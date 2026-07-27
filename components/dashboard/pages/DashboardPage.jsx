@@ -43,6 +43,19 @@ export default function DashboardPage() {
         }
     }, []);
 
+    // Background WooCommerce order poll — runs every 5 min while dashboard is open
+    useEffect(() => {
+        const runPoll = () => {
+            fetch('/api/woocommerce/auto-poll')
+                .then(r => r.json())
+                .then(data => { if (data.total > 0) console.log('[Dashboard] WC poll found new/updated orders:', data.total); })
+                .catch(() => {});
+        };
+        runPoll();
+        const interval = setInterval(runPoll, 5 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, []);
+
     const formatTime = (dateStr) => {
         const date = new Date(dateStr);
         const now = new Date();
