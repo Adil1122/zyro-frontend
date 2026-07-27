@@ -17,27 +17,30 @@ export default function DashboardPage() {
     const [range, setRange] = useState("7d");
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [refetching, setRefetching] = useState(false);
     const [user, setUser] = useState(null);
     const [showNewOrder, setShowNewOrder] = useState(false);
     const [exporting, setExporting] = useState(false);
 
     useEffect(() => {
         const fetchStats = async () => {
+            if (stats) setRefetching(true); else setLoading(true);
             try {
                 const userId = getCurrentUserId();
-                let url = '/api/dashboard-stats';
-                if (userId) url += `?userId=${encodeURIComponent(userId)}`;
+                let url = `/api/dashboard-stats?range=${encodeURIComponent(range)}`;
+                if (userId) url += `&userId=${encodeURIComponent(userId)}`;
                 const res = await fetch(url);
                 const data = await res.json();
                 setStats(data);
-                setLoading(false);
             } catch (err) {
                 console.error("Failed to fetch dashboard stats:", err);
+            } finally {
                 setLoading(false);
+                setRefetching(false);
             }
         };
         fetchStats();
-    }, []);
+    }, [range]);
 
     useEffect(() => {
         const storedUser = localStorage.getItem('zyro_user');
@@ -150,8 +153,8 @@ export default function DashboardPage() {
                 <GradientButton variant="ghost" size="sm" iconRight="arrow">Review</GradientButton>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
-                <KPI label="Revenue Today" value={`Rs ${stats.kpis.revenueToday.toLocaleString()}`} sub={`${stats.kpis.ordersToday} orders · Live Data`} delta="18.4%" deltaUp icon="dollar" highlight />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20, opacity: refetching ? 0.6 : 1, transition: "opacity 0.2s" }}>
+                <KPI label={`Revenue · ${stats.kpis.rangeLabel}`} value={`Rs ${stats.kpis.revenueToday.toLocaleString()}`} sub={`${stats.kpis.ordersToday} orders · Live Data`} delta="18.4%" deltaUp icon="dollar" highlight />
                 <KPI label="Pending Action" value={stats.kpis.pendingOrders.toString()} sub="Need courier booking" delta="Urgent" icon="truck" />
                 <KPI label="WhatsApp AI Rate" value={stats.kpis.aiRate} sub="Handled without you" delta="2.1%" deltaUp icon="ai" />
                 <KPI label="COD Due" value={`Rs ${stats.kpis.codDue.toLocaleString()}`} sub="Active in transit" icon="pkg" />
@@ -190,7 +193,7 @@ export default function DashboardPage() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                         <div>
                             <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Revenue Trend</div>
-                            <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2 }}>Monthly performance vs targets</div>
+                            <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2 }}>{stats.kpis.rangeLabel} · {refetching ? 'Updating...' : 'Real data'}</div>
                         </div>
                         <div style={{ padding: "3px 9px", borderRadius: T.r20, background: T.greenBg, border: `1px solid ${T.green}33` }}>
                             <span style={{ fontSize: 11, color: T.green, fontWeight: 700 }}>↑ 23.4%</span>
@@ -205,11 +208,10 @@ export default function DashboardPage() {
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke={T.border} vertical={false} />
-                            <XAxis dataKey="month" tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} />
+                            <XAxis dataKey="label" tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                             <YAxis tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
                             <Tooltip content={<ChartTip formatter={v => `Rs ${v.toLocaleString()}`} />} />
                             <Area dataKey="revenue" name="Revenue" stroke={T.j300} strokeWidth={2.5} fill="url(#rg)" dot={false} />
-                            <Line dataKey="target" name="Target" stroke={T.textFaint} strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
                         </AreaChart>
                     </ResponsiveContainer>
                 </Card>
