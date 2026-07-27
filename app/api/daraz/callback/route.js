@@ -72,14 +72,26 @@ export async function GET(request) {
 
     const appKey = user.daraz_app_key;
     const appSecret = user.daraz_app_secret;
+    const region = user.daraz_region || 'pk';
     const timestamp = Date.now().toString();
+
+    const REGION_TOKEN_URL = {
+        pk: 'https://api.daraz.pk/rest/auth/token/create',
+        bd: 'https://api.daraz.com.bd/rest/auth/token/create',
+        lk: 'https://api.daraz.lk/rest/auth/token/create',
+        my: 'https://api.lazada.com.my/rest/auth/token/create',
+        sg: 'https://api.lazada.sg/rest/auth/token/create',
+        th: 'https://api.lazada.co.th/rest/auth/token/create',
+        ph: 'https://api.lazada.com.ph/rest/auth/token/create',
+        id: 'https://api.lazada.co.id/rest/auth/token/create',
+        vn: 'https://api.lazada.vn/rest/auth/token/create',
+    };
 
     const params = { app_key: appKey, code, sign_method: 'sha256', timestamp };
     const sign = buildSign('/auth/token/create', params, appSecret);
     const qs = new URLSearchParams({ ...params, sign }).toString();
 
-    // Lazada auth server for all regions
-    const tokenUrl = `https://auth.lazada.com/rest/auth/token/create?${qs}`;
+    const tokenUrl = `${REGION_TOKEN_URL[region] || REGION_TOKEN_URL['pk']}?${qs}`;
     console.log('[Daraz Callback] Requesting token, params:', JSON.stringify({ ...params, sign }));
 
     try {
