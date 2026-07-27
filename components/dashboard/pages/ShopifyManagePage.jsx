@@ -97,44 +97,65 @@ export default function ShopifyManagePage({ onBack }) {
     const [statusFilter, setStatusFilter] = useState("all");
     const [expandedRow, setExpandedRow] = useState(null);
 
-    // ─── Credential / OAuth state ─────────────────────────────────────────────
+    // ─── Credential state ─────────────────────────────────────────────────────
     const [isConfiguring, setIsConfiguring] = useState(false);
-    const [shopDomain, setShopDomain] = useState("");
-    const [connectedDomain, setConnectedDomain] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveMsg, setSaveMsg] = useState(null);
+    const [config, setConfig] = useState({ domain: "", accessToken: "" });
 
     const fetchConfig = async () => {
         try {
             const userId = getCurrentUserId();
             const { data } = await supabase
                 .from('users')
-                .select('shopify_store_domain')
+                .select('shopify_store_domain, shopify_access_token')
                 .eq('id', userId)
                 .single();
-            if (data?.shopify_store_domain) {
-                setConnectedDomain(data.shopify_store_domain);
+            if (data) {
+                setConfig({
+                    domain: data.shopify_store_domain || "",
+                    accessToken: data.shopify_access_token || "",
+                });
             }
         } catch (e) {
             console.error("Failed to fetch Shopify config:", e);
         }
     };
 
-    const handleConnectOAuth = () => {
-        const userId = getCurrentUserId();
-        let domain = shopDomain.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
-        if (!domain) return;
-        if (!domain.includes('.myshopify.com')) domain = `${domain}.myshopify.com`;
-        window.location.href = `/api/shopify/install?shop=${encodeURIComponent(domain)}&userId=${encodeURIComponent(userId)}`;
+    const handleSaveConfig = async () => {
+        setSaveMsg(null);
+        setIsSaving(true);
+        try {
+            const userId = getCurrentUserId();
+            const res = await fetch('/api/shopify/save-credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                body: JSON.stringify({ storeDomain: config.domain, accessToken: config.accessToken }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Save failed');
+            setSaveMsg({ type: 'success', text: 'Shopify connected successfully!' });
+            setIsConfiguring(false);
+            fetchOrders(1);
+        } catch (e) {
+            setSaveMsg({ type: 'error', text: e.message });
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleDisconnect = async () => {
         if (!confirm('Disconnect Shopify? Your stored credentials will be removed.')) return;
         const userId = getCurrentUserId();
-        await fetch('/api/shopify/save-credentials', {
+        const res = await fetch('/api/shopify/save-credentials', {
             method: 'DELETE',
             headers: { 'x-user-id': userId },
         });
-        setConnectedDomain("");
-        fetchOrders(1);
+        if (res.ok) {
+            setConfig({ domain: "", accessToken: "" });
+            setSaveMsg(null);
+            fetchOrders(1);
+        }
     };
 
     const fetchOrders = useCallback(async (page = 1) => {
@@ -203,7 +224,6 @@ export default function ShopifyManagePage({ onBack }) {
                 background: T.bgCard, flexShrink: 0,
             }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                    {/* Back button */}
                     <button onClick={onBack} style={{
                         display: "inline-flex", alignItems: "center", gap: 6,
                         background: T.bgElev, border: `1px solid ${T.borderMid}`,
@@ -218,7 +238,6 @@ export default function ShopifyManagePage({ onBack }) {
                         Back to Settings
                     </button>
 
-                    {/* Title */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <div style={{
                             width: 32, height: 32, borderRadius: T.r8,
@@ -239,310 +258,338 @@ export default function ShopifyManagePage({ onBack }) {
                         </div>
                     </div>
 
-                    {/* Actions */}
                     <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-                        {connectedDomain && (
+                        {saveMsg && (
+                            <span style={{
+                                fontSize: 12, fontWeight: 600,
+                                color: saveMsg.type === 'success' ? T.green : T.red,
+                            }}>{saveMsg.text}</span>
+                        )}
+                        {config.domain && (
                             <button onClick={handleDisconnect} style={{
                                 padding: "5px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
                                 background: T.redBg, color: T.red, border: `1px solid ${T.red}44`,
                                 cursor: "pointer", fontFamily: "inherit",
                             }}>Disconnect</button>
                         )}
-                        <button onClick={() => setIsConfiguring(v => !v)} style={{
+                        <button onClick={() => { setSaveMsg(null); setIsConfiguring(v => !v); }} style={{
                             padding: "5px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
                             background: SHOPIFY_GRAD, color: "#fff", border: "none",
                             cursor: "pointer", fontFamily: "inherit",
                             boxShadow: "0 2px 8px rgba(150,191,72,0.35)",
-                        }}>{isConfiguring ? "Cancel" : connectedDomain ? "Edit Connection" : "Connect Store"}</button>
+                        }}>{isConfiguring ? "Cancel" : config.domain ? "Edit Credentials" : "Connect Store"}</button>
                     </div>
                 </div>
 
                 {/* ── FILTERS ── */}
-                <div style={{ display: "flex", gap: 10, alignItems: "center", paddingBottom: 16, flexWrap: "wrap" }}>
-                    {/* Search */}
-                    <form onSubmit={handleSearch} style={{ display: "flex", gap: 0 }}>
-                        <input
-                            value={searchInput}
-                            onChange={e => setSearchInput(e.target.value)}
-                            placeholder="Search by order # or email…"
-                            style={{
-                                padding: "7px 12px", fontSize: 13, background: T.bgElev,
-                                border: `1px solid ${T.borderMid}`, borderRight: "none",
-                                borderRadius: `${T.r8} 0 0 ${T.r8}`, color: T.text,
-                                outline: "none", width: 220, fontFamily: "inherit",
-                            }}
-                        />
-                        <button type="submit" style={{
-                            padding: "7px 13px", background: SHOPIFY_GRAD,
-                            color: "#fff", border: "none", borderRadius: `0 ${T.r8} ${T.r8} 0`,
-                            cursor: "pointer", display: "flex", alignItems: "center",
-                        }}>
-                            <Icon name="search" size={13} color="#fff" />
-                        </button>
-                    </form>
-
-                    {searchInput && (
-                        <button onClick={() => { setSearchInput(""); setSearch(""); }} style={{
-                            padding: "7px 10px", background: "transparent",
-                            border: `1px solid ${T.borderMid}`, borderRadius: T.r8,
-                            color: T.textMuted, cursor: "pointer", fontSize: 12, fontFamily: "inherit",
-                        }}>✕ Clear</button>
-                    )}
-
-                    {/* Status filter tabs */}
-                    <div style={{ display: "flex", gap: 4, marginLeft: "auto", flexWrap: "wrap" }}>
-                        {STATUS_FILTERS.map(f => (
-                            <button key={f.value} onClick={() => setStatusFilter(f.value)} style={{
-                                padding: "6px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
-                                background: statusFilter === f.value
-                                    ? SHOPIFY_GRAD
-                                    : T.bgElev,
-                                color: statusFilter === f.value ? "#fff" : T.textMuted,
-                                border: `1px solid ${statusFilter === f.value ? "transparent" : T.borderMid}`,
-                                cursor: "pointer", transition: "all 0.15s", fontFamily: "inherit",
-                            }}>
-                                {f.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Refresh */}
-                    <button onClick={() => fetchOrders(pagination.page)} style={{
-                        padding: "7px 10px", background: T.bgElev,
-                        border: `1px solid ${T.borderMid}`, borderRadius: T.r8,
-                        color: T.textMuted, cursor: "pointer", display: "flex",
-                        alignItems: "center", transition: "all 0.15s",
-                    }}
-                        onMouseEnter={e => e.currentTarget.style.color = T.text}
-                        onMouseLeave={e => e.currentTarget.style.color = T.textMuted}
-                    >
-                        <Icon name="refresh" size={14} />
-                    </button>
-                </div>
-            </div>
-
-            {/* ── OAUTH CONNECT FORM ── */}
-            {isConfiguring && (
-                <div style={{ padding: "24px 32px", borderBottom: `1px solid ${T.border}`, background: T.bgElev }}>
-                    <div style={{ maxWidth: 480 }}>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: T.text, marginBottom: 4 }}>Connect Shopify Store</div>
-                        <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 20 }}>
-                            Enter your store domain — you'll be redirected to Shopify to authorize Zyro.
-                        </div>
-
-                        <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-                            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-                                <label style={{ fontSize: 13, fontWeight: 700, color: T.textSub }}>Store Domain</label>
-                                <input
-                                    type="text"
-                                    value={shopDomain}
-                                    onChange={e => setShopDomain(e.target.value)}
-                                    onKeyDown={e => e.key === 'Enter' && handleConnectOAuth()}
-                                    placeholder="your-store.myshopify.com"
-                                    style={{
-                                        padding: "10px 14px", borderRadius: T.r8, background: T.bgCard,
-                                        border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 14,
-                                        outline: "none", fontFamily: "monospace",
-                                    }}
-                                />
-                            </div>
-                            <button
-                                onClick={handleConnectOAuth}
-                                disabled={!shopDomain.trim()}
-                                style={{
-                                    padding: "10px 20px", borderRadius: T.r8, fontSize: 13, fontWeight: 700,
-                                    background: SHOPIFY_GRAD, color: "#fff", border: "none",
-                                    cursor: shopDomain.trim() ? "pointer" : "not-allowed",
-                                    opacity: shopDomain.trim() ? 1 : 0.5,
-                                    boxShadow: "0 2px 8px rgba(150,191,72,0.35)", fontFamily: "inherit",
-                                    whiteSpace: "nowrap",
-                                }}
-                            >Connect with Shopify →</button>
-                        </div>
-
-                        <div style={{ marginTop: 12, fontSize: 11, color: T.textFaint }}>
-                            You'll be taken to Shopify to approve the connection, then redirected back automatically.
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── TABLE ── */}
-            <div style={{ flex: 1, overflow: "auto" }}>
-                {error === "not_configured" ? (
-                    <div style={{
-                        display: "flex", flexDirection: "column", alignItems: "center",
-                        justifyContent: "center", padding: "80px 40px", textAlign: "center",
-                    }}>
-                        <div style={{ fontSize: 40, marginBottom: 16 }}>🏬</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 8 }}>Shopify Not Connected</div>
-                        <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 400, lineHeight: 1.6, marginBottom: 20 }}>
-                            Enter your store domain to connect via Shopify OAuth.
-                        </div>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {!isConfiguring && (
+                    <div style={{ display: "flex", gap: 10, alignItems: "center", paddingBottom: 16, flexWrap: "wrap" }}>
+                        <form onSubmit={handleSearch} style={{ display: "flex", gap: 0 }}>
                             <input
-                                type="text"
-                                value={shopDomain}
-                                onChange={e => setShopDomain(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleConnectOAuth()}
-                                placeholder="your-store.myshopify.com"
+                                value={searchInput}
+                                onChange={e => setSearchInput(e.target.value)}
+                                placeholder="Search by order # or email…"
                                 style={{
-                                    padding: "10px 14px", borderRadius: T.r8, background: T.bgElev,
-                                    border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 13,
-                                    outline: "none", fontFamily: "monospace", width: 260,
+                                    padding: "7px 12px", fontSize: 13, background: T.bgElev,
+                                    border: `1px solid ${T.borderMid}`, borderRight: "none",
+                                    borderRadius: `${T.r8} 0 0 ${T.r8}`, color: T.text,
+                                    outline: "none", width: 220, fontFamily: "inherit",
                                 }}
                             />
-                            <button onClick={handleConnectOAuth} disabled={!shopDomain.trim()} style={{
-                                padding: "10px 18px", borderRadius: T.r8, fontSize: 13, fontWeight: 700,
-                                background: SHOPIFY_GRAD, color: "#fff", border: "none",
-                                cursor: shopDomain.trim() ? "pointer" : "not-allowed",
-                                opacity: shopDomain.trim() ? 1 : 0.5,
-                                boxShadow: "0 2px 8px rgba(150,191,72,0.35)", fontFamily: "inherit",
-                            }}>Connect →</button>
-                        </div>
-                        <div style={{ marginTop: 10, fontSize: 11, color: T.textFaint }}>
-                            You'll be redirected to Shopify to approve, then brought back automatically.
-                        </div>
-                    </div>
-                ) : error ? (
-                    <div style={{
-                        display: "flex", flexDirection: "column", alignItems: "center",
-                        justifyContent: "center", padding: "80px 40px", textAlign: "center",
-                    }}>
-                        <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: T.red, marginBottom: 8 }}>Connection Error</div>
-                        <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 520, lineHeight: 1.6 }}>{error}</div>
-                        <div style={{ marginTop: 20 }}>
-                            <GradientButton variant="secondary" icon="refresh" onClick={() => fetchOrders(1)}>Retry</GradientButton>
-                        </div>
-                    </div>
-                ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <thead>
-                            <tr>
-                                <th style={thStyle}>Order #</th>
-                                <th style={thStyle}>Customer</th>
-                                <th style={thStyle}>City</th>
-                                <th style={thStyle}>Date</th>
-                                <th style={thStyle}>Items</th>
-                                <th style={thStyle}>Total</th>
-                                <th style={thStyle}>Status</th>
-                                <th style={thStyle}>Payment</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading
-                                ? Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} />)
-                                : orders.length === 0
-                                    ? (
-                                        <tr>
-                                            <td colSpan={8} style={{ padding: "60px 40px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
-                                                No orders found{search ? ` for "${search}"` : ""}.
-                                            </td>
-                                        </tr>
-                                    )
-                                    : orders.map(order => (
-                                        <React.Fragment key={order.id}>
-                                            <tr
-                                                onClick={() => setExpandedRow(expandedRow === order.id ? null : order.id)}
-                                                style={{
-                                                    cursor: "pointer",
-                                                    background: expandedRow === order.id ? T.bgElev : "transparent",
-                                                    transition: "background 0.12s",
-                                                }}
-                                                onMouseEnter={e => { if (expandedRow !== order.id) e.currentTarget.style.background = T.bgCard; }}
-                                                onMouseLeave={e => { if (expandedRow !== order.id) e.currentTarget.style.background = "transparent"; }}
-                                            >
-                                                <td style={tdStyle}>
-                                                    <span style={{ fontWeight: 700, color: SHOPIFY_GREEN, fontFamily: "monospace", fontSize: 12 }}>
-                                                        #{order.number}
-                                                    </span>
-                                                </td>
-                                                <td style={tdStyle}>
-                                                    <div style={{ fontWeight: 600 }}>{order.customerName}</div>
-                                                    {order.customerEmail && (
-                                                        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 1 }}>{order.customerEmail}</div>
-                                                    )}
-                                                </td>
-                                                <td style={{ ...tdStyle, color: T.textMuted }}>{order.city || "—"}</td>
-                                                <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted, whiteSpace: "nowrap" }}>{formatDate(order.date)}</td>
-                                                <td style={{ ...tdStyle, textAlign: "center" }}>
-                                                    <span style={{
-                                                        display: "inline-block", minWidth: 22, textAlign: "center",
-                                                        background: T.bgHigh, borderRadius: T.r4,
-                                                        padding: "2px 7px", fontSize: 12, fontWeight: 700, color: T.textMuted,
-                                                    }}>{order.itemCount}</span>
-                                                </td>
-                                                <td style={{ ...tdStyle, fontWeight: 700, color: SHOPIFY_GREEN, whiteSpace: "nowrap" }}>
-                                                    {formatCurrency(order.total, order.currency)}
-                                                </td>
-                                                <td style={tdStyle}><StatusBadge status={order.status} /></td>
-                                                <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted }}>{order.paymentMethod || "—"}</td>
-                                            </tr>
+                            <button type="submit" style={{
+                                padding: "7px 13px", background: SHOPIFY_GRAD,
+                                color: "#fff", border: "none", borderRadius: `0 ${T.r8} ${T.r8} 0`,
+                                cursor: "pointer", display: "flex", alignItems: "center",
+                            }}>
+                                <Icon name="search" size={13} color="#fff" />
+                            </button>
+                        </form>
 
-                                            {/* ── Expanded row: items ── */}
-                                            {expandedRow === order.id && (
-                                                <tr>
-                                                    <td colSpan={8} style={{ padding: "0 16px 16px", background: T.bgElev }}>
-                                                        <div style={{
-                                                            border: `1px solid rgba(150,191,72,0.25)`,
-                                                            borderRadius: T.r10, overflow: "hidden",
-                                                        }}>
-                                                            <div style={{
-                                                                padding: "10px 14px", background: T.bgCard,
-                                                                borderBottom: `1px solid ${T.border}`,
-                                                                fontSize: 11, fontWeight: 700, color: SHOPIFY_GREEN,
-                                                                textTransform: "uppercase", letterSpacing: "0.07em",
-                                                            }}>
-                                                                Order Items — #{order.number}
-                                                            </div>
-                                                            {order.items.length === 0 ? (
-                                                                <div style={{ padding: "16px", fontSize: 12, color: T.textMuted }}>
-                                                                    No item details available for this order.
-                                                                </div>
-                                                            ) : order.items.map((item, i) => (
-                                                                <div key={i} style={{
-                                                                    display: "flex", justifyContent: "space-between",
-                                                                    alignItems: "center", padding: "10px 14px",
-                                                                    borderBottom: i < order.items.length - 1 ? `1px solid ${T.border}` : "none",
-                                                                    background: i % 2 === 0 ? "transparent" : T.bgCard,
-                                                                }}>
-                                                                    <div style={{ flex: 1 }}>
-                                                                        <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{item.name}</div>
-                                                                        <div style={{ display: "flex", gap: 12, marginTop: 2 }}>
-                                                                            {item.sku && <span style={{ fontSize: 11, color: T.textFaint }}>SKU: {item.sku}</span>}
-                                                                            {item.variant && <span style={{ fontSize: 11, color: T.textFaint }}>{item.variant}</span>}
-                                                                        </div>
-                                                                    </div>
-                                                                    <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
-                                                                        <span style={{ fontSize: 12, color: T.textMuted }}>×{item.quantity}</span>
-                                                                        <span style={{ fontSize: 12, color: T.textFaint }}>{formatCurrency(item.price, order.currency)} each</span>
-                                                                        <span style={{ fontSize: 13, fontWeight: 700, color: SHOPIFY_GREEN }}>{formatCurrency(item.subtotal, order.currency)}</span>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                            <div style={{
-                                                                display: "flex", justifyContent: "flex-end",
-                                                                padding: "10px 14px", borderTop: `1px solid rgba(150,191,72,0.2)`,
-                                                                background: T.bgCard, gap: 24, alignItems: "center",
-                                                            }}>
-                                                                <span style={{ fontSize: 12, fontWeight: 600, color: T.textMuted }}>Order Total</span>
-                                                                <span style={{ fontSize: 14, fontWeight: 800, color: SHOPIFY_GREEN }}>{formatCurrency(order.total, order.currency)}</span>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))
-                            }
-                        </tbody>
-                    </table>
+                        {searchInput && (
+                            <button onClick={() => { setSearchInput(""); setSearch(""); }} style={{
+                                padding: "7px 10px", background: "transparent",
+                                border: `1px solid ${T.borderMid}`, borderRadius: T.r8,
+                                color: T.textMuted, cursor: "pointer", fontSize: 12, fontFamily: "inherit",
+                            }}>✕ Clear</button>
+                        )}
+
+                        <div style={{ display: "flex", gap: 4, marginLeft: "auto", flexWrap: "wrap" }}>
+                            {STATUS_FILTERS.map(f => (
+                                <button key={f.value} onClick={() => setStatusFilter(f.value)} style={{
+                                    padding: "6px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
+                                    background: statusFilter === f.value ? SHOPIFY_GRAD : T.bgElev,
+                                    color: statusFilter === f.value ? "#fff" : T.textMuted,
+                                    border: `1px solid ${statusFilter === f.value ? "transparent" : T.borderMid}`,
+                                    cursor: "pointer", transition: "all 0.15s", fontFamily: "inherit",
+                                }}>
+                                    {f.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <button onClick={() => fetchOrders(pagination.page)} style={{
+                            padding: "7px 10px", background: T.bgElev,
+                            border: `1px solid ${T.borderMid}`, borderRadius: T.r8,
+                            color: T.textMuted, cursor: "pointer", display: "flex",
+                            alignItems: "center", transition: "all 0.15s",
+                        }}
+                            onMouseEnter={e => e.currentTarget.style.color = T.text}
+                            onMouseLeave={e => e.currentTarget.style.color = T.textMuted}
+                        >
+                            <Icon name="refresh" size={14} />
+                        </button>
+                    </div>
                 )}
             </div>
 
+            {/* ── CONFIGURATION VIEW ── */}
+            {isConfiguring ? (
+                <div style={{ flex: 1, padding: 40, background: T.bgMain, overflow: "auto" }}>
+                    <div style={{
+                        maxWidth: 580, margin: "0 auto", background: T.bgCard,
+                        borderRadius: T.r12, border: `1px solid ${T.border}`, padding: 32,
+                    }}>
+                        <h3 style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 8 }}>
+                            Shopify Credentials
+                        </h3>
+                        <p style={{ fontSize: 13, color: T.textMuted, marginBottom: 24 }}>
+                            Enter your Shopify store domain and Custom App access token to connect.
+                        </p>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 24 }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                <label style={{ fontSize: 13, fontWeight: 700, color: T.textSub }}>Store Domain</label>
+                                <input
+                                    type="text"
+                                    value={config.domain}
+                                    onChange={e => setConfig({ ...config, domain: e.target.value })}
+                                    placeholder="your-store.myshopify.com"
+                                    style={{
+                                        padding: "10px 14px", borderRadius: T.r8, background: T.bgElev,
+                                        border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 14,
+                                        fontFamily: "monospace", outline: "none",
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                <label style={{ fontSize: 13, fontWeight: 700, color: T.textSub }}>Access Token</label>
+                                <input
+                                    type="password"
+                                    value={config.accessToken}
+                                    onChange={e => setConfig({ ...config, accessToken: e.target.value })}
+                                    placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                    style={{
+                                        padding: "10px 14px", borderRadius: T.r8, background: T.bgElev,
+                                        border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 14,
+                                        fontFamily: "monospace", outline: "none",
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {saveMsg && (
+                            <div style={{
+                                padding: "10px 14px", borderRadius: T.r8, marginBottom: 16, fontSize: 13,
+                                background: saveMsg.type === 'success' ? T.greenBg : T.redBg,
+                                color: saveMsg.type === 'success' ? T.green : T.red,
+                                border: `1px solid ${saveMsg.type === 'success' ? T.green : T.red}44`,
+                            }}>{saveMsg.text}</div>
+                        )}
+
+                        <div style={{ display: "flex", gap: 12 }}>
+                            <button
+                                onClick={handleSaveConfig}
+                                disabled={isSaving || !config.domain || !config.accessToken}
+                                style={{
+                                    padding: "10px 20px", borderRadius: T.r8, fontSize: 13, fontWeight: 700,
+                                    background: SHOPIFY_GRAD, color: "#fff", border: "none",
+                                    cursor: (isSaving || !config.domain || !config.accessToken) ? "not-allowed" : "pointer",
+                                    opacity: (isSaving || !config.domain || !config.accessToken) ? 0.5 : 1,
+                                    boxShadow: "0 2px 8px rgba(150,191,72,0.35)", fontFamily: "inherit",
+                                }}
+                            >
+                                {isSaving ? "Testing & Saving…" : "Save Connection"}
+                            </button>
+                            <GradientButton variant="secondary" onClick={() => { setIsConfiguring(false); setSaveMsg(null); }}>
+                                Cancel
+                            </GradientButton>
+                        </div>
+
+                        <div style={{
+                            marginTop: 28, padding: 16, borderRadius: T.r10,
+                            background: "rgba(150,191,72,0.06)", border: `1px solid rgba(150,191,72,0.2)`,
+                        }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: SHOPIFY_GREEN, marginBottom: 8 }}>
+                                How to get your Access Token
+                            </div>
+                            <ol style={{ fontSize: 12, color: T.textMuted, paddingLeft: 18, lineHeight: 1.8, margin: 0 }}>
+                                <li>Go to <strong>Shopify Admin → Settings → Apps and sales channels</strong></li>
+                                <li>Click <strong>"Develop apps"</strong> → <strong>"Create an app"</strong></li>
+                                <li>Under <strong>Configuration</strong>, set API scopes: <code style={{ fontFamily: "monospace", background: T.bgHigh, padding: "1px 4px", borderRadius: 3 }}>read_orders, write_orders, read_products, read_customers, read_inventory, read_fulfillments</code></li>
+                                <li>Click <strong>Install app</strong> → copy the <strong>Admin API access token</strong> (<code style={{ fontFamily: "monospace" }}>shpat_…</code>)</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                /* ── TABLE / ERROR VIEW ── */
+                <div style={{ flex: 1, overflow: "auto" }}>
+                    {error === "not_configured" ? (
+                        <div style={{
+                            display: "flex", flexDirection: "column", alignItems: "center",
+                            justifyContent: "center", padding: "80px 40px", textAlign: "center",
+                        }}>
+                            <div style={{ fontSize: 40, marginBottom: 16 }}>🏬</div>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 8 }}>Shopify Not Connected</div>
+                            <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 400, lineHeight: 1.6, marginBottom: 20 }}>
+                                Add your Shopify store domain and access token to start syncing orders.
+                            </div>
+                            <button onClick={() => setIsConfiguring(true)} style={{
+                                padding: "10px 20px", borderRadius: T.r8, fontSize: 13, fontWeight: 700,
+                                background: SHOPIFY_GRAD, color: "#fff", border: "none",
+                                cursor: "pointer", boxShadow: "0 2px 8px rgba(150,191,72,0.35)", fontFamily: "inherit",
+                            }}>Configure Now</button>
+                        </div>
+                    ) : error ? (
+                        <div style={{
+                            display: "flex", flexDirection: "column", alignItems: "center",
+                            justifyContent: "center", padding: "80px 40px", textAlign: "center",
+                        }}>
+                            <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: T.red, marginBottom: 8 }}>Connection Error</div>
+                            <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 520, lineHeight: 1.6 }}>{error}</div>
+                            <div style={{ marginTop: 20 }}>
+                                <GradientButton variant="secondary" icon="refresh" onClick={() => fetchOrders(1)}>Retry</GradientButton>
+                            </div>
+                        </div>
+                    ) : (
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <thead>
+                                <tr>
+                                    <th style={thStyle}>Order #</th>
+                                    <th style={thStyle}>Customer</th>
+                                    <th style={thStyle}>City</th>
+                                    <th style={thStyle}>Date</th>
+                                    <th style={thStyle}>Items</th>
+                                    <th style={thStyle}>Total</th>
+                                    <th style={thStyle}>Status</th>
+                                    <th style={thStyle}>Payment</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading
+                                    ? Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} />)
+                                    : orders.length === 0
+                                        ? (
+                                            <tr>
+                                                <td colSpan={8} style={{ padding: "60px 40px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
+                                                    No orders found{search ? ` for "${search}"` : ""}.
+                                                </td>
+                                            </tr>
+                                        )
+                                        : orders.map(order => (
+                                            <React.Fragment key={order.id}>
+                                                <tr
+                                                    onClick={() => setExpandedRow(expandedRow === order.id ? null : order.id)}
+                                                    style={{
+                                                        cursor: "pointer",
+                                                        background: expandedRow === order.id ? T.bgElev : "transparent",
+                                                        transition: "background 0.12s",
+                                                    }}
+                                                    onMouseEnter={e => { if (expandedRow !== order.id) e.currentTarget.style.background = T.bgCard; }}
+                                                    onMouseLeave={e => { if (expandedRow !== order.id) e.currentTarget.style.background = "transparent"; }}
+                                                >
+                                                    <td style={tdStyle}>
+                                                        <span style={{ fontWeight: 700, color: SHOPIFY_GREEN, fontFamily: "monospace", fontSize: 12 }}>
+                                                            #{order.number}
+                                                        </span>
+                                                    </td>
+                                                    <td style={tdStyle}>
+                                                        <div style={{ fontWeight: 600 }}>{order.customerName}</div>
+                                                        {order.customerEmail && (
+                                                            <div style={{ fontSize: 11, color: T.textFaint, marginTop: 1 }}>{order.customerEmail}</div>
+                                                        )}
+                                                    </td>
+                                                    <td style={{ ...tdStyle, color: T.textMuted }}>{order.city || "—"}</td>
+                                                    <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted, whiteSpace: "nowrap" }}>{formatDate(order.date)}</td>
+                                                    <td style={{ ...tdStyle, textAlign: "center" }}>
+                                                        <span style={{
+                                                            display: "inline-block", minWidth: 22, textAlign: "center",
+                                                            background: T.bgHigh, borderRadius: T.r4,
+                                                            padding: "2px 7px", fontSize: 12, fontWeight: 700, color: T.textMuted,
+                                                        }}>{order.itemCount}</span>
+                                                    </td>
+                                                    <td style={{ ...tdStyle, fontWeight: 700, color: SHOPIFY_GREEN, whiteSpace: "nowrap" }}>
+                                                        {formatCurrency(order.total, order.currency)}
+                                                    </td>
+                                                    <td style={tdStyle}><StatusBadge status={order.status} /></td>
+                                                    <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted }}>{order.paymentMethod || "—"}</td>
+                                                </tr>
+
+                                                {expandedRow === order.id && (
+                                                    <tr>
+                                                        <td colSpan={8} style={{ padding: "0 16px 16px", background: T.bgElev }}>
+                                                            <div style={{
+                                                                border: `1px solid rgba(150,191,72,0.25)`,
+                                                                borderRadius: T.r10, overflow: "hidden",
+                                                            }}>
+                                                                <div style={{
+                                                                    padding: "10px 14px", background: T.bgCard,
+                                                                    borderBottom: `1px solid ${T.border}`,
+                                                                    fontSize: 11, fontWeight: 700, color: SHOPIFY_GREEN,
+                                                                    textTransform: "uppercase", letterSpacing: "0.07em",
+                                                                }}>
+                                                                    Order Items — #{order.number}
+                                                                </div>
+                                                                {order.items.length === 0 ? (
+                                                                    <div style={{ padding: "16px", fontSize: 12, color: T.textMuted }}>
+                                                                        No item details available.
+                                                                    </div>
+                                                                ) : order.items.map((item, i) => (
+                                                                    <div key={i} style={{
+                                                                        display: "flex", justifyContent: "space-between",
+                                                                        alignItems: "center", padding: "10px 14px",
+                                                                        borderBottom: i < order.items.length - 1 ? `1px solid ${T.border}` : "none",
+                                                                        background: i % 2 === 0 ? "transparent" : T.bgCard,
+                                                                    }}>
+                                                                        <div style={{ flex: 1 }}>
+                                                                            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{item.name}</div>
+                                                                            <div style={{ display: "flex", gap: 12, marginTop: 2 }}>
+                                                                                {item.sku && <span style={{ fontSize: 11, color: T.textFaint }}>SKU: {item.sku}</span>}
+                                                                                {item.variant && <span style={{ fontSize: 11, color: T.textFaint }}>{item.variant}</span>}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+                                                                            <span style={{ fontSize: 12, color: T.textMuted }}>×{item.quantity}</span>
+                                                                            <span style={{ fontSize: 12, color: T.textFaint }}>{formatCurrency(item.price, order.currency)} each</span>
+                                                                            <span style={{ fontSize: 13, fontWeight: 700, color: SHOPIFY_GREEN }}>{formatCurrency(item.subtotal, order.currency)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                                <div style={{
+                                                                    display: "flex", justifyContent: "flex-end",
+                                                                    padding: "10px 14px", borderTop: `1px solid rgba(150,191,72,0.2)`,
+                                                                    background: T.bgCard, gap: 24, alignItems: "center",
+                                                                }}>
+                                                                    <span style={{ fontSize: 12, fontWeight: 600, color: T.textMuted }}>Order Total</span>
+                                                                    <span style={{ fontSize: 14, fontWeight: 800, color: SHOPIFY_GREEN }}>{formatCurrency(order.total, order.currency)}</span>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        ))
+                                }
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            )}
+
             {/* ── PAGINATION ── */}
-            {!error && !loading && pagination.totalPages > 1 && (
+            {!isConfiguring && !error && !loading && pagination.totalPages > 1 && (
                 <div style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     padding: "12px 24px", borderTop: `1px solid ${T.border}`,

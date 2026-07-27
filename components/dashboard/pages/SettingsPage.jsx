@@ -1629,19 +1629,6 @@ export default function SettingsPage({ tabParam }) {
         }
     }, [searchParams]);
 
-    // Handle Shopify OAuth callback redirect (?shopify=connected or ?shopify=error)
-    useEffect(() => {
-        const shopifyStatus = searchParams.get("shopify");
-        if (shopifyStatus === "connected") {
-            setTab("stores");
-            // Include manage=shopify so the URL-watcher sets managingStore correctly
-            router.replace("/settings/stores?manage=shopify");
-        } else if (shopifyStatus === "error") {
-            const reason = searchParams.get("reason");
-            console.error("[Shopify OAuth] Error:", reason);
-            router.replace("/settings/stores");
-        }
-    }, []);
 
     const handleTabChange = (newTab) => {
         setTab(newTab);
