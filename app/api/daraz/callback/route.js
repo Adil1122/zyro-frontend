@@ -131,10 +131,34 @@ export async function GET(request) {
             return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=${encodeURIComponent(errMsg)}`);
         }
 
-        // Save access token to DB
+        // Fetch seller ID so webhook can identify this user
+        let sellerId = null;
+        try {
+            const { getCredentials } = await import('@/lib/services/darazService');
+            const { darazGet: _unused, ...rest } = await import('@/lib/services/darazService');
+            // Call /seller/get with the new token
+            const REGION_BASE = {
+                pk: 'https://api.daraz.pk/rest', bd: 'https://api.daraz.com.bd/rest',
+                lk: 'https://api.daraz.lk/rest', my: 'https://api.lazada.com.my/rest',
+                sg: 'https://api.lazada.sg/rest',
+            };
+            const baseUrl = REGION_BASE[region] || REGION_BASE['pk'];
+            const ts2 = Date.now().toString();
+            const sParams = { app_key: appKey, access_token: accessToken, sign_method: 'sha256', timestamp: ts2 };
+            const sSign = buildSign('/seller/get', sParams, appSecret);
+            const sellerRes = await fetch(`${baseUrl}/seller/get?${new URLSearchParams({ ...sParams, sign: sSign })}`);
+            const sellerData = await sellerRes.json();
+            sellerId = String(sellerData?.data?.seller_id || sellerData?.result?.seller_id || '');
+            console.log('[Daraz Callback] Seller ID:', sellerId);
+        } catch (e) {
+            console.warn('[Daraz Callback] Could not fetch seller ID:', e.message);
+        }
+
+        // Save access token + seller ID to DB
         await supabase.from('users').update({
             daraz_access_token: accessToken,
             daraz_is_active: true,
+            ...(sellerId ? { daraz_seller_id: sellerId } : {}),
         }).eq('id', state);
 
         console.log('[Daraz Callback] Token saved for user:', state);
