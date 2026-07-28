@@ -51,7 +51,6 @@ export async function POST(request) {
                 total_amount: parseFloat(body.total_amount) || 0,
                 expected_date: body.expected_date || null,
                 status: body.status || 'Draft',
-                notes: body.notes || null,
             }])
             .select()
             .single();

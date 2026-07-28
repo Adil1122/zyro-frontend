@@ -42,11 +42,8 @@ export async function POST(request) {
                 user_id: body.user_id,
                 name: body.name,
                 email: body.email || null,
-                phone: body.phone || null,
                 lead_time_days: parseInt(body.lead_time_days) || 7,
                 status: body.status || 'Active',
-                address: body.address || null,
-                notes: body.notes || null,
             }])
             .select()
             .single();
