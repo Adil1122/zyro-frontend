@@ -71,6 +71,9 @@ export async function PATCH(request) {
         }
         const updates = {};
         if (body.status) updates.status = body.status;
+        if (body.supplier_id !== undefined) updates.supplier_id = body.supplier_id;
+        if (body.total_amount !== undefined) updates.total_amount = parseFloat(body.total_amount) || 0;
+        if (body.expected_date !== undefined) updates.expected_date = body.expected_date || null;
         const { data, error } = await supabase
             .from('purchase_orders')
             .update(updates)
