@@ -409,7 +409,7 @@ window.resetPoDrawer = function() {
 
 window.openEditPO = function() {
   const id = window._poCtxId;
-  const po = (window.pos || []).find(p => p.id === id);
+  const po = (window.pos || []).find(p => String(p.id) === String(id));
   if (!po) { window.showToast('Could not load PO data'); return; }
   window._poEditId = id;
   window.populatePOSupplierDropdown();
@@ -474,7 +474,7 @@ window.poAction = async function(action) {
       const res = await fetch('/api/inventory/pos?id=' + id + '&userId=' + userId, { method: 'DELETE' });
       if (res.ok) {
         window.showToast(number + ' deleted');
-        window.pos = (window.pos || []).filter(p => p.id !== id);
+        window.pos = (window.pos || []).filter(p => String(p.id) !== String(id));
         if (window.renderPOs) window.renderPOs();
         if (window.updateSupplierKPIs) window.updateSupplierKPIs();
       } else { const err = await res.json(); window.showToast('Error: ' + err.error); }
@@ -493,7 +493,7 @@ window.poAction = async function(action) {
     });
     if (res.ok) {
       window.showToast(number + ' → ' + newStatus);
-      const po = (window.pos || []).find(p => p.id === id);
+      const po = (window.pos || []).find(p => String(p.id) === String(id));
       if (po) po.status = newStatus;
       if (window.renderPOs) window.renderPOs();
       if (window.updateSupplierKPIs) window.updateSupplierKPIs();
