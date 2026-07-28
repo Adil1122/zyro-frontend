@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "@/components/dashboard/constants";
+import { ZyroLogo } from "@/components/dashboard/Primitives";
 
 // ── Static comparison table data ────────────────────────────────────────────
 
@@ -199,6 +200,34 @@ export default function PlansPage() {
 
   return (
     <div style={{ background: BG, minHeight: "100%", color: "#fff", fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif" }}>
+
+      {/* ── TOP NAV ──────────────────────────────────────────────────────── */}
+      <div style={{
+        position: "sticky", top: 0, zIndex: 50,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 32px", height: 60,
+        background: "rgba(7,12,10,0.85)", backdropFilter: "blur(12px)",
+        borderBottom: `1px solid ${BORDER}`,
+      }}>
+        <ZyroLogo size={32} />
+        <button
+          onClick={() => router.push("/dashboard")}
+          style={{
+            display: "flex", alignItems: "center", gap: 7,
+            height: 36, padding: "0 16px", borderRadius: 10,
+            background: "rgba(255,255,255,0.06)", border: `1px solid ${BORDER2}`,
+            color: "#fff", fontSize: 13.5, fontWeight: 600, cursor: "pointer",
+            fontFamily: "inherit", transition: "background 0.15s",
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+          onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Back to Dashboard
+        </button>
+      </div>
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <div style={{ padding: "72px 40px 56px", textAlign: "center", background: `radial-gradient(700px 300px at 50% -10%, rgba(34,197,94,0.13), transparent 60%), ${BG}` }}>
