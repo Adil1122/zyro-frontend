@@ -55,3 +55,48 @@ export async function POST(request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
+export async function PATCH(request) {
+    try {
+        const body = await request.json();
+        if (!body.id || !body.user_id) {
+            return NextResponse.json({ error: 'id and user_id required' }, { status: 400 });
+        }
+        const updates = {};
+        if (body.name) updates.name = body.name;
+        if (body.email !== undefined) updates.email = body.email || null;
+        if (body.lead_time_days !== undefined) updates.lead_time_days = parseInt(body.lead_time_days) || 7;
+        if (body.status) updates.status = body.status;
+        const { data, error } = await supabase
+            .from('suppliers')
+            .update(updates)
+            .eq('id', body.id)
+            .eq('user_id', body.user_id)
+            .select()
+            .single();
+        if (error) throw error;
+        return NextResponse.json({ success: true, data });
+    } catch (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+export async function DELETE(request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+        const userId = searchParams.get('userId');
+        if (!id || !userId) {
+            return NextResponse.json({ error: 'id and userId required' }, { status: 400 });
+        }
+        const { error } = await supabase
+            .from('suppliers')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', userId);
+        if (error) throw error;
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
