@@ -167,6 +167,7 @@ window.openEditSupplier = function() {
   if (btn) btn.innerHTML = '<i data-lucide="save" style="width:14px;"></i> Save changes';
   const name = document.getElementById('supName'); if(name) name.value = v.name || '';
   const email = document.getElementById('supEmail'); if(email) email.value = v.email || '';
+  const phone = document.getElementById('supPhone'); if(phone) phone.value = v.phone || '';
   const lead = document.getElementById('supLeadTime'); if(lead) lead.value = v.lead_time_days || '';
   const status = document.getElementById('supStatus'); if(status) status.value = v.status || 'Active';
   window.openDrawer('addSupplierDrawer');
@@ -200,6 +201,7 @@ window.createSupplier = async function() {
   const name = document.getElementById('supName')?.value?.trim();
   if (!name) { window.showToast('Supplier name is required'); return; }
   const email = document.getElementById('supEmail')?.value?.trim() || null;
+  const phone = document.getElementById('supPhone')?.value?.trim() || null;
   const leadTime = document.getElementById('supLeadTime')?.value || '7';
   const status = document.getElementById('supStatus')?.value || 'Active';
   const editId = window._supplierEditId || null;
@@ -208,8 +210,8 @@ window.createSupplier = async function() {
       method: editId ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: editId
-        ? JSON.stringify({ id: editId, user_id: userId, name, email, lead_time_days: parseInt(leadTime) || 7, status })
-        : JSON.stringify({ user_id: userId, name, email, lead_time_days: parseInt(leadTime) || 7, status })
+        ? JSON.stringify({ id: editId, user_id: userId, name, email, phone, lead_time_days: parseInt(leadTime) || 7, status })
+        : JSON.stringify({ user_id: userId, name, email, phone, lead_time_days: parseInt(leadTime) || 7, status })
     });
     if (res.ok) {
       window.showToast(editId ? 'Supplier updated!' : 'Supplier ' + name + ' added!');

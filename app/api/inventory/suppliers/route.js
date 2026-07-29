@@ -42,6 +42,7 @@ export async function POST(request) {
                 user_id: body.user_id,
                 name: body.name,
                 email: body.email || null,
+                phone: body.phone || null,
                 lead_time_days: parseInt(body.lead_time_days) || 7,
                 status: body.status || 'Active',
             }])
@@ -65,6 +66,7 @@ export async function PATCH(request) {
         const updates = {};
         if (body.name) updates.name = body.name;
         if (body.email !== undefined) updates.email = body.email || null;
+        if (body.phone !== undefined) updates.phone = body.phone || null;
         if (body.lead_time_days !== undefined) updates.lead_time_days = parseInt(body.lead_time_days) || 7;
         if (body.status) updates.status = body.status;
         const { data, error } = await supabase
