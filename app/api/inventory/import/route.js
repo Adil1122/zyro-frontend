@@ -29,17 +29,28 @@ export async function POST(request) {
                 }
             }
 
+            const parseBool = v => v && /^(true|yes|1)$/i.test(String(v).trim());
+
             const upsertData = data.map(item => {
                 const existing = existingProducts.find(p => p.sku === item.SKU);
+                const stock = parseInt(item.Stock) || 0;
+                const reorder = parseInt(item.ReorderPoint) || 10;
                 const record = {
                     user_id: userId,
                     name: item.Name || 'Unnamed Product',
                     sku: item.SKU,
-                    stock: parseInt(item.Stock) || 0,
+                    barcode: item.Barcode || null,
+                    stock,
+                    reorder_point: reorder,
                     price: parseFloat(item.Price) || 0,
                     cost_price: parseFloat(item.Cost) || 0,
                     category: item.Category || null,
-                    status: item.Status || 'In Stock'
+                    status: stock > reorder ? 'In Stock' : stock > 0 ? 'Low Stock' : 'Out of Stock',
+                    supplier_name: item.Supplier || null,
+                    lead_time_days: item.LeadTimeDays ? parseInt(item.LeadTimeDays) : null,
+                    publish_shopify: parseBool(item.PublishShopify),
+                    publish_daraz: parseBool(item.PublishDaraz),
+                    publish_woocommerce: parseBool(item.PublishWooCommerce),
                 };
                 if (existing) {
                     record.id = existing.id;
