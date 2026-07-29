@@ -23,7 +23,7 @@ export async function GET(request) {
 
 export async function POST(request) {
     try {
-        const { userId, customerName, customerPhone, city, amount, status } = await request.json();
+        const { userId, customerName, customerPhone, city, amount, status, notes, paymentType, courierKey, courierName } = await request.json();
         if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         if (!customerName) return NextResponse.json({ error: 'Customer name is required' }, { status: 400 });
 
@@ -52,6 +52,11 @@ export async function POST(request) {
             order_id: orderId,
             status: status || 'pending',
             total_amount: parseFloat(amount) || 0,
+            address: city || null,
+            notes: notes || null,
+            payment_type: paymentType || 'cod',
+            courier_key: courierKey || null,
+            courier_name: courierName || null,
         }).select('id, order_id, status, total_amount, created_at').single();
 
         if (error) throw error;

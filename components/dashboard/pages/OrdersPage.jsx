@@ -206,6 +206,10 @@ export function NewOrderModal({ onClose, onCreated }) {
                     city: form.address,
                     amount: parseFloat(form.amount),
                     status: 'pending',
+                    notes: form.details || null,
+                    paymentType: payType,
+                    courierKey: rec.key,
+                    courierName: recCourier.name,
                 }),
             });
             const json = await res.json();
