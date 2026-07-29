@@ -76,71 +76,401 @@ function parseCSV(text) {
     });
 }
 
-// ── New Order Modal ──────────────────────────────────────────────────────────
+// ── Manual Order Modal ───────────────────────────────────────────────────────
+
+const COURIERS = {
+    tcs:      { name: 'TCS',      code: 'TCS', color: '#e85955', score: 94, days: '2 days' },
+    leopards: { name: 'Leopards', code: 'LP',  color: '#4ade80', score: 91, days: '2 days' },
+    postex:   { name: 'PostEx',   code: 'PX',  color: '#60a5fa', score: 88, days: '3 days' },
+    trax:     { name: 'Trax',     code: 'TX',  color: '#fbbf24', score: 79, days: '3 days' },
+};
+
+const ZONES = {
+    metro: { label: 'Metro',         color: '#60A5FA', base: 'tcs',      risk: 'leopards' },
+    urban: { label: 'Urban',         color: '#FBBF24', base: 'leopards', risk: 'tcs'      },
+    rural: { label: 'Rural / Remote', color: '#A78BFA', base: 'trax',    risk: 'postex'   },
+};
+
+function detectZone(address) {
+    if (!address) return 'rural';
+    const a = address.toLowerCase();
+    if (/karachi|lahore|islamabad/.test(a)) return 'metro';
+    if (/sialkot|multan|peshawar/.test(a)) return 'urban';
+    return 'rural';
+}
+
+function computeRec(zone, isFirstTime, isCOD, manualPick) {
+    if (manualPick) return { key: manualPick, trace: [`Manual override: ${COURIERS[manualPick].name}`] };
+    const zc = ZONES[zone];
+    let key = zc.base;
+    const trace = [`${zc.label} zone → ${COURIERS[key].name} recommended`];
+    if (isCOD && isFirstTime) {
+        key = zc.risk;
+        trace.push(`COD + new customer → switched to ${COURIERS[key].name} (lower COD risk)`);
+    }
+    return { key, trace };
+}
+
+const BLANK_FORM = { customerName: '', phone: '', address: '', details: '', amount: '' };
 
 export function NewOrderModal({ onClose, onCreated }) {
-    const [form, setForm] = useState({ customerName: '', customerPhone: '', city: '', amount: '', status: 'pending' });
-    const [saving, setSaving] = useState(false);
-    const [err, setErr] = useState('');
+    const [form, setForm] = useState(BLANK_FORM);
+    const [payType, setPayType] = useState('cod');
+    const [sendWA, setSendWA] = useState(true);
+    const [zone, setZone] = useState('rural');
+    const [isReturning, setIsReturning] = useState(null);
+    const [phoneLookupLoading, setPhoneLookupLoading] = useState(false);
+    const [manualCourier, setManualCourier] = useState(null);
+    const [showCourierPicker, setShowCourierPicker] = useState(false);
+    const [errors, setErrors] = useState({});
+    const [flowState, setFlowState] = useState('form');
+    const [createdOrder, setCreatedOrder] = useState(null);
+    const phoneTimerRef = useRef(null);
+    const overlayRef = useRef(null);
 
-    const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+    const setField = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!form.customerName.trim()) { setErr('Customer name is required'); return; }
-        setSaving(true); setErr('');
+    // Zone detection
+    useEffect(() => {
+        setZone(detectZone(form.address));
+        setManualCourier(null);
+    }, [form.address]);
+
+    // Phone lookup with debounce
+    useEffect(() => {
+        if (phoneTimerRef.current) clearTimeout(phoneTimerRef.current);
+        const digits = form.phone.replace(/\D/g, '');
+        if (digits.length < 10) { setIsReturning(null); return; }
+        setPhoneLookupLoading(true);
+        phoneTimerRef.current = setTimeout(async () => {
+            try {
+                const userId = getCurrentUserId();
+                const res = await fetch(`/api/customers?userId=${userId}&search=${encodeURIComponent(form.phone)}&pageSize=1`);
+                const json = await res.json();
+                setIsReturning((json.customers?.length ?? json.data?.length ?? 0) > 0);
+            } catch { setIsReturning(null); }
+            finally { setPhoneLookupLoading(false); }
+        }, 500);
+        return () => clearTimeout(phoneTimerRef.current);
+    }, [form.phone]);
+
+    // Escape key
+    useEffect(() => {
+        const onKey = (e) => { if (e.key === 'Escape' && flowState === 'form') onClose(); };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [onClose, flowState]);
+
+    const rec = computeRec(zone, isReturning === false, payType === 'cod', manualCourier);
+    const recCourier = COURIERS[rec.key];
+    const showRiskNote = payType === 'cod' && isReturning === false && !manualCourier;
+
+    const validate = () => {
+        const e = {};
+        if (!form.customerName.trim()) e.customerName = 'Name is required';
+        if (!form.phone.trim()) e.phone = 'Phone is required';
+        else if (!/^03\d{2}-?\d{7}$/.test(form.phone.trim())) e.phone = 'Enter a valid Pakistani number (03xx-xxxxxxx)';
+        if (!form.address.trim()) e.address = 'Address is required';
+        if (form.address.trim().length <= 4) e.address = 'Enter a full address';
+        if (!form.details.trim()) e.details = 'Order details are required';
+        if (!form.amount || Number(form.amount) <= 0) e.amount = 'Amount is required';
+        return e;
+    };
+
+    const resetForm = () => {
+        setForm(BLANK_FORM);
+        setPayType('cod'); setSendWA(true); setZone('rural');
+        setIsReturning(null); setManualCourier(null);
+        setShowCourierPicker(false); setCreatedOrder(null);
+        setErrors({}); setFlowState('form');
+    };
+
+    const handleSubmit = async () => {
+        const e = validate();
+        if (Object.keys(e).length) { setErrors(e); return; }
+        setErrors({});
         try {
             const userId = getCurrentUserId();
+            if (sendWA) {
+                setFlowState('sending');
+                await new Promise(r => setTimeout(r, 1200));
+            }
+            setFlowState('booking');
             const res = await fetch('/api/orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, customerName: form.customerName, customerPhone: form.customerPhone, city: form.city, amount: parseFloat(form.amount) || 0, status: form.status }),
+                body: JSON.stringify({
+                    userId,
+                    customerName: form.customerName,
+                    customerPhone: form.phone,
+                    city: form.address,
+                    amount: parseFloat(form.amount),
+                    status: 'pending',
+                }),
             });
             const json = await res.json();
             if (!res.ok) throw new Error(json.error || 'Failed to create order');
-            onCreated(json.order);
-        } catch (e) {
-            setErr(e.message);
-        } finally {
-            setSaving(false);
+            await new Promise(r => setTimeout(r, 800));
+            setCreatedOrder({ ...json.order, courierKey: rec.key });
+            setFlowState('success');
+        } catch (err) {
+            setFlowState('form');
+            setErrors({ submit: err.message });
         }
     };
 
-    const field = (label, key, type = 'text', opts = {}) => (
-        <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 5 }}>{label}</label>
-            {opts.select ? (
-                <select value={form[key]} onChange={e => set(key, e.target.value)} style={inputStyle}>
-                    {opts.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-            ) : (
-                <input type={type} value={form[key]} onChange={e => set(key, e.target.value)}
-                    placeholder={opts.placeholder || ''} style={inputStyle} />
-            )}
+    const inp = { width: '100%', padding: '9px 12px', fontSize: 13, color: T.text, background: T.bgElev, border: `1px solid ${T.border}`, borderRadius: T.r8, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
+    const inpErr = { ...inp, borderColor: T.red };
+    const Lbl = ({ children }) => <div style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>{children}</div>;
+
+    // ── Spinner overlay ──
+    const SpinnerOverlay = ({ title, sub }) => (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <style>{`@keyframes nom-spin { to { transform: rotate(360deg); } }`}</style>
+            <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.r14, padding: '40px 52px', textAlign: 'center', boxShadow: T.shadowLg }}>
+                <div style={{ width: 48, height: 48, border: `3px solid ${T.bgHigh}`, borderTopColor: T.j300, borderRadius: '50%', animation: 'nom-spin 0.7s linear infinite', margin: '0 auto 18px' }} />
+                <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>{title}</div>
+                <div style={{ fontSize: 12, color: T.textFaint, marginTop: 5 }}>{sub}</div>
+            </div>
         </div>
     );
 
-    const inputStyle = { width: '100%', padding: '9px 12px', fontSize: 13, color: T.text, background: T.bgElev, border: `1px solid ${T.border}`, borderRadius: T.r8, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
+    if (flowState === 'sending') return <SpinnerOverlay title="Sending WhatsApp Confirmation…" sub={`Notifying ${form.customerName || 'customer'}`} />;
+    if (flowState === 'booking') return <SpinnerOverlay title="Booking Courier…" sub={`Creating order with ${recCourier.name}`} />;
 
-    return (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-            <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.r14, width: 440, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.3)' }}>
-                <div style={{ padding: '18px 22px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: T.text }}>New Order</span>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textFaint, fontSize: 20, lineHeight: 1 }}>×</button>
-                </div>
-                <form onSubmit={handleSubmit} style={{ padding: 22 }}>
-                    {field('Customer Name', 'customerName', 'text', { placeholder: 'e.g. Ahmed Ali' })}
-                    {field('Phone', 'customerPhone', 'tel', { placeholder: '03xx-xxxxxxx' })}
-                    {field('City', 'city', 'text', { placeholder: 'Lahore' })}
-                    {field('Amount (PKR)', 'amount', 'number', { placeholder: '0' })}
-                    {field('Status', 'status', 'text', { select: true, options: [['pending','Pending'],['confirmed','Confirmed'],['delivered','Delivered'],['returned','Returned']] })}
-                    {err && <div style={{ color: T.red, fontSize: 12, marginBottom: 12 }}>{err}</div>}
-                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                        <GradientButton type="button" variant="secondary" size="sm" onClick={onClose}>Cancel</GradientButton>
-                        <GradientButton type="submit" variant="primary" size="sm" disabled={saving}>{saving ? 'Creating...' : 'Create Order'}</GradientButton>
+    // ── Success ──
+    if (flowState === 'success') return (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.r14, width: 460, boxShadow: T.shadowLg }}>
+                <div style={{ padding: '32px 28px 24px', textAlign: 'center', borderBottom: `1px solid ${T.border}` }}>
+                    <div style={{ width: 56, height: 56, background: `${T.green}18`, border: `2px solid ${T.green}40`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                        <Icon name="check" size={24} color={T.green} />
                     </div>
-                </form>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: T.text, marginBottom: 4 }}>Order Created!</div>
+                    <div style={{ fontSize: 13, color: T.textFaint }}>{createdOrder?.order_id} · {recCourier.name} assigned</div>
+                </div>
+                {/* WA receipt / audit note */}
+                <div style={{ padding: '20px 28px' }}>
+                    {sendWA ? (
+                        <div style={{ background: '#0a4a3f', border: '1px solid rgba(255,255,255,0.06)', borderRadius: T.r10, padding: '14px 16px', marginBottom: 16 }}>
+                            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>WhatsApp Receipt Preview</div>
+                            <div style={{ fontSize: 13, color: '#e2fce4', lineHeight: 1.65 }}>
+                                <div>📦 *New Order Confirmed*</div>
+                                <div style={{ marginTop: 5 }}>Customer: *{form.customerName}*</div>
+                                <div>Courier: *{recCourier.name}* ({recCourier.days})</div>
+                                <div>Amount: *PKR {parseFloat(form.amount || 0).toLocaleString()}* ({payType.toUpperCase()})</div>
+                                {createdOrder?.order_id && <div style={{ marginTop: 5, color: 'rgba(255,255,255,0.45)', fontSize: 11 }}>Ref: {createdOrder.order_id}</div>}
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ background: `${T.yellow}10`, border: `1px solid ${T.yellow}30`, borderRadius: T.r10, padding: '12px 14px', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <Icon name="alert-triangle" size={14} color={T.yellow} style={{ flexShrink: 0, marginTop: 1 }} />
+                            <div style={{ fontSize: 12, color: T.yellow, lineHeight: 1.5 }}>
+                                Booked without WhatsApp confirmation — marked as manually verified.
+                            </div>
+                        </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <div style={{ flex: 1 }}><GradientButton full variant="secondary" size="sm" onClick={() => onCreated(createdOrder)}>Done</GradientButton></div>
+                        <div style={{ flex: 1 }}><GradientButton full variant="primary" size="sm" onClick={resetForm}>New Order</GradientButton></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    // ── Main form ──
+    return (
+        <div ref={overlayRef} onClick={e => { if (e.target === overlayRef.current) onClose(); }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+            <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.r14, width: '100%', maxWidth: 500, maxHeight: '90vh', overflow: 'auto', boxShadow: T.shadowLg }}>
+
+                {/* Header */}
+                <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: T.bgCard, zIndex: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 30, height: 30, background: `${T.j300}20`, borderRadius: T.r8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Icon name="plus" size={15} color={T.j300} />
+                        </div>
+                        <span style={{ fontSize: 15, fontWeight: 800, color: T.text }}>Manual Order</span>
+                    </div>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.textFaint, fontSize: 22, lineHeight: 1, padding: '0 4px' }}>×</button>
+                </div>
+
+                <div style={{ padding: '18px 20px' }}>
+
+                    {/* Customer Name */}
+                    <div style={{ marginBottom: 14 }}>
+                        <Lbl>Customer Name</Lbl>
+                        <input value={form.customerName} onChange={e => setField('customerName', e.target.value)}
+                            placeholder="e.g. Ahmed Ali" style={errors.customerName ? inpErr : inp} />
+                        {errors.customerName && <div style={{ color: T.red, fontSize: 11, marginTop: 3 }}>{errors.customerName}</div>}
+                    </div>
+
+                    {/* Phone */}
+                    <div style={{ marginBottom: 14 }}>
+                        <Lbl>Phone</Lbl>
+                        <input value={form.phone} onChange={e => setField('phone', e.target.value)}
+                            placeholder="03xx-xxxxxxx" type="tel" style={errors.phone ? inpErr : inp} />
+                        {errors.phone
+                            ? <div style={{ color: T.red, fontSize: 11, marginTop: 3 }}>{errors.phone}</div>
+                            : form.phone.replace(/\D/g, '').length >= 10 && (
+                                <div style={{ fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4, color: phoneLookupLoading ? T.textFaint : isReturning ? T.green : T.yellow }}>
+                                    {phoneLookupLoading ? 'Checking…'
+                                        : isReturning === true ? '✓ Returning customer'
+                                            : isReturning === false ? '⚠ New customer — no order history'
+                                                : null}
+                                </div>
+                            )
+                        }
+                    </div>
+
+                    {/* Delivery Address */}
+                    <div style={{ marginBottom: 14 }}>
+                        <Lbl>Delivery Address</Lbl>
+                        <input value={form.address} onChange={e => setField('address', e.target.value)}
+                            placeholder="House #, Street, City" style={errors.address ? inpErr : inp} />
+                        {errors.address
+                            ? <div style={{ color: T.red, fontSize: 11, marginTop: 3 }}>{errors.address}</div>
+                            : form.address && (
+                                <div style={{ fontSize: 11, marginTop: 4, color: ZONES[zone].color }}>
+                                    {ZONES[zone].label} zone detected
+                                </div>
+                            )
+                        }
+                    </div>
+
+                    {/* Order Details */}
+                    <div style={{ marginBottom: 14 }}>
+                        <Lbl>Order Details</Lbl>
+                        <textarea value={form.details} onChange={e => setField('details', e.target.value)}
+                            placeholder="Product name, quantity, variant…"
+                            style={{ ...inp, minHeight: 68, resize: 'vertical' }} />
+                    </div>
+
+                    {/* Amount + Payment Type */}
+                    <div style={{ marginBottom: 18, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1 }}>
+                            <Lbl>Amount (PKR)</Lbl>
+                            <input value={form.amount} onChange={e => setField('amount', e.target.value)}
+                                placeholder="0" type="number" min="0" style={errors.amount ? inpErr : inp} />
+                            {errors.amount && <div style={{ color: T.red, fontSize: 11, marginTop: 3 }}>{errors.amount}</div>}
+                        </div>
+                        <div>
+                            <Lbl>Payment</Lbl>
+                            <div style={{ display: 'flex', borderRadius: T.r8, overflow: 'hidden', border: `1px solid ${T.border}` }}>
+                                {[['cod', 'COD'], ['prepaid', 'Prepaid']].map(([v, l]) => (
+                                    <button key={v} onClick={() => setPayType(v)} style={{
+                                        padding: '9px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                                        border: 'none', fontFamily: 'inherit', transition: 'all 0.15s',
+                                        background: payType === v ? T.j300 : T.bgElev,
+                                        color: payType === v ? '#fff' : T.textFaint,
+                                    }}>{l}</button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* WhatsApp Toggle */}
+                    <div style={{ marginBottom: 18, padding: '12px 14px', background: T.bgElev, borderRadius: T.r10, border: `1px solid ${T.border}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                            <div>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>WhatsApp Confirmation</div>
+                                <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2 }}>
+                                    {sendWA ? 'Customer will receive order details on WhatsApp' : 'Skip WhatsApp confirmation'}
+                                </div>
+                            </div>
+                            <button onClick={() => setSendWA(s => !s)} style={{
+                                flexShrink: 0, width: 44, height: 24, borderRadius: 12, border: 'none',
+                                cursor: 'pointer', background: sendWA ? T.j300 : T.bgHigh,
+                                transition: 'background 0.2s', position: 'relative',
+                            }}>
+                                <div style={{
+                                    width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                                    position: 'absolute', top: 3, transition: 'left 0.2s',
+                                    left: sendWA ? 23 : 3, boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+                                }} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Courier Recommendation */}
+                    <div style={{ marginBottom: 18, background: T.bgElev, borderRadius: T.r10, border: `1px solid ${T.border}`, overflow: 'hidden' }}>
+                        <div style={{ padding: '12px 14px', borderBottom: `1px solid ${T.border}` }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Courier Recommendation</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 40, height: 40, borderRadius: T.r8, background: `${recCourier.color}20`, border: `2px solid ${recCourier.color}50`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <span style={{ fontSize: 11, fontWeight: 900, color: recCourier.color }}>{recCourier.code}</span>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{recCourier.name}</div>
+                                    <div style={{ fontSize: 11, color: T.textFaint }}>{recCourier.score}% reliability · {recCourier.days}</div>
+                                </div>
+                            </div>
+                            <div style={{ marginTop: 10 }}>
+                                {rec.trace.map((t, i) => (
+                                    <div key={i} style={{ fontSize: 11, color: T.textFaint, display: 'flex', gap: 6, marginTop: i > 0 ? 4 : 0 }}>
+                                        <span style={{ color: T.j300, flexShrink: 0 }}>→</span>
+                                        <span>{t}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {showRiskNote && (
+                            <div style={{ padding: '9px 14px', background: `${T.yellow}10`, borderBottom: `1px solid ${T.yellow}25`, display: 'flex', alignItems: 'center', gap: 7 }}>
+                                <Icon name="alert-triangle" size={12} color={T.yellow} />
+                                <span style={{ fontSize: 11, color: T.yellow, fontWeight: 600 }}>COD + new customer — higher return risk detected</span>
+                            </div>
+                        )}
+
+                        <button onClick={() => setShowCourierPicker(s => !s)} style={{
+                            width: '100%', padding: '9px 14px', background: 'none', border: 'none',
+                            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                            fontSize: 12, color: T.textMuted, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        }}>
+                            <span>Choose a different courier</span>
+                            <span style={{ fontSize: 9, opacity: 0.5, display: 'inline-block', transform: showCourierPicker ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▼</span>
+                        </button>
+
+                        {showCourierPicker && (
+                            <div style={{ borderTop: `1px solid ${T.border}`, padding: '6px 8px' }}>
+                                {Object.entries(COURIERS).map(([key, c]) => {
+                                    const active = manualCourier === key || (!manualCourier && rec.key === key);
+                                    return (
+                                        <button key={key} onClick={() => { setManualCourier(key); setShowCourierPicker(false); }} style={{
+                                            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                                            padding: '8px 10px', borderRadius: T.r8, border: 'none',
+                                            background: active ? `${c.color}15` : 'none',
+                                            cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.1s',
+                                        }}>
+                                            <div style={{ width: 28, height: 28, borderRadius: T.r6, background: `${c.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                <span style={{ fontSize: 9, fontWeight: 900, color: c.color }}>{c.code}</span>
+                                            </div>
+                                            <div style={{ flex: 1, textAlign: 'left' }}>
+                                                <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{c.name}</div>
+                                                <div style={{ fontSize: 10, color: T.textFaint }}>{c.score}% · {c.days}</div>
+                                            </div>
+                                            {active && <Icon name="check" size={14} color={c.color} />}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    {errors.submit && (
+                        <div style={{ color: T.red, fontSize: 12, marginBottom: 14, padding: '9px 12px', background: T.redBg, borderRadius: T.r8 }}>
+                            {errors.submit}
+                        </div>
+                    )}
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <div style={{ flex: 1 }}><GradientButton full variant="secondary" size="sm" onClick={onClose}>Cancel</GradientButton></div>
+                        <div style={{ flex: 1 }}><GradientButton full variant="primary" size="sm" onClick={handleSubmit}>{sendWA ? 'Confirm & Book Courier' : 'Create Order'}</GradientButton></div>
+                    </div>
+
+                </div>
             </div>
         </div>
     );
