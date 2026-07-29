@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -6,197 +6,81 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_KEY
 );
 
-// Helper function to get user ID from request
-function getUserIdFromRequest(request) {
-  // Try to get user ID from Authorization header
-  const authHeader = request.headers.get('authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.substring(7);
-  }
-  
-  // Try to get user ID from custom header
-  const userIdHeader = request.headers.get('x-user-id');
-  if (userIdHeader) {
-    return userIdHeader;
-  }
-  
-  // Try to get user ID from cookie
-  const cookieHeader = request.headers.get('cookie');
-  if (cookieHeader) {
-    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('=');
-      acc[key] = value;
-      return acc;
-    }, {});
-    
-    if (cookies.user_id) {
-      return cookies.user_id;
-    }
-  }
-  
-  return null;
+const SYNC_INTERVAL_MS = 20 * 60 * 1000; // 20 minutes
+
+function getUserId(request) {
+  return (
+    request.headers.get('x-user-id') ||
+    request.headers.get('authorization')?.replace('Bearer ', '') ||
+    null
+  );
+}
+
+// Trigger a background sync without waiting for it to finish.
+// This keeps the stats endpoint fast — it always returns the stored snapshot
+// and lets the sync update it in the background.
+async function triggerSync(userId, request) {
+  try {
+    const origin = request.nextUrl.origin;
+    fetch(`${origin}/api/meta-ads/sync`, {
+      method:  'POST',
+      headers: { 'x-user-id': userId, 'Content-Type': 'application/json' },
+    }).catch(() => {}); // fire-and-forget
+  } catch { /* non-fatal */ }
 }
 
 export async function GET(request) {
-  const userId = getUserIdFromRequest(request);
-  
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const userId = getUserId(request);
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // 1. Verify the user has Meta Ads connected
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('meta_ads_access_token, meta_ads_ad_account_id')
+    .eq('id', userId)
+    .single();
+
+  if (userError || !user?.meta_ads_access_token || !user?.meta_ads_ad_account_id) {
+    return NextResponse.json({ error: 'Meta Ads not connected' }, { status: 400 });
   }
 
-  try {
-    // Get user's Meta Ads credentials
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('meta_ads_access_token, meta_ads_token_expires_at, meta_ads_ad_account_id')
-      .eq('id', userId)
-      .single();
+  // 2. Read from stored snapshot — never call Meta API directly on page load
+  const { data: snapshotRow } = await supabase
+    .from('meta_ads_snapshot')
+    .select('data, synced_at')
+    .eq('user_id', userId)
+    .single();
 
-    if (userError || !user || !user.meta_ads_access_token) {
-      return NextResponse.json({ error: 'Meta Ads not connected' }, { status: 400 });
-    }
+  const now = Date.now();
 
-    if (!user.meta_ads_ad_account_id) {
-      return NextResponse.json({ error: 'No ad account selected' }, { status: 400 });
-    }
-
-    // Check if token is expired
-    if (new Date(user.meta_ads_token_expires_at) < new Date()) {
-      return NextResponse.json({ error: 'Meta Ads token expired' }, { status: 401 });
-    }
-
-    const searchParams = request.nextUrl.searchParams;
-    const datePreset = searchParams.get('date_preset') || 'last_30d';
-    const accountId = user.meta_ads_ad_account_id;
-
-    // Fetch campaigns with stats
-    const campaignsResponse = await fetch(
-      `https://graph.facebook.com/v18.0/${accountId}/campaigns?fields=id,name,status,objective,buying_type,created_time,updated_time,insights{spend,impressions,clicks,reach,cpc,ctr}&date_preset=${datePreset}&access_token=${user.meta_ads_access_token}`
-    );
-
-    const campaignsData = await campaignsResponse.json();
-
-    if (!campaignsResponse.ok || campaignsData.error) {
-      throw new Error(campaignsData.error?.message || 'Failed to fetch campaigns');
-    }
-
-    // Process and store campaign data
-    const campaigns = [];
-    let totalSpend = 0;
-    let totalImpressions = 0;
-    let totalClicks = 0;
-    let totalReach = 0;
-
-    if (campaignsData.data) {
-      for (const campaign of campaignsData.data) {
-        const insights = campaign.insights?.data?.[0] || {};
-        
-        const campaignData = {
-          id: campaign.id,
-          name: campaign.name,
-          status: campaign.status,
-          objective: campaign.objective,
-          buying_type: campaign.buying_type,
-          created_time: campaign.created_time,
-          updated_time: campaign.updated_time,
-          spend: parseFloat(insights.spend || 0),
-          impressions: parseInt(insights.impressions || 0),
-          clicks: parseInt(insights.clicks || 0),
-          reach: parseInt(insights.reach || 0),
-          cpc: parseFloat(insights.cpc || 0),
-          ctr: parseFloat(insights.ctr || 0),
-        };
-
-        campaigns.push(campaignData);
-
-        // Accumulate totals
-        totalSpend += campaignData.spend;
-        totalImpressions += campaignData.impressions;
-        totalClicks += campaignData.clicks;
-        totalReach += campaignData.reach;
-
-        // Store in database
-        await supabase
-          .from('meta_ads_campaigns')
-          .upsert({
-            user_id: userId,
-            campaign_id: campaign.id,
-            campaign_name: campaign.name,
-            status: campaign.status,
-            objective: campaign.objective,
-            spend: campaignData.spend,
-            impressions: campaignData.impressions,
-            clicks: campaignData.clicks,
-            reach: campaignData.reach,
-            updated_at: new Date(),
-          });
-      }
-    }
-
-    // Calculate ROAS (Return on Ad Spend)
-    // Note: Revenue calculation would need to be implemented based on your order tracking
-    const totalRevenue = 0; // This should be calculated from your orders data
-    const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
-
-    // Get order count for the same period
-    const { data: orders, error: ordersError } = await supabase
-      .from('orders')
-      .select('id, total_amount, created_at')
-      .eq('user_id', userId)
-      .gte('created_at', getDateFromPreset(datePreset));
-
-    const totalOrders = orders ? orders.length : 0;
-    const calculatedRevenue = orders ? orders.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0) : 0;
-    const calculatedRoas = totalSpend > 0 ? calculatedRevenue / totalSpend : 0;
-
-    // Store daily stats
-    const today = new Date().toISOString().split('T')[0];
-    await supabase
-      .from('meta_ads_stats')
-      .upsert({
-        user_id: userId,
-        campaign_id: 'all',
-        date: today,
-        spend: totalSpend,
-        impressions: totalImpressions,
-        clicks: totalClicks,
-        reach: totalReach,
-        revenue: calculatedRevenue,
-        orders: totalOrders,
-      });
-
-    const stats = {
-      totalSpend,
-      totalImpressions,
-      totalClicks,
-      totalReach,
-      totalOrders,
-      revenue: calculatedRevenue,
-      roas: calculatedRoas,
-      ctr: totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0,
-      cpc: totalClicks > 0 ? totalSpend / totalClicks : 0,
-      campaigns,
-      lastUpdated: new Date().toISOString(),
-    };
-
-    return NextResponse.json(stats);
-
-  } catch (error) {
-    console.error('Meta Ads stats error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!snapshotRow || !snapshotRow.data) {
+    // No snapshot yet — trigger a first sync and tell the client to retry
+    triggerSync(userId, request);
+    return NextResponse.json({ syncing: true, message: 'First sync in progress — refresh in 30 seconds' }, { status: 202 });
   }
-}
 
-function getDateFromPreset(preset) {
-  const now = new Date();
-  switch (preset) {
-    case 'last_7d':
-      return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    case 'last_30d':
-      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    case 'last_90d':
-      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
-    default:
-      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  }
+  const syncedAt  = new Date(snapshotRow.synced_at).getTime();
+  const ageMs     = now - syncedAt;
+  const isStale   = ageMs > SYNC_INTERVAL_MS;
+
+  // If stale, kick off a background sync (don't await — return cached data immediately)
+  if (isStale) triggerSync(userId, request);
+
+  const { campaigns = [], syncedAt: ts } = snapshotRow.data;
+
+  return NextResponse.json({
+    campaigns,
+    syncedAt:         ts || snapshotRow.synced_at,
+    syncedMinutesAgo: Math.round(ageMs / 60000),
+    isStale,
+    // legacy totals shape — kept so existing callers don't break
+    totalSpend:    campaigns.reduce((s, c) => s + (c.spend || 0), 0),
+    revenue:       campaigns.reduce((s, c) => s + (c.revenue || 0), 0),
+    totalOrders:   campaigns.reduce((s, c) => s + (c.orders || 0), 0),
+    roas:          (() => {
+      const sp = campaigns.reduce((s, c) => s + (c.spend || 0), 0);
+      const rv = campaigns.reduce((s, c) => s + (c.revenue || 0), 0);
+      return sp > 0 ? rv / sp : 0;
+    })(),
+  });
 }

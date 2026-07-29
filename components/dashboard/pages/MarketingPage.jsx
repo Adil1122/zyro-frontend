@@ -137,6 +137,8 @@ function Btn({ primary, onClick, children }) {
 export default function MarketingPage() {
   const [metaAdsConnected, setMetaAdsConnected] = useState(false);
   const [metaAdsStats, setMetaAdsStats] = useState(null);
+  const [syncedMinutesAgo, setSyncedMinutesAgo] = useState(null);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [credentials, setCredentials] = useState({ meta_app_id: "", meta_app_secret: "" });
   const [accordionCost, setAccordionCost] = useState(false);
@@ -150,34 +152,47 @@ export default function MarketingPage() {
 
   // ── campaigns ──────────────────────────────────────────────────────────────
   const campaigns = useMemo(() => {
-    const base = metaAdsStats
-      ? metaAdsStats.campaigns.map((c, i) => ({
-          id: `camp-${i}`, name: c.name, sub: c.objective || "Conversions", objective: "Sales",
-          spend: c.spend || 0, revenue: c.revenue || 0, orders: Math.floor(c.conversions || c.spend / 400 || 0),
-          status: (c.status || "active").toLowerCase(), ctr: c.ctr || null, freq: null,
-          impressions: c.impressions || 0, format: "—", placement: "—",
-          dailyBudget: 0, todaySpend: 0, adSets: [],
-        }))
+    // When Meta is connected the sync route returns campaigns already in our shape
+    // (name, sub, objective, status, spend, revenue, orders, impressions, reach,
+    //  clicks, ctr, freq, dailyBudget, todaySpend, adSets).
+    // Fall back to mock data when not connected.
+    const base = metaAdsStats?.campaigns?.length
+      ? metaAdsStats.campaigns.map((c, i) => ({ ...c, id: c.id || `camp-${i}` }))
       : MOCK_CAMPAIGNS.map((c, i) => ({ ...c, id: `camp-${i}` }));
+
     return base.map((c) => ({
       ...c,
-      clicks: c.ctr != null ? Math.round((c.impressions || 0) * c.ctr / 100) : 0,
-      reach: c.freq != null && c.freq > 0 ? Math.round((c.impressions || 0) / c.freq) : 0,
+      // derive clicks/reach from ctr/freq if not already provided by the API
+      clicks: c.clicks ?? (c.ctr != null ? Math.round((c.impressions || 0) * c.ctr / 100) : 0),
+      reach:  c.reach  ?? (c.freq != null && c.freq > 0 ? Math.round((c.impressions || 0) / c.freq) : 0),
     }));
   }, [metaAdsStats]);
 
   const totals = useMemo(() => computeTotals(campaigns), [campaigns]);
 
   // ── API ────────────────────────────────────────────────────────────────────
+  const loadStats = async (userId) => {
+    try {
+      const res = await fetch("/api/meta-ads/stats", { headers: { "x-user-id": userId } });
+      if (!res.ok) return;
+      const stats = await res.json();
+      if (stats.syncing) {
+        // First sync in progress — poll once after 30s
+        setTimeout(() => loadStats(userId), 30000);
+        return;
+      }
+      setMetaAdsStats(stats);
+      setMetaAdsConnected(true);
+      setSyncedMinutesAgo(stats.syncedMinutesAgo ?? null);
+    } catch { /* non-fatal */ }
+  };
+
   useEffect(() => {
     const userId = getCurrentUserId();
     if (!userId) return;
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("meta_ads_connected") === "true") window.history.replaceState({}, document.title, window.location.pathname);
-    fetch("/api/meta-ads/stats", { headers: { "x-user-id": userId } })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((stats) => { if (stats) { setMetaAdsStats(stats); setMetaAdsConnected(true); } })
-      .catch(() => {});
+    loadStats(userId);
   }, []);
 
   // ── chart ──────────────────────────────────────────────────────────────────
@@ -301,7 +316,18 @@ export default function MarketingPage() {
     const userId = getCurrentUserId();
     if (!userId) return;
     await fetch("/api/meta-ads/disconnect", { method: "POST", headers: { "Content-Type": "application/json", "x-user-id": userId } });
-    setMetaAdsConnected(false); setMetaAdsStats(null);
+    setMetaAdsConnected(false); setMetaAdsStats(null); setSyncedMinutesAgo(null);
+  };
+
+  const handleManualSync = async () => {
+    const userId = getCurrentUserId();
+    if (!userId || isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await fetch("/api/meta-ads/sync", { method: "POST", headers: { "x-user-id": userId } });
+      await loadStats(userId);
+    } catch { /* non-fatal */ }
+    setIsSyncing(false);
   };
 
   const handleCredentialsSave = async () => {
@@ -323,6 +349,7 @@ export default function MarketingPage() {
 
   return (
     <div style={{ background: S.bg, minHeight: "100vh", fontFamily: "'Inter',-apple-system,BlinkMacSystemFont,sans-serif", color: S.text, fontSize: 14, WebkitFontSmoothing: "antialiased", padding: "30px 32px 60px", maxWidth: 1440 }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* ── page header ── */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
@@ -330,14 +357,30 @@ export default function MarketingPage() {
           <h1 style={{ fontSize: 23, fontWeight: 800, letterSpacing: "-0.01em", marginBottom: 6 }}>Marketing Intelligence</h1>
           <div style={{ color: S.text2, fontSize: 13, display: "flex", alignItems: "center", gap: 7 }}>
             Meta Ads <span style={{ color: S.text3 }}>·</span>
-            synced live <span style={{ color: S.text3 }}>·</span>
+            {metaAdsConnected
+              ? syncedMinutesAgo != null
+                ? (syncedMinutesAgo < 1 ? "just synced" : `synced ${syncedMinutesAgo}m ago`)
+                : "connecting…"
+              : "not connected"
+            }
+            <span style={{ color: S.text3 }}>·</span>
             <span>{campaigns.filter((c) => c.spend > 0).length} active campaigns</span>
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {!metaAdsConnected
             ? <Btn primary onClick={handleMetaConnect}><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6.5 20V12.5H4V9h2.5V6.7C6.5 4.1 8 2.5 10.8 2.5c1.2 0 2.3.1 2.6.1v3h-1.8c-1.4 0-1.6.7-1.6 1.6V9H13l-.4 3.5h-2.3V20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>Connect Meta Ads</Btn>
-            : <Btn onClick={handleMetaDisconnect}>Disconnect</Btn>
+            : <>
+                <Btn onClick={handleManualSync}>
+                  <svg width="13" height="13" viewBox="0 0 20 20" fill="none" style={{ animation: isSyncing ? "spin 1s linear infinite" : "none" }}>
+                    <path d="M4 10a6 6 0 0 1 10.93-3.41M4.93 13.41A6 6 0 0 0 16 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M14 6.5l2.5.5-.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M6 13.5l-2.5-.5.5-2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  {isSyncing ? "Syncing…" : "Sync now"}
+                </Btn>
+                <Btn onClick={handleMetaDisconnect}>Disconnect</Btn>
+              </>
           }
           <Btn onClick={() => setShowCredentialsModal(true)}>
             <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5"/><path d="M10 7v3l2 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
