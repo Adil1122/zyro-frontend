@@ -689,6 +689,21 @@ export default function OrdersPage() {
 
     // ── Import ─────────────────────────────────────────────────────────────
 
+    const downloadOrderTemplate = () => {
+        const rows = [
+            ['OrderID', 'Customer', 'Phone', 'City', 'Amount', 'Status'],
+            ['ORD-001', 'Ahmed Ali', '03001234567', 'Lahore', '2500', 'pending'],
+            ['ORD-002', 'Sara Khan', '03211234567', 'Karachi', '4800', 'confirmed'],
+            ['ORD-003', 'Ali Hassan', '03331234567', 'Islamabad', '1200', 'delivered'],
+        ];
+        const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'bulk_orders_template.csv'; a.click();
+        URL.revokeObjectURL(url);
+    };
+
     const handleImportFile = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -771,6 +786,9 @@ export default function OrdersPage() {
                     actions={<>
                         <GradientButton variant="secondary" size="sm" icon="download" onClick={handleExport} disabled={exporting}>
                             {exporting ? 'Exporting...' : 'Export CSV'}
+                        </GradientButton>
+                        <GradientButton variant="secondary" size="sm" icon="download" onClick={downloadOrderTemplate}>
+                            Template
                         </GradientButton>
                         <GradientButton variant="secondary" size="sm" icon="upload" onClick={() => importRef.current?.click()} disabled={importing}>
                             {importing ? 'Importing...' : 'Import CSV'}
