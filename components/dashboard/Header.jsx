@@ -1,54 +1,81 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { T } from "./constants";
 import Icon from "./Icon";
 
-const NOTIFICATIONS = [
-    {
-        id: 1, icon: "shopping-bag", color: "#60A5FA",
-        title: "3 new orders received",
-        body: "WooCommerce picked up 3 orders in the last hour.",
-        time: "2m ago", href: "/",
-    },
-    {
-        id: 2, icon: "alert-triangle", color: "#FBBF24",
-        title: "Low stock alert",
-        body: "4 products are below 5 units — review inventory.",
-        time: "18m ago", href: "/",
-    },
-    {
-        id: 3, icon: "truck", color: "#4ADE80",
-        title: "Shipment delivered",
-        body: "TCS #779416038409 was delivered to Ahmed Raza.",
-        time: "1h ago", href: "/",
-    },
-    {
-        id: 4, icon: "refresh-cw", color: "#A78BFA",
-        title: "Meta Ads synced",
-        body: "Campaign data updated — 8 active campaigns found.",
-        time: "20m ago", href: "/",
-    },
-];
-
 const SUPPORT_PHONE = "03155567644";
 const WA_HREF = `https://wa.me/92${SUPPORT_PHONE.replace(/^0/, "")}`;
+const POLL_MS  = 60_000; // re-fetch notifications every 60 seconds
+
+// ── localStorage helpers for "seen" tracking ────────────────────────────────
+function getSeenIds() {
+    try {
+        const raw = localStorage.getItem("zyro_notif_seen");
+        return new Set(raw ? JSON.parse(raw) : []);
+    } catch { return new Set(); }
+}
+function saveSeenIds(ids) {
+    try { localStorage.setItem("zyro_notif_seen", JSON.stringify([...ids])); } catch {}
+}
 
 export default function Header({ user }) {
     const router = useRouter();
-    const [showDropdown, setShowDropdown]       = useState(false);
-    const [showSupport, setShowSupport]         = useState(false);
-    const [showNotifications, setShowNotifications] = useState(false);
-    const [hasUnread, setHasUnread]             = useState(true);
-    const [phoneCopied, setPhoneCopied]         = useState(false);
+
+    // Popovers
+    const [showDropdown,      setShowDropdown]      = useState(false);
+    const [showSupport,       setShowSupport]        = useState(false);
+    const [showNotifications, setShowNotifications]  = useState(false);
+    const [phoneCopied,       setPhoneCopied]        = useState(false);
+
+    // Notifications
+    const [notifications, setNotifications] = useState([]);
+    const [notifLoading,  setNotifLoading]  = useState(true);
+    const [unreadCount,   setUnreadCount]   = useState(0);
 
     const supportRef = useRef(null);
     const notifRef   = useRef(null);
     const userRef    = useRef(null);
+    const pollRef    = useRef(null);
 
-    // Close all popovers on outside click
+    // ── Fetch real notifications ─────────────────────────────────────────────
+    const fetchNotifications = useCallback(async () => {
+        const stored = typeof window !== "undefined"
+            ? localStorage.getItem("zyro_user") : null;
+        const userId = stored ? JSON.parse(stored)?.id : null;
+        if (!userId) { setNotifLoading(false); return; }
+
+        try {
+            const res  = await fetch(`/api/notifications?userId=${userId}`);
+            const data = await res.json();
+            if (!data.notifications) return;
+
+            setNotifications(data.notifications);
+
+            // Unread = any notification whose ID is not in the seen set
+            const seen = getSeenIds();
+            const newCount = data.notifications.filter(n => !seen.has(n.id)).length;
+            setUnreadCount(newCount);
+        } catch {
+            // Non-fatal — keep showing last known state
+        } finally {
+            setNotifLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchNotifications();
+        pollRef.current = setInterval(fetchNotifications, POLL_MS);
+        window.addEventListener("focus", fetchNotifications);
+        return () => {
+            clearInterval(pollRef.current);
+            window.removeEventListener("focus", fetchNotifications);
+        };
+    }, [fetchNotifications]);
+
+    // ── Close all popovers on outside click ──────────────────────────────────
     useEffect(() => {
         const handler = (e) => {
             if (supportRef.current && !supportRef.current.contains(e.target)) setShowSupport(false);
@@ -61,6 +88,7 @@ export default function Header({ user }) {
 
     const handleLogout = () => {
         localStorage.removeItem("zyro_user");
+        localStorage.removeItem("zyro_notif_seen");
         window.dispatchEvent(new Event("authChange"));
         router.push("/login");
     };
@@ -70,18 +98,32 @@ export default function Header({ user }) {
         const diff = Math.ceil((new Date(user.trial_ends_at) - new Date()) / (1000 * 60 * 60 * 24));
         return diff > 0 ? diff : 0;
     };
-
     const daysLeft = getTrialDaysLeft();
 
-    const openNotifications = () => {
-        setShowNotifications(p => !p);
-        setShowSupport(false);
-        setHasUnread(false);
-    };
-
+    // ── Open / close popovers ────────────────────────────────────────────────
     const openSupport = () => {
         setShowSupport(p => !p);
         setShowNotifications(false);
+        setShowDropdown(false);
+    };
+
+    const openNotifications = () => {
+        const opening = !showNotifications;
+        setShowNotifications(opening);
+        setShowSupport(false);
+        setShowDropdown(false);
+        if (opening) {
+            // Mark all current notifications as seen
+            const ids = new Set(notifications.map(n => n.id));
+            saveSeenIds(ids);
+            setUnreadCount(0);
+        }
+    };
+
+    const markAllRead = () => {
+        const ids = new Set(notifications.map(n => n.id));
+        saveSeenIds(ids);
+        setUnreadCount(0);
     };
 
     const copyPhone = () => {
@@ -98,7 +140,7 @@ export default function Header({ user }) {
             justifyContent: "space-between", padding: "0 28px",
             flexShrink: 0,
         }}>
-            {/* Left: search + plan badge */}
+            {/* ── Left: search + plan badge ── */}
             <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", alignItems: "center", gap: 20 }}>
                 <div style={{
                     display: "flex", alignItems: "center", gap: 10,
@@ -141,7 +183,7 @@ export default function Header({ user }) {
                 )}
             </div>
 
-            {/* Right: live badge + icon buttons + avatar */}
+            {/* ── Right: live badge + icons + avatar ── */}
             <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: T.j700, borderRadius: 20, border: `1px solid ${T.j500}33` }}>
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: T.green, boxShadow: `0 0 8px ${T.green}` }} />
@@ -149,35 +191,24 @@ export default function Header({ user }) {
                 </div>
 
                 <div style={{ display: "flex", gap: 8 }}>
+
                     {/* ── Support button ── */}
                     <div ref={supportRef} style={{ position: "relative" }}>
-                        <button
-                            onClick={openSupport}
+                        <IconBtn
+                            icon="headset"
+                            active={showSupport}
                             title="Help & Support"
-                            style={{
-                                width: 34, height: 34, borderRadius: "50%",
-                                background: showSupport ? T.bgHigh : T.bgElev,
-                                border: `1px solid ${showSupport ? T.borderMid : T.border}`,
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                cursor: "pointer", transition: "all 0.15s",
-                            }}
-                            onMouseEnter={e => { if (!showSupport) { e.currentTarget.style.background = T.bgHigh; e.currentTarget.style.borderColor = T.borderMid; } }}
-                            onMouseLeave={e => { if (!showSupport) { e.currentTarget.style.background = T.bgElev; e.currentTarget.style.borderColor = T.border; } }}
-                        >
-                            <Icon name="headset" size={16} color={showSupport ? T.textSub : T.textMuted} />
-                        </button>
+                            onClick={openSupport}
+                        />
 
                         {showSupport && (
-                            <div style={{
-                                position: "absolute", top: 42, right: 0, width: 240,
-                                background: T.bgCard, border: `1px solid ${T.borderMid}`,
-                                borderRadius: 12, boxShadow: T.shadowLg, zIndex: 1000, overflow: "hidden",
-                            }}>
+                            <Popover width={240}>
                                 <div style={{ padding: "14px 16px 10px", borderBottom: `1px solid ${T.border}` }}>
                                     <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Help & Support</div>
-                                    <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2 }}>We typically reply within a few minutes</div>
+                                    <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2 }}>
+                                        We typically reply within a few minutes
+                                    </div>
                                 </div>
-
                                 <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
                                     <a
                                         href={WA_HREF}
@@ -212,7 +243,8 @@ export default function Header({ user }) {
                                         <button onClick={copyPhone} style={{
                                             background: "none", border: "none", cursor: "pointer",
                                             color: phoneCopied ? T.green : T.textFaint,
-                                            fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4,
+                                            fontSize: 11, fontWeight: 600,
+                                            display: "flex", alignItems: "center", gap: 4,
                                             transition: "color 0.15s",
                                         }}>
                                             <Icon name={phoneCopied ? "check" : "copy"} size={12} color="currentColor" />
@@ -220,100 +252,123 @@ export default function Header({ user }) {
                                         </button>
                                     </div>
                                 </div>
-
                                 <div style={{ padding: "0 16px 14px" }}>
                                     <div style={{ fontSize: 11, color: T.textFaint, lineHeight: 1.5 }}>
                                         Mon–Sat · 9 AM–8 PM PKT
                                     </div>
                                 </div>
-                            </div>
+                            </Popover>
                         )}
                     </div>
 
                     {/* ── Notifications button ── */}
                     <div ref={notifRef} style={{ position: "relative" }}>
-                        <button
-                            onClick={openNotifications}
+                        <IconBtn
+                            icon="bell"
+                            active={showNotifications}
                             title="Notifications"
-                            style={{
-                                width: 34, height: 34, borderRadius: "50%",
-                                background: showNotifications ? T.bgHigh : T.bgElev,
-                                border: `1px solid ${showNotifications ? T.borderMid : T.border}`,
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                cursor: "pointer", position: "relative", transition: "all 0.15s",
-                            }}
-                            onMouseEnter={e => { if (!showNotifications) { e.currentTarget.style.background = T.bgHigh; e.currentTarget.style.borderColor = T.borderMid; } }}
-                            onMouseLeave={e => { if (!showNotifications) { e.currentTarget.style.background = T.bgElev; e.currentTarget.style.borderColor = T.border; } }}
-                        >
-                            <Icon name="bell" size={16} color={showNotifications ? T.textSub : T.textMuted} />
-                            {hasUnread && (
-                                <div style={{
-                                    position: "absolute", top: 7, right: 7, width: 8, height: 8,
-                                    background: T.red, borderRadius: "50%", border: `2px solid ${T.bgElev}`,
-                                    transition: "opacity 0.2s",
-                                }} />
-                            )}
-                        </button>
+                            onClick={openNotifications}
+                            badge={unreadCount > 0 ? unreadCount : null}
+                        />
 
                         {showNotifications && (
-                            <div style={{
-                                position: "absolute", top: 42, right: 0, width: 320,
-                                background: T.bgCard, border: `1px solid ${T.borderMid}`,
-                                borderRadius: 12, boxShadow: T.shadowLg, zIndex: 1000, overflow: "hidden",
-                            }}>
+                            <Popover width={320}>
+                                {/* Header */}
                                 <div style={{
                                     padding: "12px 16px", borderBottom: `1px solid ${T.border}`,
                                     display: "flex", alignItems: "center", justifyContent: "space-between",
                                 }}>
                                     <span style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Notifications</span>
-                                    <span style={{ fontSize: 11, color: T.textFaint, background: T.bgHigh, padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>
-                                        {NOTIFICATIONS.length} new
-                                    </span>
-                                </div>
-
-                                <div style={{ maxHeight: 340, overflowY: "auto" }}>
-                                    {NOTIFICATIONS.map((n, i) => (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                        {!notifLoading && notifications.length > 0 && (
+                                            <span style={{ fontSize: 11, color: T.textFaint, background: T.bgHigh, padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>
+                                                {notifications.length}
+                                            </span>
+                                        )}
                                         <button
-                                            key={n.id}
-                                            onClick={() => { setShowNotifications(false); router.push(n.href); }}
-                                            style={{
-                                                width: "100%", display: "flex", alignItems: "flex-start", gap: 12,
-                                                padding: "12px 16px", background: "none", border: "none",
-                                                borderBottom: i < NOTIFICATIONS.length - 1 ? `1px solid ${T.border}` : "none",
-                                                cursor: "pointer", textAlign: "left", transition: "background 0.12s",
-                                            }}
-                                            onMouseEnter={e => e.currentTarget.style.background = T.bgElev}
-                                            onMouseLeave={e => e.currentTarget.style.background = "none"}
+                                            onClick={fetchNotifications}
+                                            title="Refresh"
+                                            style={{ background: "none", border: "none", cursor: "pointer", color: T.textFaint, display: "flex", padding: 2, borderRadius: 4 }}
+                                            onMouseEnter={e => e.currentTarget.style.color = T.textSub}
+                                            onMouseLeave={e => e.currentTarget.style.color = T.textFaint}
                                         >
-                                            <div style={{
-                                                width: 32, height: 32, borderRadius: 8, flexShrink: 0, marginTop: 1,
-                                                background: `${n.color}18`,
-                                                display: "flex", alignItems: "center", justifyContent: "center",
-                                            }}>
-                                                <Icon name={n.icon} size={14} color={n.color} />
-                                            </div>
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontSize: 12.5, fontWeight: 700, color: T.text, marginBottom: 2 }}>{n.title}</div>
-                                                <div style={{ fontSize: 11.5, color: T.textMuted, lineHeight: 1.45 }}>{n.body}</div>
-                                                <div style={{ fontSize: 10.5, color: T.textFaint, marginTop: 4 }}>{n.time}</div>
-                                            </div>
+                                            <Icon name="refresh-cw" size={13} color="currentColor" />
                                         </button>
-                                    ))}
+                                    </div>
                                 </div>
 
-                                <div style={{ padding: "10px 16px", borderTop: `1px solid ${T.border}` }}>
-                                    <button style={{
-                                        width: "100%", background: "none", border: "none",
-                                        fontSize: 12, fontWeight: 600, color: T.textFaint, cursor: "pointer",
-                                        textAlign: "center", transition: "color 0.15s",
-                                    }}
-                                        onMouseEnter={e => e.currentTarget.style.color = T.textSub}
-                                        onMouseLeave={e => e.currentTarget.style.color = T.textFaint}
-                                    >
-                                        Mark all as read
-                                    </button>
+                                {/* List */}
+                                <div style={{ maxHeight: 360, overflowY: "auto" }}>
+                                    {notifLoading ? (
+                                        // Skeleton
+                                        [0, 1, 2].map(i => (
+                                            <div key={i} style={{ display: "flex", gap: 12, padding: "12px 16px", borderBottom: `1px solid ${T.border}` }}>
+                                                <div style={{ width: 32, height: 32, borderRadius: 8, background: T.bgHigh, flexShrink: 0 }} />
+                                                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                                                    <div style={{ height: 11, background: T.bgHigh, borderRadius: 4, width: "60%" }} />
+                                                    <div style={{ height: 9, background: T.bgElev, borderRadius: 4, width: "90%" }} />
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : notifications.length === 0 ? (
+                                        <div style={{ padding: "32px 16px", textAlign: "center" }}>
+                                            <div style={{ fontSize: 28, marginBottom: 10 }}>🎉</div>
+                                            <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>All caught up</div>
+                                            <div style={{ fontSize: 12, color: T.textFaint, lineHeight: 1.5 }}>
+                                                No pending orders, stock issues, or alerts right now.
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        notifications.map((n, i) => (
+                                            <button
+                                                key={n.id}
+                                                onClick={() => { setShowNotifications(false); router.push(n.href); }}
+                                                style={{
+                                                    width: "100%", display: "flex", alignItems: "flex-start", gap: 12,
+                                                    padding: "12px 16px", background: "none", border: "none",
+                                                    borderBottom: i < notifications.length - 1 ? `1px solid ${T.border}` : "none",
+                                                    cursor: "pointer", textAlign: "left", transition: "background 0.12s",
+                                                    fontFamily: "inherit",
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = T.bgElev}
+                                                onMouseLeave={e => e.currentTarget.style.background = "none"}
+                                            >
+                                                <div style={{
+                                                    width: 32, height: 32, borderRadius: 8, flexShrink: 0, marginTop: 1,
+                                                    background: `${n.color}18`,
+                                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                                }}>
+                                                    <Icon name={n.icon} size={14} color={n.color} />
+                                                </div>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontSize: 12.5, fontWeight: 700, color: T.text, marginBottom: 2 }}>{n.title}</div>
+                                                    <div style={{ fontSize: 11.5, color: T.textMuted, lineHeight: 1.45 }}>{n.body}</div>
+                                                    <div style={{ fontSize: 10.5, color: T.textFaint, marginTop: 4 }}>{n.time}</div>
+                                                </div>
+                                            </button>
+                                        ))
+                                    )}
                                 </div>
-                            </div>
+
+                                {/* Footer */}
+                                {!notifLoading && notifications.length > 0 && (
+                                    <div style={{ padding: "10px 16px", borderTop: `1px solid ${T.border}` }}>
+                                        <button
+                                            onClick={markAllRead}
+                                            style={{
+                                                width: "100%", background: "none", border: "none",
+                                                fontSize: 12, fontWeight: 600, color: T.textFaint,
+                                                cursor: "pointer", textAlign: "center",
+                                                transition: "color 0.15s", fontFamily: "inherit",
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.color = T.textSub}
+                                            onMouseLeave={e => e.currentTarget.style.color = T.textFaint}
+                                        >
+                                            Mark all as read
+                                        </button>
+                                    </div>
+                                )}
+                            </Popover>
                         )}
                     </div>
                 </div>
@@ -337,24 +392,20 @@ export default function Header({ user }) {
                     </div>
 
                     {showDropdown && (
-                        <div style={{
-                            position: "absolute", top: 45, right: 0, width: 190,
-                            background: T.bgCard, borderRadius: T.r8,
-                            border: `1px solid ${T.border}`, boxShadow: T.shadowLg,
-                            zIndex: 1000, padding: "6px 0", overflow: "hidden",
-                        }}>
+                        <Popover width={190} style={{ padding: "6px 0" }}>
                             <div style={{ padding: "8px 16px", borderBottom: `1px solid ${T.border}`, marginBottom: 4 }}>
                                 <div style={{ fontSize: 12, fontWeight: 700, color: T.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.name || "User Profile"}</div>
                                 <div style={{ fontSize: 10, color: T.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.email || ""}</div>
                             </div>
                             {[
-                                { label: "My Profile", icon: "user", href: "/profile" },
+                                { label: "My Profile",    icon: "user",        href: "/profile" },
                                 { label: "Pricing Plans", icon: "credit-card", href: "/plans" },
                             ].map(item => (
                                 <button key={item.href} onClick={() => { setShowDropdown(false); router.push(item.href); }} style={{
                                     width: "100%", padding: "10px 16px", background: "none", border: "none",
                                     color: T.textSub, fontSize: 13, fontWeight: 600, textAlign: "left",
-                                    cursor: "pointer", display: "flex", alignItems: "center", gap: 10, transition: "all 0.2s",
+                                    cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
+                                    transition: "all 0.2s", fontFamily: "inherit",
                                 }}
                                     onMouseEnter={e => { e.currentTarget.style.background = T.bgHigh; e.currentTarget.style.color = T.text; }}
                                     onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = T.textSub; }}
@@ -367,7 +418,8 @@ export default function Header({ user }) {
                             <button onClick={() => { setShowDropdown(false); handleLogout(); }} style={{
                                 width: "100%", padding: "10px 16px", background: "none", border: "none",
                                 color: T.red, fontSize: 13, fontWeight: 600, textAlign: "left",
-                                cursor: "pointer", display: "flex", alignItems: "center", gap: 10, transition: "all 0.2s",
+                                cursor: "pointer", display: "flex", alignItems: "center", gap: 10,
+                                transition: "all 0.2s", fontFamily: "inherit",
                             }}
                                 onMouseEnter={e => e.currentTarget.style.background = "rgba(248,113,113,0.08)"}
                                 onMouseLeave={e => e.currentTarget.style.background = "none"}
@@ -375,10 +427,60 @@ export default function Header({ user }) {
                                 <Icon name="log-out" size={14} color={T.red} />
                                 Sign Out
                             </button>
-                        </div>
+                        </Popover>
                     )}
                 </div>
             </div>
         </header>
+    );
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function IconBtn({ icon, active, title, onClick, badge }) {
+    const [hovered, setHovered] = useState(false);
+    const lit = active || hovered;
+    return (
+        <button
+            onClick={onClick}
+            title={title}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            style={{
+                width: 34, height: 34, borderRadius: "50%", position: "relative",
+                background: lit ? T.bgHigh : T.bgElev,
+                border: `1px solid ${lit ? T.borderMid : T.border}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", transition: "all 0.15s",
+            }}
+        >
+            <Icon name={icon} size={16} color={lit ? T.textSub : T.textMuted} />
+            {badge != null && (
+                <div style={{
+                    position: "absolute", top: badge > 9 ? 4 : 6, right: badge > 9 ? 3 : 6,
+                    minWidth: badge > 9 ? 16 : 8, height: badge > 9 ? 16 : 8,
+                    background: T.red, borderRadius: badge > 9 ? 8 : "50%",
+                    border: `2px solid ${T.bgElev}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 9, fontWeight: 700, color: "#fff",
+                    padding: badge > 9 ? "0 3px" : 0,
+                }}>
+                    {badge > 9 ? "9+" : null}
+                </div>
+            )}
+        </button>
+    );
+}
+
+function Popover({ children, width, style }) {
+    return (
+        <div style={{
+            position: "absolute", top: 42, right: 0, width,
+            background: T.bgCard, border: `1px solid ${T.borderMid}`,
+            borderRadius: 12, boxShadow: T.shadowLg, zIndex: 1000, overflow: "hidden",
+            ...style,
+        }}>
+            {children}
+        </div>
     );
 }
