@@ -2140,7 +2140,7 @@ function SettingsPage() {
               { label: "Team Members", sub: "2 of 3 seats used" },
               { label: "Notifications", sub: "Push, email, SMS" },
               { label: "Language & Region", sub: "English · Pakistan" },
-              { label: "Help & Support", sub: "Get help anytime" },
+              { label: "Help & Support", sub: "0315 556 7644" },
             ]
           },
         ].map(section => (
