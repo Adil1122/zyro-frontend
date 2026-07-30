@@ -22,6 +22,40 @@ export default function WhatsAppPage() {
     const [testLoading, setTestLoading] = useState(false);
     const [testResult, setTestResult] = useState(null);
 
+    // ─── Support Chat Compose ────────────────────────────────────────────────────
+    const [replyText, setReplyText] = useState("");
+    const [isSending, setIsSending] = useState(false);
+    const [sendError, setSendError] = useState(null);
+
+    const QUICK_REPLIES = [
+        { label: "Issue refund",    text: "We're processing your refund. Please allow 3-5 business days for the amount to reflect in your account." },
+        { label: "Send new item",   text: "We're sending you a replacement item. You'll receive a tracking number shortly." },
+        { label: "Schedule pickup", text: "We've scheduled a pickup for your return. Our courier will contact you within 24 hours." },
+        { label: "Offer discount",  text: "As a goodwill gesture, here's a 15% discount on your next order — use code: SORRY15" },
+    ];
+
+    const handleSendReply = async (textOverride, conv) => {
+        const msg = (textOverride !== undefined ? textOverride : replyText).trim();
+        if (!msg || !conv) return;
+        setIsSending(true);
+        setSendError(null);
+        try {
+            const userId = getCurrentUserId();
+            const res = await fetch('/api/whatsapp/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                body: JSON.stringify({ phone: conv.phone, message: msg, conversationId: conv.id }),
+            });
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error || 'Send failed');
+            setReplyText("");
+        } catch (err) {
+            setSendError(err.message);
+        } finally {
+            setIsSending(false);
+        }
+    };
+
     // ─── Automation Test Panels ─────────────────────────────────
     const [statusOpen, setStatusOpen] = useState(false);
     const [merchantOpen, setMerchantOpen] = useState(false);
@@ -324,18 +358,47 @@ export default function WhatsAppPage() {
                                     <div style={{ padding: "10px 16px", borderTop: `1px solid ${T.border}`, background: T.bgCard }}>
                                         <div style={{
                                             padding: "6px 10px 6px 14px", borderRadius: T.r8, background: T.bgElev,
-                                            border: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 6,
+                                            border: `1px solid ${sendError ? T.red : T.border}`,
+                                            display: "flex", alignItems: "center", gap: 6,
                                         }}>
-                                            <input placeholder="Type your reply..." style={{ flex: 1, border: "none", background: "transparent", outline: "none", fontSize: 12, color: T.text, fontFamily: "inherit" }} />
-                                            <GradientButton size="xs" variant="primary" icon="send">Send</GradientButton>
+                                            <input
+                                                placeholder="Type your reply..."
+                                                value={replyText}
+                                                onChange={e => { setReplyText(e.target.value); setSendError(null); }}
+                                                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendReply(undefined, supportConv); } }}
+                                                disabled={isSending}
+                                                style={{ flex: 1, border: "none", background: "transparent", outline: "none", fontSize: 12, color: T.text, fontFamily: "inherit" }}
+                                            />
+                                            <GradientButton
+                                                size="xs"
+                                                variant="primary"
+                                                icon={isSending ? "refresh" : "send"}
+                                                onClick={() => handleSendReply(undefined, supportConv)}
+                                                disabled={isSending || !replyText.trim()}
+                                            >
+                                                {isSending ? "Sending…" : "Send"}
+                                            </GradientButton>
                                         </div>
+                                        {sendError && (
+                                            <div style={{ fontSize: 10, color: T.red, marginTop: 4, fontWeight: 600 }}>
+                                                {sendError}
+                                            </div>
+                                        )}
                                         <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
-                                            {["Issue refund", "Send new item", "Schedule pickup", "Offer discount"].map(t => (
-                                                <button key={t} style={{
-                                                    padding: "3px 9px", borderRadius: T.r20, fontSize: 10, fontWeight: 600,
-                                                    background: "rgba(92,168,124,0.1)", border: `1px solid ${T.borderMid}`,
-                                                    color: T.j200, cursor: "pointer", fontFamily: "inherit",
-                                                }}>{t}</button>
+                                            {QUICK_REPLIES.map(qr => (
+                                                <button
+                                                    key={qr.label}
+                                                    disabled={isSending}
+                                                    onClick={() => handleSendReply(qr.text, supportConv)}
+                                                    style={{
+                                                        padding: "3px 9px", borderRadius: T.r20, fontSize: 10, fontWeight: 600,
+                                                        background: "rgba(92,168,124,0.1)", border: `1px solid ${T.borderMid}`,
+                                                        color: T.j200, cursor: isSending ? "not-allowed" : "pointer",
+                                                        fontFamily: "inherit", opacity: isSending ? 0.5 : 1,
+                                                    }}
+                                                >
+                                                    {qr.label}
+                                                </button>
                                             ))}
                                         </div>
                                     </div>
