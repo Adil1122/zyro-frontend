@@ -22,6 +22,61 @@ export default function WhatsAppPage() {
     const [testLoading, setTestLoading] = useState(false);
     const [testResult, setTestResult] = useState(null);
 
+    // ─── Configure Rules Panel ───────────────────────────────────────────────────
+    const [rulesOpen, setRulesOpen] = useState(false);
+    const [keywords, setKeywords] = useState([]);
+    const [newKeyword, setNewKeyword] = useState("");
+    const [rulesLoading, setRulesLoading] = useState(false);
+    const [rulesSaving, setRulesSaving] = useState(false);
+    const [rulesSaved, setRulesSaved] = useState(false);
+
+    const openRules = async () => {
+        setRulesOpen(true);
+        setRulesLoading(true);
+        setRulesSaved(false);
+        try {
+            const userId = getCurrentUserId();
+            const res = await fetch('/api/whatsapp/rules', { headers: { 'x-user-id': userId } });
+            const data = await res.json();
+            setKeywords(data.keywords || []);
+        } catch (e) {
+            console.error('Failed to load rules:', e);
+        } finally {
+            setRulesLoading(false);
+        }
+    };
+
+    const saveRules = async () => {
+        setRulesSaving(true);
+        try {
+            const userId = getCurrentUserId();
+            await fetch('/api/whatsapp/rules', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                body: JSON.stringify({ keywords }),
+            });
+            setRulesSaved(true);
+            setTimeout(() => setRulesSaved(false), 2500);
+        } catch (e) {
+            console.error('Failed to save rules:', e);
+        } finally {
+            setRulesSaving(false);
+        }
+    };
+
+    const addKeyword = () => {
+        const kw = newKeyword.trim().toLowerCase();
+        if (!kw || keywords.includes(kw)) return;
+        setKeywords(prev => [...prev, kw]);
+        setNewKeyword("");
+        setRulesSaved(false);
+    };
+
+    const removeKeyword = (kw) => {
+        setKeywords(prev => prev.filter(k => k !== kw));
+        setRulesSaved(false);
+    };
+
     // ─── Support Chat Compose ────────────────────────────────────────────────────
     const [replyText, setReplyText] = useState("");
     const [isSending, setIsSending] = useState(false);
@@ -426,8 +481,115 @@ export default function WhatsAppPage() {
                         When a customer asks for <b style={{ color: T.yellow }}>returns, complaints, or refunds</b>, Zyro automatically shifts them from the Bot to your Support team.
                     </span>
                 </div>
-                <GradientButton variant="ghost" size="sm" icon="settings">Configure Rules</GradientButton>
+                <GradientButton variant="ghost" size="sm" icon="settings" onClick={openRules}>Configure Rules</GradientButton>
             </div>
+
+            {/* ═══ CONFIGURE RULES MODAL ═══ */}
+            {rulesOpen && (
+                <div style={{
+                    position: "fixed", inset: 0, zIndex: 1000,
+                    background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center",
+                }} onClick={e => { if (e.target === e.currentTarget) setRulesOpen(false); }}>
+                    <div style={{
+                        width: 560, maxHeight: "80vh", display: "flex", flexDirection: "column",
+                        background: T.bgCard, borderRadius: 16, border: `1px solid ${T.border}`,
+                        boxShadow: "0 24px 64px rgba(0,0,0,0.4)",
+                    }}>
+                        {/* Header */}
+                        <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 12 }}>
+                            <div style={{
+                                width: 36, height: 36, borderRadius: 10, background: T.gradBtn,
+                                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                            }}>
+                                <Icon name="settings" size={17} color="#fff" />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 16, fontWeight: 800, color: T.text }}>Auto-Shift Rules</div>
+                                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+                                    Messages containing these keywords automatically escalate from Bot → Support Team
+                                </div>
+                            </div>
+                            <button onClick={() => setRulesOpen(false)} style={{
+                                width: 28, height: 28, borderRadius: 8, background: T.bgElev,
+                                border: `1px solid ${T.borderMid}`, color: T.textMuted,
+                                cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center",
+                            }}>×</button>
+                        </div>
+
+                        {/* Keywords list */}
+                        <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
+                            {rulesLoading ? (
+                                <div style={{ textAlign: "center", padding: 40, color: T.textMuted, fontSize: 13 }}>Loading rules…</div>
+                            ) : (
+                                <>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 20 }}>
+                                        {keywords.map(kw => (
+                                            <span key={kw} style={{
+                                                display: "inline-flex", alignItems: "center", gap: 5,
+                                                padding: "4px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                                                background: "rgba(92,168,124,0.1)", border: `1px solid ${T.borderMid}`,
+                                                color: T.j200,
+                                            }}>
+                                                {kw}
+                                                <button onClick={() => removeKeyword(kw)} style={{
+                                                    background: "none", border: "none", cursor: "pointer",
+                                                    color: T.textFaint, fontSize: 14, lineHeight: 1,
+                                                    padding: 0, display: "flex", alignItems: "center",
+                                                }}>×</button>
+                                            </span>
+                                        ))}
+                                        {keywords.length === 0 && (
+                                            <div style={{ fontSize: 12, color: T.textMuted, fontStyle: "italic" }}>
+                                                No keywords — all messages go to the bot only.
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Add keyword */}
+                                    <div style={{ display: "flex", gap: 8 }}>
+                                        <input
+                                            value={newKeyword}
+                                            onChange={e => setNewKeyword(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && addKeyword()}
+                                            placeholder="Add a keyword (e.g. wrong color)"
+                                            style={{
+                                                flex: 1, padding: "8px 12px", borderRadius: 8, fontSize: 13,
+                                                background: T.bgElev, border: `1px solid ${T.borderMid}`,
+                                                color: T.text, outline: "none", fontFamily: "inherit",
+                                            }}
+                                        />
+                                        <button onClick={addKeyword} style={{
+                                            padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                                            background: T.gradBtn, color: "#fff", border: "none", cursor: "pointer",
+                                            fontFamily: "inherit",
+                                        }}>Add</button>
+                                    </div>
+                                    <div style={{ fontSize: 11, color: T.textFaint, marginTop: 8 }}>
+                                        Press Enter or click Add. Keywords are matched as substrings (case-insensitive).
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ padding: "14px 24px", borderTop: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 10 }}>
+                            <GradientButton
+                                variant="primary"
+                                onClick={saveRules}
+                                disabled={rulesSaving || rulesLoading}
+                            >
+                                {rulesSaving ? "Saving…" : rulesSaved ? "✓ Saved" : "Save Rules"}
+                            </GradientButton>
+                            <GradientButton variant="secondary" onClick={() => setRulesOpen(false)}>
+                                Cancel
+                            </GradientButton>
+                            <span style={{ marginLeft: "auto", fontSize: 11, color: T.textFaint }}>
+                                {keywords.length} keyword{keywords.length !== 1 ? "s" : ""}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ═══ TEST PANEL: Order Status Update ═══ */}
             <div style={{ borderTop: `1px solid ${T.border}` }}>

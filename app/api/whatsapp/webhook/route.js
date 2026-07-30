@@ -540,46 +540,42 @@ async function sendWhatsAppDocumentMessage(userId, recipientPhone, caption, medi
 }
 
 
-// Keywords that signal a customer complaint (English + Roman Urdu)
-const COMPLAINT_KEYWORDS = [
-    // English
+// Default keywords that signal a customer complaint (English + Roman Urdu)
+const DEFAULT_COMPLAINT_KEYWORDS = [
     'complaint', 'problem', 'issue', 'broken', 'damaged', 'not working', 'defective',
     'wrong item', 'wrong product', 'refund', 'return', 'fraud', 'fake', 'cheated',
     'scam', 'worst', 'terrible', 'pathetic', 'disgusting', 'angry', 'very bad',
     'not received', 'missing', 'lost', 'stolen', 'late delivery', 'where is my order',
     'still not delivered', 'not delivered', 'where is my parcel', 'waste of money',
-    // Roman Urdu
     'farzi', 'dhoka', 'naqli', 'kharab', 'wapas karo', 'paisa wapas', 'bohat bura',
     'galat cheez', 'wrong cheez', 'complaint karna', 'jhooth', 'bekaar', 'barbaad',
     'zabardasti', 'paisa loot', 'chori', 'nahi mila', 'order nahi aya',
 ];
 
 /**
- * Returns true if the message text contains complaint signals
- */
-function isComplaint(text) {
-    if (!text) return false;
-    const lower = text.toLowerCase();
-    return COMPLAINT_KEYWORDS.some(kw => lower.includes(kw));
-}
-
-/**
  * Detect complaints in incoming text messages and alert the merchant
  */
 async function handleComplaintDetection(senderPhone, messageText, phoneNumberId) {
-    if (!isComplaint(messageText)) return;
-
-    console.log(`[WhatsApp Webhook] Complaint detected from ${senderPhone}: "${messageText.substring(0, 80)}..."`);
-
     try {
         // Find the merchant who owns this WhatsApp Business phone number
         const { data: user } = await supabase
             .from('users')
-            .select('id, wa_is_active')
+            .select('id, wa_is_active, wa_escalation_keywords')
             .eq('wa_phone_number_id', phoneNumberId)
             .maybeSingle();
 
         if (!user?.id || !user?.wa_is_active) return;
+
+        // Use custom keywords if configured, else fall back to defaults
+        const keywords = (Array.isArray(user.wa_escalation_keywords) && user.wa_escalation_keywords.length > 0)
+            ? user.wa_escalation_keywords
+            : DEFAULT_COMPLAINT_KEYWORDS;
+
+        const lower = (messageText || '').toLowerCase();
+        const isComplaint = keywords.some(kw => lower.includes(kw.toLowerCase()));
+        if (!isComplaint) return;
+
+        console.log(`[WhatsApp Webhook] Complaint detected from ${senderPhone}: "${messageText.substring(0, 80)}..."`);
 
         // Try to get customer name from wa_pending_orders
         const phoneVariants = generatePhoneVariants(senderPhone);
