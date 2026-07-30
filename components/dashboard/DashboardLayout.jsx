@@ -26,7 +26,8 @@ export default function DashboardLayout({ children }) {
     const isSignupPage = pathname === "/signup" || pathname === "/signup-old";
     const isPlansPage = pathname === "/plans";
     const isOnboardingPage = pathname === "/onboarding";
-    const isPublicPage = isLoginPage || isSignupPage || isOnboardingPage;
+    const isForgotPasswordPage = pathname === "/forgot-password" || pathname === "/reset-password";
+    const isPublicPage = isLoginPage || isSignupPage || isOnboardingPage || isForgotPasswordPage;
 
     const router = useRouter();
     
@@ -164,7 +165,7 @@ export default function DashboardLayout({ children }) {
     const isRestricted = isTrialExpired && !hasPlan;
     const showSidebar = !isPlansPage && !isRestricted;
 
-    if (isLoginPage || isSignupPage || isOnboardingPage) {
+    if (isLoginPage || isSignupPage || isOnboardingPage || isForgotPasswordPage) {
         return <div style={{ 
             width: "100%", 
             minHeight: "100vh", 
