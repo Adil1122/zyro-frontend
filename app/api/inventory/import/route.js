@@ -101,9 +101,77 @@ export async function POST(request) {
             if (insertErr) throw insertErr;
             return NextResponse.json({ success: true, count: insertData.length });
         }
+        else if (type === 'Purchase Orders') {
+            // Resolve supplier names → IDs
+            const supplierNames = [...new Set(data.map(d => d.Supplier).filter(Boolean))];
+            const supplierMap = {};
+            if (supplierNames.length > 0) {
+                const { data: suppliers } = await supabase
+                    .from('suppliers')
+                    .select('id, name')
+                    .eq('user_id', userId)
+                    .in('name', supplierNames);
+                (suppliers || []).forEach(s => { supplierMap[s.name] = s.id; });
+            }
+
+            const insertData = data.map(item => {
+                let parsedItems;
+                try {
+                    parsedItems = item.Items ? JSON.parse(item.Items) : [];
+                } catch {
+                    parsedItems = item.Items
+                        ? [{ name: String(item.Items), quantity: 1, unitPrice: 0 }]
+                        : [];
+                }
+                return {
+                    user_id: userId,
+                    po_number: item.PONumber || `PO-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
+                    supplier_id: supplierMap[item.Supplier] || null,
+                    items: parsedItems,
+                    total_amount: parseFloat(item.Total) || 0,
+                    status: item.Status || 'draft',
+                    notes: null,
+                };
+            });
+
+            const { error: insertErr } = await supabase
+                .from('purchase_orders')
+                .insert(insertData);
+
+            if (insertErr) throw insertErr;
+            return NextResponse.json({ success: true, count: insertData.length });
+        }
+        else if (type === 'Returns') {
+            // Resolve product names → IDs
+            const itemNames = [...new Set(data.map(d => d.Item).filter(Boolean))];
+            const productMap = {};
+            if (itemNames.length > 0) {
+                const { data: products } = await supabase
+                    .from('products')
+                    .select('id, name')
+                    .eq('user_id', userId)
+                    .in('name', itemNames);
+                (products || []).forEach(p => { productMap[p.name] = p.id; });
+            }
+
+            const insertData = data.map(item => ({
+                user_id: userId,
+                rma_number: item.RMANumber || `RMA-${Date.now()}-${Math.floor(Math.random() * 9999)}`,
+                reason: item.Reason || null,
+                condition: item.Condition || null,
+                status: item.Status || 'Pending',
+                product_id: productMap[item.Item] || null,
+            }));
+
+            const { error: insertErr } = await supabase
+                .from('returns')
+                .insert(insertData);
+
+            if (insertErr) throw insertErr;
+            return NextResponse.json({ success: true, count: insertData.length });
+        }
         else {
-            // Placeholder for other types
-            return NextResponse.json({ success: true, message: `Imported ${data.length} ${type} records. (Basic parsing)` });
+            return NextResponse.json({ error: `Unknown import type: ${type}` }, { status: 400 });
         }
 
     } catch (error) {
