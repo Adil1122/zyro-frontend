@@ -20,17 +20,6 @@ const S = {
   r: "10px", rLg: "14px",
 };
 
-// ─── mock campaigns ───────────────────────────────────────────────────────────
-const MOCK_CAMPAIGNS = [
-  { name: "Eid Sale 2026 — Kurtas", sub: "Broad · Traffic objective", objective: "Traffic", spend: 0, revenue: 0, orders: 0, status: "paused", ctr: null, freq: null, impressions: 0, format: "Single image", placement: "—", dailyBudget: 2000, todaySpend: 0, adSets: [] },
-  { name: "Lookalike — Past Purchasers", sub: "1% lookalike · Conversions", objective: "Sales", spend: 8400, revenue: 33600, orders: 14, status: "active", ctr: 2.8, freq: 2.1, impressions: 140000, format: "Video", placement: "Instagram Reels", dailyBudget: 1500, todaySpend: 1420, adSets: [{ name: "1% LAL — Purchasers, last 90d", spend: 5400, revenue: 22400, orders: 9, ctr: 3.1, headline: "Loved it once? You'll love this too.", body: "Handpicked for our repeat customers — new arrivals just for you. Free delivery this week." }, { name: "1% LAL — Purchasers, last 180d", spend: 3000, revenue: 11200, orders: 5, ctr: 2.3, headline: "Still thinking about it?", body: "The pieces you loved are back in stock. Shop before they're gone again." }] },
-  { name: "Cart Abandonment Recovery", sub: "Retargeting · Dynamic", objective: "Sales", spend: 3200, revenue: 14400, orders: 6, status: "active", ctr: 3.6, freq: 1.8, impressions: 48000, format: "Single image", placement: "Instagram Feed", dailyBudget: 800, todaySpend: 640, adSets: [{ name: "Cart abandoners — 3 day window", spend: 3200, revenue: 14400, orders: 6, ctr: 3.6, headline: "You left something behind", body: "Your cart's still here — complete your order in 2 minutes. 10% off if you check out today." }] },
-  { name: "Summer Collection Retargeting", sub: "Retargeting · 14-day window", objective: "Sales", spend: 6750, revenue: 20250, orders: 8, status: "active", ctr: 2.2, freq: 2.6, impressions: 95000, format: "Carousel", placement: "Instagram Stories", dailyBudget: 1200, todaySpend: 1150, adSets: [{ name: "Website visitors — last 14 days", spend: 4200, revenue: 14700, orders: 6, ctr: 2.6, headline: "Summer's not over yet", body: "Lightweight, breathable, and still 20% off. Shop the summer edit." }, { name: "Instagram engagers — last 30 days", spend: 2550, revenue: 5550, orders: 2, ctr: 1.5, headline: "Seen it, now get it", body: "The pieces you liked on Instagram are waiting in your size." }] },
-  { name: "Broad Interest — Women's Fashion", sub: "Interest targeting", objective: "Sales", spend: 12100, revenue: 30250, orders: 9, status: "active", ctr: 1.4, freq: 3.8, impressions: 175000, format: "Carousel", placement: "Facebook Feed", dailyBudget: 2000, todaySpend: 950, adSets: [{ name: "Interest: Women's fashion, 22–38", spend: 7100, revenue: 21300, orders: 6, ctr: 1.7, headline: "Your new everyday edit", body: "Comfortable, versatile, effortlessly styled. Explore the new collection." }, { name: "Interest: Online shopping, 18–45", spend: 5000, revenue: 8950, orders: 3, ctr: 1.0, headline: "Discover something new", body: "Thousands of women shop with us every week — see what they're loving." }] },
-  { name: "New Customer Acquisition — Lawn", sub: "Broad · Conversions", objective: "Sales", spend: 15600, revenue: 0, orders: 0, status: "learning", ctr: 0.9, freq: 1.2, impressions: 210000, format: "Video", placement: "Facebook Feed", dailyBudget: 3000, todaySpend: 2100, adSets: [{ name: "Broad — Pakistan, 20–45", spend: 15600, revenue: 0, orders: 0, ctr: 0.9, headline: "Lawn season is here", body: "Premium lawn, unbeatable prices. Free delivery on your first order." }] },
-  { name: "Interest — Men's Fashion", sub: "Interest targeting", objective: "Sales", spend: 9800, revenue: 0, orders: 0, status: "active", ctr: 1.1, freq: 4.2, impressions: 140000, format: "Single image", placement: "Facebook Feed", dailyBudget: 1800, todaySpend: 1690, adSets: [{ name: "Interest: Men's fashion, 20–40", spend: 9800, revenue: 0, orders: 0, ctr: 1.1, headline: "Sharp looks, better prices", body: "Upgrade your wardrobe with our new men's line. Limited stock." }] },
-  { name: "Video Views — Brand Awareness", sub: "Broad · Awareness objective", objective: "Awareness", spend: 4500, revenue: 4050, orders: 2, status: "active", ctr: 0.8, freq: 2.0, impressions: 70000, format: "Video", placement: "Instagram Reels", dailyBudget: 900, todaySpend: 810, adSets: [{ name: "Broad awareness — video views", spend: 4500, revenue: 4050, orders: 2, ctr: 0.8, headline: "This is who we are", body: "A look behind the brand — our story, our craft, our people." }] },
-];
 
 // ─── logic ────────────────────────────────────────────────────────────────────
 function recommend(c) {
@@ -152,17 +141,11 @@ export default function MarketingPage() {
 
   // ── campaigns ──────────────────────────────────────────────────────────────
   const campaigns = useMemo(() => {
-    // When Meta is connected the sync route returns campaigns already in our shape
-    // (name, sub, objective, status, spend, revenue, orders, impressions, reach,
-    //  clicks, ctr, freq, dailyBudget, todaySpend, adSets).
-    // Fall back to mock data when not connected.
     const base = metaAdsStats?.campaigns?.length
       ? metaAdsStats.campaigns.map((c, i) => ({ ...c, id: c.id || `camp-${i}` }))
-      : MOCK_CAMPAIGNS.map((c, i) => ({ ...c, id: `camp-${i}` }));
-
+      : [];
     return base.map((c) => ({
       ...c,
-      // derive clicks/reach from ctr/freq if not already provided by the API
       clicks: c.clicks ?? (c.ctr != null ? Math.round((c.impressions || 0) * c.ctr / 100) : 0),
       reach:  c.reach  ?? (c.freq != null && c.freq > 0 ? Math.round((c.impressions || 0) / c.freq) : 0),
     }));
@@ -569,7 +552,30 @@ export default function MarketingPage() {
             </thead>
             <tbody>
               {filteredCampaigns.length === 0 && (
-                <tr><td colSpan={8} style={{ padding: 24, textAlign: "center", color: S.text3 }}>No campaigns match &ldquo;{searchQuery}&rdquo;</td></tr>
+                <tr><td colSpan={8} style={{ padding: "40px 24px", textAlign: "center" }}>
+                  {!metaAdsConnected ? (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" style={{ color: S.text3 }}>
+                        <path d="M6.5 20V12.5H4V9h2.5V6.7C6.5 4.1 8 2.5 10.8 2.5c1.2 0 2.3.1 2.6.1v3h-1.8c-1.4 0-1.6.7-1.6 1.6V9H13l-.4 3.5h-2.3V20" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <div style={{ color: S.text2, fontSize: 14, fontWeight: 600 }}>Connect Meta Ads to see your campaigns</div>
+                      <div style={{ color: S.text3, fontSize: 12 }}>Your real campaign spend, ROAS, and insights will appear here</div>
+                      <button onClick={handleMetaConnect} style={{ marginTop: 4, height: 34, padding: "0 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", background: S.accent, color: "#04231a", border: "none", fontFamily: "inherit" }}>
+                        Connect Meta Ads
+                      </button>
+                    </div>
+                  ) : searchQuery ? (
+                    <span style={{ color: S.text3 }}>No campaigns match &ldquo;{searchQuery}&rdquo;</span>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                      <div style={{ color: S.text2, fontSize: 14, fontWeight: 600 }}>No campaigns found</div>
+                      <div style={{ color: S.text3, fontSize: 12 }}>Try syncing to pull the latest data from Meta</div>
+                      <button onClick={handleManualSync} style={{ marginTop: 4, height: 34, padding: "0 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", background: S.card3, color: S.text, border: `1px solid ${S.borderStrong}`, fontFamily: "inherit" }}>
+                        {isSyncing ? "Syncing…" : "Sync now"}
+                      </button>
+                    </div>
+                  )}
+                </td></tr>
               )}
               {filteredCampaigns.map((c) => {
                 const rec = recommend(c);
