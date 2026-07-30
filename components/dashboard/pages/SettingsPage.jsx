@@ -14,6 +14,7 @@ import InstaWorldManagePage from "./InstaWorldManagePage";
 import MPManagePage from "./MPManagePage";
 import PakistanPostManagePage from "./PakistanPostManagePage";
 import DHLManagePage from "./DHLManagePage";
+import TraxManagePage from "./TraxManagePage";
 
 // Add these to navigation
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -177,6 +178,40 @@ function useTCSStats() {
         try {
             const userId = getCurrentUserId();
             const res = await fetch("/api/tcs/stats", {
+                headers: { 'x-user-id': userId }
+            });
+            const data = await res.json();
+            if (!data.configured) {
+                setStats({ configured: false });
+            } else if (data.error) {
+                setError(data.error);
+                setStats({ configured: true });
+            } else {
+                setStats({ configured: true, ...data });
+            }
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { fetchStats(); }, []);
+    return { stats, loading, error, refetch: fetchStats };
+}
+
+// ─── Trax Live Stats Hook ────────────────────────────────────────────────────
+function useTraxStats() {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    const fetchStats = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const userId = getCurrentUserId();
+            const res = await fetch("/api/trax/stats", {
                 headers: { 'x-user-id': userId }
             });
             const data = await res.json();
@@ -1081,6 +1116,101 @@ function LeopardsCard({ onManage, onSync, isSyncing, syncResult }) {
     );
 }
 
+// ─── Trax Courier Card ──────────────────────────────────────────────────────
+function TraxCard({ onManage, onSync, isSyncing, syncResult }) {
+    const { stats, loading, error } = useTraxStats();
+    const isConnected = stats?.configured && !error;
+    const TRAX_GRAD = "linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%)";
+
+    return (
+        <Card style={{ marginBottom: 10, padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <div style={{
+                    width: 44, height: 44, borderRadius: T.r10, flexShrink: 0,
+                    background: TRAX_GRAD,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 22, boxShadow: "0 4px 12px rgba(251,191,36,0.4)",
+                }}>🚚</div>
+
+                <div style={{ flex: 1, minWidth: 140 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Trax Courier</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+                        {loading
+                            ? "Connecting to Trax…"
+                            : stats?.configured === false
+                                ? "Credentials not configured"
+                                : error
+                                    ? `Error: ${error}`
+                                    : stats?.todayShipments !== undefined
+                                        ? `${stats.todayShipments} shipments today`
+                                        : "No data yet"
+                        }
+                    </div>
+                </div>
+
+                {isConnected && !loading && stats?.totalShipments !== undefined && (
+                    <div style={{ display: "flex", gap: 20, marginRight: 12 }}>
+                        <div>
+                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>COD Pending</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginTop: 2 }}>{formatRevenue(stats.codPending)}</div>
+                            <div style={{ fontSize: 10, color: T.textFaint, marginTop: 1 }}>{stats.todayShipments || 0} today</div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>Total Recovered</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: T.j200, marginTop: 2 }}>{formatRevenue(stats.codRecovered)}</div>
+                            <div style={{ fontSize: 10, color: T.textFaint, marginTop: 1 }}>{stats.totalShipments || 0} lifetime</div>
+                        </div>
+                    </div>
+                )}
+
+                {loading && (
+                    <div style={{ display: "flex", gap: 20, marginRight: 12 }}>
+                        {[80, 80].map((w, i) => (
+                            <div key={i}>
+                                <div style={{ height: 10, width: 60, borderRadius: T.r4, background: T.bgHigh, marginBottom: 6, animation: "pulse 1.4s ease-in-out infinite" }} />
+                                <div style={{ height: 18, width: w, borderRadius: T.r4, background: T.bgHigh, animation: "pulse 1.4s ease-in-out infinite" }} />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 12 }}>
+                    {loading
+                        ? <div style={{ width: 6, height: 6, borderRadius: "50%", background: T.textFaint, animation: "pulse 1s ease-in-out infinite" }} />
+                        : <div style={{ width: 6, height: 6, borderRadius: "50%", background: isConnected ? T.green : T.red, boxShadow: isConnected ? `0 0 6px ${T.green}` : `0 0 6px ${T.red}` }} />
+                    }
+                    <span style={{ fontSize: 12, fontWeight: 600, color: loading ? T.textFaint : isConnected ? T.green : T.red }}>
+                        {loading ? "checking…" : isConnected ? "connected" : "disconnected"}
+                    </span>
+                </div>
+
+                {isConnected && !loading ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                        <GradientButton variant="primary" size="sm" icon="refresh" onClick={onSync} disabled={isSyncing}>
+                            {isSyncing ? "Syncing..." : "Sync"}
+                        </GradientButton>
+                        <GradientButton variant="secondary" size="sm" icon="settings" onClick={onManage}>Manage</GradientButton>
+                    </div>
+                ) : !loading ? (
+                    <GradientButton variant="primary" size="sm" icon="plus" onClick={onManage}>Connect Courier</GradientButton>
+                ) : null}
+
+                {syncResult && (
+                    <div style={{
+                        marginTop: 8, padding: 12, borderRadius: T.r8,
+                        background: syncResult.success ? T.greenBg : T.redBg,
+                        border: `1px solid ${syncResult.success ? T.green : T.red}`,
+                        fontSize: 12, color: syncResult.success ? T.green : T.red,
+                    }}>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>{syncResult.success ? "✓ Sync Complete" : "✗ Sync Failed"}</div>
+                        <div>{syncResult.message}</div>
+                    </div>
+                )}
+            </div>
+        </Card>
+    );
+}
+
 // ─── Insta World Courier Card ───────────────────────────────────────────────
 function InstaWorldCard({ onManage }) {
     const { stats, loading, error } = useInstaWorldStats();
@@ -1411,6 +1541,10 @@ export default function SettingsPage({ tabParam }) {
     const [isLeopardsSyncing, setIsLeopardsSyncing] = useState(false);
     const [leopardsSyncResult, setLeopardsSyncResult] = useState(null);
 
+    // ─── Trax Sync State ───
+    const [isTraxSyncing, setIsTraxSyncing] = useState(false);
+    const [traxSyncResult, setTraxSyncResult] = useState(null);
+
     // ─── M&P Sync State ───
     const [isMPSyncing, setIsMPSyncing] = useState(false);
     const [mpSyncResult, setMPSyncResult] = useState(null);
@@ -1502,6 +1636,28 @@ export default function SettingsPage({ tabParam }) {
             setLeopardsSyncResult({ success: false, message: 'Leopards sync failed: ' + e.message });
         } finally {
             setIsLeopardsSyncing(false);
+        }
+    };
+
+    const handleTraxSync = async () => {
+        setIsTraxSyncing(true);
+        setTraxSyncResult(null);
+        try {
+            const userId = getCurrentUserId();
+            const response = await fetch("/api/trax/sync", {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+            });
+            const result = await response.json();
+            if (result.error) {
+                setTraxSyncResult({ success: false, message: result.error });
+            } else {
+                setTraxSyncResult({ success: true, message: result.message || `Trax sync complete. ${result.synced || 0} shipments in database.` });
+            }
+        } catch (e) {
+            setTraxSyncResult({ success: false, message: 'Trax sync failed: ' + e.message });
+        } finally {
+            setIsTraxSyncing(false);
         }
     };
 
@@ -1710,6 +1866,9 @@ export default function SettingsPage({ tabParam }) {
     if (managingStore === "dhl") {
         return <DHLManagePage onBack={handleBack} />;
     }
+    if (managingStore === "trax") {
+        return <TraxManagePage onBack={handleBack} />;
+    }
 
     return (
         <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
@@ -1794,6 +1953,9 @@ export default function SettingsPage({ tabParam }) {
 
                         {/* Leopards – live integration */}
                         <LeopardsCard onManage={() => handleManage("leopards")} onSync={handleLeopardsSync} isSyncing={isLeopardsSyncing} syncResult={leopardsSyncResult} />
+
+                        {/* Trax – live integration */}
+                        <TraxCard onManage={() => handleManage("trax")} onSync={handleTraxSync} isSyncing={isTraxSyncing} syncResult={traxSyncResult} />
 
                         {/* Insta World – live integration */}
                         <InstaWorldCard onManage={() => handleManage("instaworld")} />
