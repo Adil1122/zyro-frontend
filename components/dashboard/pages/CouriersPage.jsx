@@ -9,34 +9,21 @@ import { getCurrentUserId } from "../../../lib/auth";
 // ── static courier registry ──────────────────────────────────────────────────
 
 const INIT_COURIERS = {
-    tcs:      { name: "TCS",          code: "TCS", color: "#E85955", bg: "rgba(224,57,54,0.12)",   connected: true,  score: 94, successRate: "94.2%", avgDays: "1.8 days", rto: "3.1%", cost: "Rs 210", load: 62, bestFor: "Metro cities, electronics" },
-    leopards: { name: "Leopards",     code: "LP",  color: "#4ADE80", bg: "rgba(34,197,94,0.12)",   connected: true,  score: 91, successRate: "91.6%", avgDays: "2.4 days", rto: "4.8%", cost: "Rs 185", load: 78, bestFor: "Urban areas, high volume" },
-    mnp:      { name: "M&P Courier",  code: "M&P", color: "#C084FC", bg: "rgba(168,85,247,0.12)", connected: true,  score: 76, successRate: "81.3%", avgDays: "3.1 days", rto: "8.9%", cost: "Rs 240", load: 34, bestFor: "Urban fallback only" },
-    postex:   { name: "PostEx",       code: "PX",  color: "#60A5FA", bg: "rgba(59,130,246,0.12)",  connected: true,  score: 88, successRate: "88.9%", avgDays: "2.9 days", rto: "5.4%", cost: "Rs 165", load: 45, bestFor: "Rural / remote, COD" },
-    trax:     { name: "Trax",         code: "TX",  color: "#FBBF24", bg: "rgba(245,158,11,0.12)",  connected: true,  score: 79, successRate: "82.7%", avgDays: "3.4 days", rto: "7.2%", cost: "Rs 150", load: 28, bestFor: "Rural / remote" },
-    callc:    { name: "Call Courier", code: "CC",  color: "#F87171", bg: "rgba(242,114,107,0.12)", connected: true,  score: 58, successRate: "68.4%", avgDays: "4.2 days", rto: "15.1%",cost: "Rs 175", load: 12, bestFor: "Underperforming — review" },
-    rider:    { name: "Rider",        code: "RD",  color: "#FCD34D", bg: "rgba(234,179,8,0.12)",   connected: true,  score: 85, successRate: "86.1%", avgDays: "1.2 days", rto: "4.0%", cost: "Rs 140", load: 19, bestFor: "Karachi same-day" },
+    tcs:      { name: "TCS",          code: "TCS", color: "#E85955", bg: "rgba(224,57,54,0.12)",   connected: true,  score: null, successRate: "—", avgDays: "1–3 days", rto: "—", cost: "Rs 210", load: 0, bestFor: "Metro cities, electronics" },
+    leopards: { name: "Leopards",     code: "LP",  color: "#4ADE80", bg: "rgba(34,197,94,0.12)",   connected: true,  score: null, successRate: "—", avgDays: "2–4 days", rto: "—", cost: "Rs 185", load: 0, bestFor: "Urban areas, high volume" },
+    mnp:      { name: "M&P Courier",  code: "M&P", color: "#C084FC", bg: "rgba(168,85,247,0.12)", connected: true,  score: null, successRate: "—", avgDays: "2–4 days", rto: "—", cost: "Rs 240", load: 0, bestFor: "Urban fallback only" },
+    postex:   { name: "PostEx",       code: "PX",  color: "#60A5FA", bg: "rgba(59,130,246,0.12)",  connected: true,  score: null, successRate: "—", avgDays: "2–4 days", rto: "—", cost: "Rs 165", load: 0, bestFor: "Rural / remote, COD" },
+    trax:     { name: "Trax",         code: "TX",  color: "#FBBF24", bg: "rgba(245,158,11,0.12)",  connected: true,  score: null, successRate: "—", avgDays: "3–5 days", rto: "—", cost: "Rs 150", load: 0, bestFor: "Rural / remote" },
+    callc:    { name: "Call Courier", code: "CC",  color: "#F87171", bg: "rgba(242,114,107,0.12)", connected: true,  score: null, successRate: "—", avgDays: "3–5 days", rto: "—", cost: "Rs 175", load: 0, bestFor: "Urban areas" },
+    rider:    { name: "Rider",        code: "RD",  color: "#FCD34D", bg: "rgba(234,179,8,0.12)",   connected: true,  score: null, successRate: "—", avgDays: "1–2 days", rto: "—", cost: "Rs 140", load: 0, bestFor: "Karachi same-day" },
     swyft:    { name: "Swyft",        code: "SW",  color: "#94A3B8", bg: "rgba(100,116,139,0.12)", connected: false, score: null, successRate: "—", avgDays: "—", rto: "—", cost: "—", load: 0, bestFor: "—" },
 };
-
-const INIT_HARD_RULES = [
-    "Skip Call Courier for COD over Rs 10,000",
-    "Electronics always ship via TCS",
-    "Under 0.5kg → cheapest courier in zone",
-];
 
 const ZONES = {
     metro: { label: "Metro",         base: { courier: "TCS",      score: "94%", days: "2 days" }, risk: { courier: "Leopards", score: "94%", days: "3 days" } },
     urban: { label: "Urban",         base: { courier: "Leopards", score: "91%", days: "2 days" }, risk: { courier: "TCS",      score: "92%", days: "3 days" } },
     rural: { label: "Rural/Remote",  base: { courier: "Trax",     score: "83%", days: "3 days" }, risk: { courier: "PostEx",   score: "90%", days: "4 days" } },
 };
-
-const AI_LOG = [
-    { type: "rule", text: <>Order <b>#1042</b> → Karachi → zone rule matched → routed to <b>TCS</b></>, time: "2 min ago" },
-    { type: "ai",   text: <>Order <b>#1041</b> → Sialkot, no zone rule → AI picked <b>Leopards</b> (91% live score)</>, time: "14 min ago" },
-    { type: "rule", text: <>Order <b>#1039</b> → COD Rs 18,000 → WhatsApp confirmed → auto-booked with <b>Leopards</b></>, time: "41 min ago" },
-    { type: "risk", text: <>Order <b>#1037</b> → rural fallback scored 58 (below threshold) → flagged → switched to <b>PostEx</b></>, time: "1 hr ago" },
-];
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -536,13 +523,13 @@ export default function CouriersPage() {
     const [view, setView] = useState("main");
     const [couriers, setCouriers] = useState(INIT_COURIERS);
     const [rules, setRules] = useState({ metro: "TCS", urban: "Leopards", rural: "Trax" });
-    const [hardRules, setHardRules] = useState(INIT_HARD_RULES);
+    const [hardRules, setHardRules] = useState([]);
     const [showEditRules, setShowEditRules] = useState(false);
     const [showHardRule, setShowHardRule] = useState(false);
     const [connectKey, setConnectKey] = useState(null);
     const [toast, setToast] = useState(null);
     const [codInTransit, setCodInTransit] = useState(0);
-    const [aiLog, setAiLog] = useState(AI_LOG);
+    const [aiLog, setAiLog] = useState([]);
 
     const [shipments, setShipments] = useState([]);
     const [shipLoading, setShipLoading] = useState(true);
@@ -584,6 +571,51 @@ export default function CouriersPage() {
             .catch(() => {});
     }, []);
 
+    useEffect(() => {
+        const userId = getCurrentUserId();
+        if (!userId) return;
+        fetch(`/api/couriers/performance?userId=${encodeURIComponent(userId)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.performance) return;
+                setCouriers(prev => {
+                    const next = { ...prev };
+                    for (const [key, c] of Object.entries(next)) {
+                        const perf = data.performance[c.name];
+                        if (perf) {
+                            next[key] = { ...c, score: perf.score, successRate: perf.successRate, rto: perf.rtoRate, load: perf.load };
+                        }
+                    }
+                    return next;
+                });
+            })
+            .catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        const userId = getCurrentUserId();
+        if (!userId) return;
+        fetch(`/api/couriers/rules?userId=${encodeURIComponent(userId)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (Array.isArray(data.hardRules)) setHardRules(data.hardRules);
+                if (data.zoneRules) setRules(data.zoneRules);
+            })
+            .catch(() => {});
+    }, []);
+
+    const saveRulesToDB = async (nextHardRules, nextZoneRules) => {
+        const userId = getCurrentUserId();
+        if (!userId) return;
+        try {
+            await fetch('/api/couriers/rules', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                body: JSON.stringify({ hardRules: nextHardRules, zoneRules: nextZoneRules }),
+            });
+        } catch { }
+    };
+
     const connectedCount = Object.values(couriers).filter(c => c.connected).length;
 
     const disconnect = (key) => {
@@ -607,8 +639,8 @@ export default function CouriersPage() {
     return (
         <div style={{ padding: "28px 32px", maxWidth: 1280 }}>
             {toast && <Toast msg={toast} onHide={() => setToast(null)} />}
-            {showEditRules && <EditRulesModal rules={rules} onSave={r => { setRules(r); setShowEditRules(false); showToast("Routing rules updated"); }} onClose={() => setShowEditRules(false)} />}
-            {showHardRule && <HardRuleModal onSave={r => { setHardRules(prev => [...prev, r]); setShowHardRule(false); showToast("Hard rule added"); }} onClose={() => setShowHardRule(false)} />}
+            {showEditRules && <EditRulesModal rules={rules} onSave={r => { setRules(r); setShowEditRules(false); showToast("Routing rules updated"); saveRulesToDB(hardRules, r); }} onClose={() => setShowEditRules(false)} />}
+            {showHardRule && <HardRuleModal onSave={r => { const next = [...hardRules, r]; setHardRules(next); setShowHardRule(false); showToast("Hard rule added"); saveRulesToDB(next, rules); }} onClose={() => setShowHardRule(false)} />}
             {connectKey && <ConnectModal courierKey={connectKey} courierName={couriers[connectKey]?.name} onSave={() => connect(connectKey)} onClose={() => setConnectKey(null)} />}
 
             <PageHeader
@@ -619,8 +651,6 @@ export default function CouriersPage() {
                         <span style={{ color: T.textMuted }}>couriers connected</span>
                         <span style={{ color: T.textFaint }}>·</span>
                         <span style={{ color: T.textMuted }}>Rs <b style={{ color: T.text }}>{codInTransit.toLocaleString()}</b> COD in transit</span>
-                        <span style={{ color: T.textFaint }}>·</span>
-                        <span style={{ color: T.j200, fontWeight: 600 }}>94% AI routing accuracy this week</span>
                     </span>
                 }
                 actions={<>
@@ -655,9 +685,10 @@ export default function CouriersPage() {
                                 {shipLoading ? (
                                     <tr><td colSpan={10} style={{ padding: 40, textAlign: "center", color: T.textFaint }}>Syncing tracking data...</td></tr>
                                 ) : shipments.length === 0 ? (
-                                    <>
-                                        {DEMO_SHIPMENTS.map((s, i) => <ShipmentRow key={i} s={s} onBook={() => setView("book")} />)}
-                                    </>
+                                    <tr><td colSpan={10} style={{ padding: 48, textAlign: "center" }}>
+                                        <div style={{ color: T.textFaint, fontSize: 13, marginBottom: 10 }}>No shipments tracked yet</div>
+                                        <button onClick={() => setView("book")} style={{ background: "none", border: "none", color: T.j200, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Book your first shipment →</button>
+                                    </td></tr>
                                 ) : (
                                     shipments.map((s, i) => <ShipmentRow key={i} s={s} onBook={() => setView("book")} />)
                                 )}
@@ -709,7 +740,7 @@ export default function CouriersPage() {
                         <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: T.textMuted, background: T.bgElev, border: `1px solid ${T.border}`, padding: "7px 12px", borderRadius: 20 }}>
                             <Icon name="check" size={12} color={T.j200} />
                             {r}
-                            <button onClick={() => { setHardRules(prev => prev.filter((_, j) => j !== i)); showToast("Rule removed"); }}
+                            <button onClick={() => { const next = hardRules.filter((_, j) => j !== i); setHardRules(next); showToast("Rule removed"); saveRulesToDB(next, rules); }}
                                 style={{ background: "none", border: "none", color: T.textFaint, cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 0 0 2px" }}>×</button>
                         </div>
                     ))}
@@ -793,6 +824,11 @@ export default function CouriersPage() {
                 <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 4 }}>Recent AI Routing Decisions</div>
                 <div style={{ fontSize: 13, color: T.textFaint, marginBottom: 16 }}>Every automatic pick, with the reason it was made — nothing routes silently</div>
                 <Card pad={0}>
+                    {aiLog.length === 0 && (
+                        <div style={{ padding: 40, textAlign: "center", color: T.textFaint, fontSize: 13 }}>
+                            No routing decisions yet — decisions will appear here as orders come in
+                        </div>
+                    )}
                     {aiLog.map((entry, i) => {
                         const cfg = {
                             rule: { bg: `${T.green}14`, color: T.green, icon: "check" },
@@ -866,10 +902,3 @@ function ShipmentRow({ s, onBook }) {
     );
 }
 
-const DEMO_SHIPMENTS = [
-    { tracking: "ZY-88214", customer: "Ayesha K.", city: "Karachi",       courier: "TCS",       status: "In transit",    progress: 70, eta: "Tomorrow", cod: 4200,  risk: "Low" },
-    { tracking: "ZY-88211", customer: "Bilal R.",  city: "Sialkot",       courier: "Leopards",  status: "In transit",    progress: 45, eta: "2 days",   cod: 2800,  risk: "Low" },
-    { tracking: "ZY-88206", customer: "Hina S.",   city: "Karachi",       courier: "—",         status: "Needs booking", progress: 0,  eta: "—",        cod: 18500, risk: "High" },
-    { tracking: "ZY-88199", customer: "Usman T.",  city: "Multan",        courier: "M&P",       status: "In transit",    progress: 88, eta: "Today",    cod: 0,     risk: "Low" },
-    { tracking: "ZY-88190", customer: "Sara N.",   city: "Village, Sindh",courier: "PostEx",    status: "In transit",    progress: 30, eta: "3 days",   cod: 6100,  risk: "Medium" },
-];

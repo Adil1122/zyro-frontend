@@ -79,10 +79,10 @@ function parseCSV(text) {
 // ── Manual Order Modal ───────────────────────────────────────────────────────
 
 const COURIERS = {
-    tcs:      { name: 'TCS',      code: 'TCS', color: '#e85955', score: 94, days: '2 days' },
-    leopards: { name: 'Leopards', code: 'LP',  color: '#4ade80', score: 91, days: '2 days' },
-    postex:   { name: 'PostEx',   code: 'PX',  color: '#60a5fa', score: 88, days: '3 days' },
-    trax:     { name: 'Trax',     code: 'TX',  color: '#fbbf24', score: 79, days: '3 days' },
+    tcs:      { name: 'TCS',      code: 'TCS', color: '#e85955', days: '2 days' },
+    leopards: { name: 'Leopards', code: 'LP',  color: '#4ade80', days: '2 days' },
+    postex:   { name: 'PostEx',   code: 'PX',  color: '#60a5fa', days: '3 days' },
+    trax:     { name: 'Trax',     code: 'TX',  color: '#fbbf24', days: '3 days' },
 };
 
 const ZONES = {
@@ -407,7 +407,7 @@ export function NewOrderModal({ onClose, onCreated }) {
                                 </div>
                                 <div>
                                     <div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>{recCourier.name}</div>
-                                    <div style={{ fontSize: 11, color: T.textFaint }}>{recCourier.score}% reliability · {recCourier.days}</div>
+                                    <div style={{ fontSize: 11, color: T.textFaint }}>{recCourier.days}</div>
                                 </div>
                             </div>
                             <div style={{ marginTop: 10 }}>
@@ -452,7 +452,7 @@ export function NewOrderModal({ onClose, onCreated }) {
                                             </div>
                                             <div style={{ flex: 1, textAlign: 'left' }}>
                                                 <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{c.name}</div>
-                                                <div style={{ fontSize: 10, color: T.textFaint }}>{c.score}% · {c.days}</div>
+                                                <div style={{ fontSize: 10, color: T.textFaint }}>{c.days}</div>
                                             </div>
                                             {active && <Icon name="check" size={14} color={c.color} />}
                                         </button>
@@ -696,9 +696,8 @@ export default function OrdersPage() {
     const downloadOrderTemplate = () => {
         const rows = [
             ['OrderID', 'Customer', 'Phone', 'City', 'Amount', 'Status'],
-            ['ORD-001', 'Ahmed Ali', '03001234567', 'Lahore', '2500', 'pending'],
-            ['ORD-002', 'Sara Khan', '03211234567', 'Karachi', '4800', 'confirmed'],
-            ['ORD-003', 'Ali Hassan', '03331234567', 'Islamabad', '1200', 'delivered'],
+            ['ORD-001', 'Customer Name', '03XXXXXXXXXX', 'City', '0000', 'pending'],
+            ['ORD-002', 'Customer Name', '03XXXXXXXXXX', 'City', '0000', 'confirmed'],
         ];
         const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

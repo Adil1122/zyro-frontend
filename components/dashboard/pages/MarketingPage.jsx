@@ -224,13 +224,7 @@ export default function MarketingPage() {
     if (!svg || !tooltip) return;
 
     const days = 30;
-    const spendSeries = [];
-    let sAcc = 0;
-    for (let i = 0; i < days; i++) {
-      const p = i / (days - 1);
-      sAcc += (totals.spend / days) * (0.85 + p * 0.3);
-      spendSeries.push(sAcc);
-    }
+    const spendSeries = Array.from({ length: days }, (_, i) => totals.spend * (i + 1) / days);
 
     // Use real daily order revenue if available, otherwise distribute evenly
     let revSeries;

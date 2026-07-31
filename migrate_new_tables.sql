@@ -39,3 +39,26 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
 ALTER TABLE notification_preferences ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users manage own notification_preferences" ON notification_preferences
     FOR ALL USING (user_id = auth.uid());
+
+-- ── courier_settings ──────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS courier_settings (
+    id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id     uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    hard_rules  jsonb NOT NULL DEFAULT '[]',
+    zone_rules  jsonb NOT NULL DEFAULT '{"metro":"TCS","urban":"Leopards","rural":"Trax"}',
+    updated_at  timestamptz DEFAULT now()
+);
+ALTER TABLE courier_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own courier_settings" ON courier_settings
+    FOR ALL USING (user_id = auth.uid());
+
+-- ── wa_settings ───────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS wa_settings (
+    id            uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id       uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    quick_replies jsonb NOT NULL DEFAULT '[]',
+    updated_at    timestamptz DEFAULT now()
+);
+ALTER TABLE wa_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own wa_settings" ON wa_settings
+    FOR ALL USING (user_id = auth.uid());

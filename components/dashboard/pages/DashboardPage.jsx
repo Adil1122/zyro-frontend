@@ -158,7 +158,7 @@ export default function DashboardPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20, opacity: refetching ? 0.6 : 1, transition: "opacity 0.2s" }}>
                 <KPI label={`Revenue · ${stats.kpis.rangeLabel}`} value={`Rs ${stats.kpis.revenueToday.toLocaleString()}`} sub={`${stats.kpis.ordersToday} orders · Live Data`} delta={stats.kpis.revenueDelta} deltaUp={stats.kpis.revenueDeltaUp} icon="dollar" highlight />
                 <KPI label="Pending Action" value={stats.kpis.pendingOrders.toString()} sub="Need courier booking" delta="Urgent" icon="truck" />
-                <KPI label="WhatsApp AI Rate" value={stats.kpis.aiRate} sub="Handled without you" delta="2.1%" deltaUp icon="ai" />
+                <KPI label="WhatsApp AI Rate" value={stats.kpis.aiRate} sub="Handled without you" icon="ai" />
                 <KPI label="COD Due" value={`Rs ${stats.kpis.codDue.toLocaleString()}`} sub="Active in transit" icon="pkg" />
             </div>
 

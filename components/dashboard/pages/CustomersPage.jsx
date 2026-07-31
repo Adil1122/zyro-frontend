@@ -190,7 +190,7 @@ export default function CustomersPage() {
                 <KPI label="Total Customers" value={meta.pagination.total.toLocaleString()} sub="All-time" icon="customers" />
                 <KPI label="VIP Tier" value={vipCount} sub="Rs 20k+ spent" icon="fire" highlight />
                 <KPI label="Avg Spend" value={`Rs ${Math.floor(totalSpent / (customers.length || 1)).toLocaleString()}`} sub="Per customer" icon="dollar" />
-                <KPI label="Lifetime Value" value={`Rs ${(totalSpent / 1000).toFixed(0)}k`} sub="Synced selection" delta="12%" deltaUp icon="sparkle" />
+                <KPI label="Lifetime Value" value={`Rs ${(totalSpent / 1000).toFixed(0)}k`} sub="Synced selection" icon="sparkle" />
             </div>
             <Card pad={0}>
                 <div style={{ padding: "16px 20px", borderBottom: `1px solid ${T.border}`, display: "flex", gap: 12, alignItems: "center" }}>

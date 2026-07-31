@@ -81,13 +81,7 @@ export default function WhatsAppPage() {
     const [replyText, setReplyText] = useState("");
     const [isSending, setIsSending] = useState(false);
     const [sendError, setSendError] = useState(null);
-
-    const QUICK_REPLIES = [
-        { label: "Issue refund",    text: "We're processing your refund. Please allow 3-5 business days for the amount to reflect in your account." },
-        { label: "Send new item",   text: "We're sending you a replacement item. You'll receive a tracking number shortly." },
-        { label: "Schedule pickup", text: "We've scheduled a pickup for your return. Our courier will contact you within 24 hours." },
-        { label: "Offer discount",  text: "As a goodwill gesture, here's a 15% discount on your next order — use code: SORRY15" },
-    ];
+    const [quickReplies, setQuickReplies] = useState([]);
 
     const handleSendReply = async (textOverride, conv) => {
         const msg = (textOverride !== undefined ? textOverride : replyText).trim();
@@ -128,7 +122,9 @@ export default function WhatsAppPage() {
 
     const refreshData = async () => {
         try {
-            const res = await fetch('/api/whatsapp');
+            const userId = getCurrentUserId();
+            const headers = userId ? { 'x-user-id': userId } : {};
+            const res = await fetch('/api/whatsapp', { headers });
             const json = await res.json();
             setData(json);
         } catch { /* non-fatal */ }
@@ -153,9 +149,18 @@ export default function WhatsAppPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await fetch('/api/whatsapp');
-                const json = await res.json();
+                const userId = getCurrentUserId();
+                const headers = userId ? { 'x-user-id': userId } : {};
+                const [waRes, qrRes] = await Promise.all([
+                    fetch('/api/whatsapp', { headers }),
+                    userId ? fetch(`/api/whatsapp/quick-replies?userId=${encodeURIComponent(userId)}`) : null,
+                ]);
+                const json = await waRes.json();
                 setData(json);
+                if (qrRes) {
+                    const qrData = await qrRes.json();
+                    if (Array.isArray(qrData.replies)) setQuickReplies(qrData.replies);
+                }
                 setLoading(false);
             } catch (err) {
                 console.error("Failed to fetch whatsapp data:", err);
@@ -235,7 +240,7 @@ export default function WhatsAppPage() {
                                     AUTO
                                 </span>
                             </div>
-                            <div style={{ fontSize: 11, color: T.j200, marginTop: 2, fontFamily: "monospace" }}>+92 311 ZYRO-BOT</div>
+                            <div style={{ fontSize: 11, color: T.j200, marginTop: 2, fontFamily: "monospace" }}>{data.merchantPhone ? `+${data.merchantPhone}` : "Not configured"}</div>
                         </div>
                         <div style={{ textAlign: "right" }}>
                             <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>Handling</div>
@@ -354,7 +359,7 @@ export default function WhatsAppPage() {
                                     MANUAL
                                 </span>
                             </div>
-                            <div style={{ fontSize: 11, color: T.yellow, marginTop: 2, fontFamily: "monospace" }}>+92 300 ZYRO-HELP</div>
+                            <div style={{ fontSize: 11, color: T.yellow, marginTop: 2, fontFamily: "monospace" }}>{data.merchantPhone ? `+${data.merchantPhone}` : "Not configured"}</div>
                         </div>
                         <div style={{ textAlign: "right" }}>
                             <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>Handling</div>
@@ -465,7 +470,7 @@ export default function WhatsAppPage() {
                                             </div>
                                         )}
                                         <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
-                                            {QUICK_REPLIES.map(qr => (
+                                            {quickReplies.map(qr => (
                                                 <button
                                                     key={qr.label}
                                                     disabled={isSending}
@@ -480,6 +485,9 @@ export default function WhatsAppPage() {
                                                     {qr.label}
                                                 </button>
                                             ))}
+                                            {quickReplies.length === 0 && (
+                                                <span style={{ fontSize: 10, color: T.textFaint }}>No quick replies — add them in Configure Rules</span>
+                                            )}
                                         </div>
                                     </div>
                                 </>
@@ -592,6 +600,33 @@ export default function WhatsAppPage() {
                                     <div style={{ fontSize: 11, color: T.textFaint, marginTop: 8 }}>
                                         Press Enter or click Add. Keywords are matched as substrings (case-insensitive).
                                     </div>
+
+                                    <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${T.border}` }}>
+                                        <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 12 }}>Quick Replies</div>
+                                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                            {quickReplies.map((qr, i) => (
+                                                <div key={i} style={{ display: "grid", gridTemplateColumns: "120px 1fr auto", gap: 6, alignItems: "center" }}>
+                                                    <input
+                                                        value={qr.label}
+                                                        onChange={e => setQuickReplies(prev => prev.map((q, j) => j === i ? { ...q, label: e.target.value } : q))}
+                                                        placeholder="Label"
+                                                        style={{ padding: "6px 9px", borderRadius: 6, fontSize: 12, background: T.bgElev, border: `1px solid ${T.borderMid}`, color: T.text, outline: "none", fontFamily: "inherit" }}
+                                                    />
+                                                    <input
+                                                        value={qr.text}
+                                                        onChange={e => setQuickReplies(prev => prev.map((q, j) => j === i ? { ...q, text: e.target.value } : q))}
+                                                        placeholder="Reply text"
+                                                        style={{ padding: "6px 9px", borderRadius: 6, fontSize: 12, background: T.bgElev, border: `1px solid ${T.borderMid}`, color: T.text, outline: "none", fontFamily: "inherit" }}
+                                                    />
+                                                    <button onClick={() => setQuickReplies(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: T.textFaint, fontSize: 16, lineHeight: 1, padding: "0 4px" }}>×</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button onClick={() => setQuickReplies(prev => [...prev, { label: "", text: "" }])} style={{
+                                            marginTop: 8, padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600,
+                                            background: "none", border: `1px dashed ${T.borderMid}`, color: T.j200, cursor: "pointer", fontFamily: "inherit",
+                                        }}>+ Add quick reply</button>
+                                    </div>
                                 </>
                             )}
                         </div>
@@ -600,7 +635,17 @@ export default function WhatsAppPage() {
                         <div style={{ padding: "14px 24px", borderTop: `1px solid ${T.border}`, display: "flex", alignItems: "center", gap: 10 }}>
                             <GradientButton
                                 variant="primary"
-                                onClick={saveRules}
+                                onClick={async () => {
+                                    await saveRules();
+                                    const userId = getCurrentUserId();
+                                    if (userId) {
+                                        await fetch('/api/whatsapp/quick-replies', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                                            body: JSON.stringify({ replies: quickReplies }),
+                                        }).catch(() => {});
+                                    }
+                                }}
                                 disabled={rulesSaving || rulesLoading}
                             >
                                 {rulesSaving ? "Saving…" : rulesSaved ? "✓ Saved" : "Save Rules"}
