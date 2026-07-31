@@ -12,6 +12,7 @@ export default function DashboardLayout({ children }) {
     const [collapsed, setCollapsed] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [badgeCounts, setBadgeCounts] = useState({});
     const pathname = usePathname();
 
     // Map pathname to page id
@@ -129,6 +130,19 @@ export default function DashboardLayout({ children }) {
 
         checkAuth();
 
+        // Fetch live nav badge counts
+        const fetchBadges = async () => {
+            try {
+                const storedUser = localStorage.getItem('zyro_user');
+                const uid = storedUser ? JSON.parse(storedUser)?.id : null;
+                if (!uid) return;
+                const res = await fetch(`/api/nav-badges?userId=${encodeURIComponent(uid)}`);
+                if (res.ok) setBadgeCounts(await res.json());
+            } catch { /* non-fatal */ }
+        };
+        fetchBadges();
+        const badgeInterval = setInterval(fetchBadges, 5 * 60 * 1000);
+
         // Listen for storage changes across tabs or custom authChange event
         window.addEventListener('storage', checkAuth);
         window.addEventListener('authChange', checkAuth);
@@ -138,6 +152,7 @@ export default function DashboardLayout({ children }) {
         window.addEventListener('resize', handleResize);
 
         return () => {
+            clearInterval(badgeInterval);
             window.removeEventListener('storage', checkAuth);
             window.removeEventListener('authChange', checkAuth);
             window.removeEventListener('resize', handleResize);
@@ -193,6 +208,7 @@ export default function DashboardLayout({ children }) {
                     page={page}
                     collapsed={collapsed}
                     setCollapsed={setCollapsed}
+                    badgeCounts={badgeCounts}
                 />
             )}
 

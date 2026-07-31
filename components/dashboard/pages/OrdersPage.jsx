@@ -894,7 +894,9 @@ export default function OrdersPage() {
                                     <td style={{ padding: "12px 16px" }}><PlatformBadge platform={o.platform || "manual"} /></td>
                                     <td style={{ padding: "12px 16px" }}><Badge status={o.status.toLowerCase()} /></td>
                                     <td style={{ padding: "12px 16px" }}>
-                                        <div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>—</div>
+                                        {o.courier_name
+                                            ? <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: T.r4, background: T.bgElev, border: `1px solid ${T.border}`, color: T.text }}>{o.courier_name}</span>
+                                            : <span style={{ fontSize: 12, color: T.textFaint }}>—</span>}
                                     </td>
                                     <td style={{ padding: "12px 16px" }}>
                                         <span style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Rs {(o.amount ?? 0).toLocaleString()}</span>

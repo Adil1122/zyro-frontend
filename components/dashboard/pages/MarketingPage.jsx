@@ -136,6 +136,33 @@ export default function MarketingPage() {
   const [sortKey, setSortKey] = useState("spend");
   const [searchQuery, setSearchQuery] = useState("");
   const [showMoreInsights, setShowMoreInsights] = useState(false);
+  const [dailyRevSeries, setDailyRevSeries] = useState(null);
+
+  const handleDownloadReport = () => {
+    if (!campaigns.length) return;
+    const headers = ['Campaign', 'Status', 'Spend (Rs)', 'Revenue (Rs)', 'ROAS', 'Orders', 'Impressions', 'Clicks', 'CTR%'];
+    const rows = campaigns.map(c => [
+        `"${(c.name || '').replace(/"/g, '""')}"`,
+        c.status || '—',
+        Math.round(c.spend || 0),
+        Math.round(c.revenue || 0),
+        c.spend > 0 ? (c.revenue / c.spend).toFixed(2) : '0',
+        c.orders || 0,
+        c.impressions || 0,
+        c.clicks || 0,
+        c.ctr != null ? c.ctr.toFixed(2) : '0',
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `meta-ads-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
   const svgRef = useRef(null);
   const tooltipRef = useRef(null);
 
@@ -176,6 +203,18 @@ export default function MarketingPage() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get("meta_ads_connected") === "true") window.history.replaceState({}, document.title, window.location.pathname);
     loadStats(userId);
+
+    // Fetch real daily revenue from orders for the chart
+    fetch(`/api/dashboard-stats?range=30d&userId=${encodeURIComponent(userId)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.charts?.revenueTrend?.length) {
+                let acc = 0;
+                const cumulative = data.charts.revenueTrend.map(pt => { acc += pt.revenue; return acc; });
+                setDailyRevSeries(cumulative);
+            }
+        })
+        .catch(() => {});
   }, []);
 
   // ── chart ──────────────────────────────────────────────────────────────────
@@ -185,14 +224,25 @@ export default function MarketingPage() {
     if (!svg || !tooltip) return;
 
     const days = 30;
-    const revSeries = [], spendSeries = [];
-    let rAcc = 0, sAcc = 0;
+    const spendSeries = [];
+    let sAcc = 0;
     for (let i = 0; i < days; i++) {
       const p = i / (days - 1);
-      rAcc += (totals.revenue / days) * (0.5 + p);
       sAcc += (totals.spend / days) * (0.85 + p * 0.3);
-      revSeries.push(rAcc);
       spendSeries.push(sAcc);
+    }
+
+    // Use real daily order revenue if available, otherwise distribute evenly
+    let revSeries;
+    if (dailyRevSeries && dailyRevSeries.length > 0) {
+      revSeries = Array.from({ length: days }, (_, i) => dailyRevSeries[i] ?? dailyRevSeries[dailyRevSeries.length - 1] ?? 0);
+    } else {
+      let rAcc = 0;
+      revSeries = Array.from({ length: days }, (_, i) => {
+        const p = i / (days - 1);
+        rAcc += (totals.revenue / days) * (0.5 + p);
+        return rAcc;
+      });
     }
     const maxVal = Math.max(...revSeries, ...spendSeries) * 1.08 || 1;
     const xAt = (i) => (i / (days - 1)) * 1000;
@@ -234,7 +284,7 @@ export default function MarketingPage() {
       showAt(Math.round(((e.clientX - r.left) / r.width) * (days - 1)));
     });
     hz.addEventListener("mouseleave", hide);
-  }, [totals]);
+  }, [totals, dailyRevSeries]);
 
   // ── insights ───────────────────────────────────────────────────────────────
   const insights = useMemo(() => {
@@ -369,7 +419,7 @@ export default function MarketingPage() {
             <svg width="13" height="13" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5"/><path d="M10 7v3l2 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
             API Credentials
           </Btn>
-          <Btn>
+          <Btn onClick={handleDownloadReport}>
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v8m0 0l-3-3m3 3l3-3M3 13h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
             Download Report
           </Btn>

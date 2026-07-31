@@ -71,14 +71,15 @@ export const statusCfg = {
 
 export const NAV = [
     { id: "dashboard", label: "Dashboard" },
-    { id: "orders", label: "Orders", badge: 4 },
-    { id: "whatsapp", label: "WhatsApp AI", badge: 2, alert: true },
+    { id: "orders", label: "Orders", badge: 0 },
+    { id: "whatsapp", label: "WhatsApp AI", badge: 0, alert: true },
     { id: "couriers", label: "Couriers" },
-    { id: "inventory", label: "Inventory", badge: 3, warn: true },
+    { id: "inventory", label: "Inventory", badge: 0, warn: true },
     { id: "marketing", label: "Marketing" },
     { id: "customers", label: "Customers" },
     { id: "automation", label: "Automation", badge: "SOON", warn: true },
     { id: "analytics", label: "Analytics" },
+    { id: "reports", label: "Reports" },
     { id: "plans", label: "Plans" },
     { id: "settings", label: "Settings" },
 ];

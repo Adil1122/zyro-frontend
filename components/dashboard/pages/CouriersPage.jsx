@@ -200,22 +200,39 @@ function HardRuleModal({ onSave, onClose }) {
 
 // ── Connect Courier Modal ─────────────────────────────────────────────────────
 
-function ConnectModal({ courierName, onSave, onClose }) {
+function ConnectModal({ courierKey, courierName, onSave, onClose }) {
     const [key, setKey] = useState("");
     const [secret, setSecret] = useState("");
     const [errs, setErrs] = useState({});
+    const [saving, setSaving] = useState(false);
+    const [apiError, setApiError] = useState(null);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         const e = {};
         if (!key.trim()) e.key = true;
         if (!secret.trim()) e.secret = true;
         setErrs(e);
         if (Object.keys(e).length) return;
-        onSave();
+        setSaving(true); setApiError(null);
+        try {
+            const userId = getCurrentUserId();
+            const res = await fetch('/api/couriers/credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                body: JSON.stringify({ courierKey, apiKey: key.trim(), apiSecret: secret.trim() }),
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Failed to save credentials');
+            onSave();
+        } catch (e) {
+            setApiError(e.message);
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
-        <Modal title={`Connect ${courierName}`} subtitle="Enter your API credentials to enable booking and live tracking" onClose={onClose}>
+        <Modal title={`Connect ${courierName}`} subtitle="Credentials are encrypted and stored securely — never in source code" onClose={onClose}>
             <ModalField label={<>API key <span style={{ color: T.red }}>*</span></>}>
                 <input value={key} onChange={e => { setKey(e.target.value); setErrs(p => ({ ...p, key: false })); }}
                     placeholder="e.g. sk_live_..." style={{ ...inputStyle, borderColor: errs.key ? T.red : T.borderMid }} />
@@ -223,12 +240,13 @@ function ConnectModal({ courierName, onSave, onClose }) {
             </ModalField>
             <ModalField label={<>API secret <span style={{ color: T.red }}>*</span></>}>
                 <input value={secret} onChange={e => { setSecret(e.target.value); setErrs(p => ({ ...p, secret: false })); }}
-                    placeholder="Enter secret" style={{ ...inputStyle, borderColor: errs.secret ? T.red : T.borderMid }} />
+                    placeholder="Enter secret" type="password" style={{ ...inputStyle, borderColor: errs.secret ? T.red : T.borderMid }} />
                 {errs.secret && <div style={{ fontSize: 12, color: T.red, marginTop: 5 }}>API secret is required</div>}
             </ModalField>
+            {apiError && <div style={{ fontSize: 12, color: T.red, marginBottom: 12, padding: "8px 12px", background: T.redBg, borderRadius: T.r6 }}>{apiError}</div>}
             <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                 <GradientButton variant="secondary" full onClick={onClose}>Cancel</GradientButton>
-                <GradientButton variant="primary" full onClick={handleSave}>Save & connect</GradientButton>
+                <GradientButton variant="primary" full onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save & connect'}</GradientButton>
             </div>
         </Modal>
     );
@@ -505,6 +523,15 @@ function ToggleRow({ options, value, onChange }) {
 
 // ── Main Couriers Page ────────────────────────────────────────────────────────
 
+function relTime(dateStr) {
+    const diff = Date.now() - new Date(dateStr);
+    const m = Math.floor(diff / 60000);
+    if (m < 60) return `${m} min ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h} hr ago`;
+    return `${Math.floor(h / 24)} days ago`;
+}
+
 export default function CouriersPage() {
     const [view, setView] = useState("main");
     const [couriers, setCouriers] = useState(INIT_COURIERS);
@@ -514,6 +541,8 @@ export default function CouriersPage() {
     const [showHardRule, setShowHardRule] = useState(false);
     const [connectKey, setConnectKey] = useState(null);
     const [toast, setToast] = useState(null);
+    const [codInTransit, setCodInTransit] = useState(0);
+    const [aiLog, setAiLog] = useState(AI_LOG);
 
     const [shipments, setShipments] = useState([]);
     const [shipLoading, setShipLoading] = useState(true);
@@ -537,8 +566,25 @@ export default function CouriersPage() {
         fetchShipments();
     }, [shipPage]);
 
+    useEffect(() => {
+        const userId = getCurrentUserId();
+        if (!userId) return;
+        fetch(`/api/couriers/stats?userId=${encodeURIComponent(userId)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.codInTransit !== undefined) setCodInTransit(data.codInTransit);
+                if (Array.isArray(data.decisions) && data.decisions.length > 0) {
+                    setAiLog(data.decisions.map(d => ({
+                        type: d.type,
+                        text: <>Order <b>#{d.orderId}</b> → {d.city} → {d.reason} → <b>{d.courier}</b></>,
+                        time: relTime(d.createdAt),
+                    })));
+                }
+            })
+            .catch(() => {});
+    }, []);
+
     const connectedCount = Object.values(couriers).filter(c => c.connected).length;
-    const codInTransit = 42500; // from live tracking data
 
     const disconnect = (key) => {
         setCouriers(prev => ({ ...prev, [key]: { ...prev[key], connected: false } }));
@@ -563,7 +609,7 @@ export default function CouriersPage() {
             {toast && <Toast msg={toast} onHide={() => setToast(null)} />}
             {showEditRules && <EditRulesModal rules={rules} onSave={r => { setRules(r); setShowEditRules(false); showToast("Routing rules updated"); }} onClose={() => setShowEditRules(false)} />}
             {showHardRule && <HardRuleModal onSave={r => { setHardRules(prev => [...prev, r]); setShowHardRule(false); showToast("Hard rule added"); }} onClose={() => setShowHardRule(false)} />}
-            {connectKey && <ConnectModal courierName={couriers[connectKey]?.name} onSave={() => connect(connectKey)} onClose={() => setConnectKey(null)} />}
+            {connectKey && <ConnectModal courierKey={connectKey} courierName={couriers[connectKey]?.name} onSave={() => connect(connectKey)} onClose={() => setConnectKey(null)} />}
 
             <PageHeader
                 title="Couriers"
@@ -747,14 +793,14 @@ export default function CouriersPage() {
                 <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 4 }}>Recent AI Routing Decisions</div>
                 <div style={{ fontSize: 13, color: T.textFaint, marginBottom: 16 }}>Every automatic pick, with the reason it was made — nothing routes silently</div>
                 <Card pad={0}>
-                    {AI_LOG.map((entry, i) => {
+                    {aiLog.map((entry, i) => {
                         const cfg = {
                             rule: { bg: `${T.green}14`, color: T.green, icon: "check" },
                             ai:   { bg: `${T.yellow}14`, color: T.yellow, icon: "sparkle" },
                             risk: { bg: `${T.red}14`,   color: T.red,   icon: "alert" },
                         }[entry.type];
                         return (
-                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 20px", borderBottom: i < AI_LOG.length - 1 ? `1px solid ${T.border}` : "none", fontSize: 13 }}>
+                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 20px", borderBottom: i < aiLog.length - 1 ? `1px solid ${T.border}` : "none", fontSize: 13 }}>
                                 <div style={{ width: 28, height: 28, borderRadius: T.r8, background: cfg.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                     <Icon name={cfg.icon} size={13} color={cfg.color} />
                                 </div>

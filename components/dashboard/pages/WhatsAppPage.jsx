@@ -124,6 +124,31 @@ export default function WhatsAppPage() {
     const [merchantResult, setMerchantResult] = useState(null);
     const [stockResult, setStockResult] = useState(null);
     const [autoLoading, setAutoLoading] = useState(false);
+    const [takingOver, setTakingOver] = useState(null);
+
+    const refreshData = async () => {
+        try {
+            const res = await fetch('/api/whatsapp');
+            const json = await res.json();
+            setData(json);
+        } catch { /* non-fatal */ }
+    };
+
+    const handleTakeOver = async (conv) => {
+        if (!conv?.id) return;
+        setTakingOver(conv.id);
+        try {
+            const userId = getCurrentUserId();
+            await fetch('/api/whatsapp/takeover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                body: JSON.stringify({ conversationId: conv.id }),
+            });
+            await refreshData();
+            setBotActive(0);
+        } catch { /* non-fatal */ }
+        setTakingOver(null);
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -290,7 +315,7 @@ export default function WhatsAppPage() {
                                         }}>
                                             <Icon name="sparkle" size={12} color={T.j300} />
                                             <span style={{ fontSize: 11, color: T.textMuted, flex: 1 }}>AI is handling this automatically</span>
-                                            <GradientButton size="xs" variant="secondary">Take over</GradientButton>
+                                            <GradientButton size="xs" variant="secondary" onClick={() => handleTakeOver(botConv)} disabled={takingOver === botConv?.id}>{takingOver === botConv?.id ? '...' : 'Take over'}</GradientButton>
                                         </div>
                                     </div>
                                 </>

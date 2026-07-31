@@ -8,7 +8,7 @@ import { getCurrentUserId } from "../../lib/auth";
 
 import Link from "next/link";
 
-export default function Sidebar({ page, collapsed, setCollapsed }) {
+export default function Sidebar({ page, collapsed, setCollapsed, badgeCounts }) {
     const [user, setUser] = useState(null);
 
     useEffect(() => {
@@ -98,15 +98,19 @@ export default function Sidebar({ page, collapsed, setCollapsed }) {
                             {!collapsed && (
                                 <>
                                     <span style={{ flex: 1, whiteSpace: "nowrap", position: "relative" }}>{item.label}</span>
-                                    {item.badge && (
-                                        <span style={{
-                                            padding: "1px 7px", borderRadius: T.r20, fontSize: 10, fontWeight: 800,
-                                            background: active ? "rgba(255,255,255,0.25)" : item.alert ? T.redBg : item.warn ? T.yellowBg : T.j600,
-                                            color: active ? "#fff" : item.alert ? T.red : item.warn ? T.yellow : T.j200,
-                                            border: `1px solid ${active ? "rgba(255,255,255,0.3)" : item.alert ? T.red + "44" : item.warn ? T.yellow + "44" : T.borderMid}`,
-                                            position: "relative",
-                                        }}>{item.badge}</span>
-                                    )}
+                                    {(() => {
+                                        const liveCount = badgeCounts?.[item.id];
+                                        const count = liveCount !== undefined ? liveCount : item.badge;
+                                        return count > 0 ? (
+                                            <span style={{
+                                                padding: "1px 7px", borderRadius: T.r20, fontSize: 10, fontWeight: 800,
+                                                background: active ? "rgba(255,255,255,0.25)" : item.alert ? T.redBg : item.warn ? T.yellowBg : T.j600,
+                                                color: active ? "#fff" : item.alert ? T.red : item.warn ? T.yellow : T.j200,
+                                                border: `1px solid ${active ? "rgba(255,255,255,0.3)" : item.alert ? T.red + "44" : item.warn ? T.yellow + "44" : T.borderMid}`,
+                                                position: "relative",
+                                            }}>{count}</span>
+                                        ) : null;
+                                    })()}
                                 </>
                             )}
                         </Link>

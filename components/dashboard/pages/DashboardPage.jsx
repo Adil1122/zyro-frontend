@@ -7,13 +7,15 @@ import {
     AreaChart, Area, Line,
     PieChart, Pie, Cell,
 } from "recharts";
-import { T, salesData, revenueData, platformData, orders } from "../constants";
+import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton, Badge, PlatformBadge, Card, KPI, ChartTip, PageHeader } from "../Primitives";
 import { getCurrentUserId } from "../../../lib/auth";
+import { useRouter } from "next/navigation";
 import { NewOrderModal } from "./OrdersPage";
 
 export default function DashboardPage() {
+    const router = useRouter();
     const [range, setRange] = useState("7d");
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -150,11 +152,11 @@ export default function DashboardPage() {
                         {stats.kpis.pendingOrders} orders need courier booking · Webhook sync active · {stats.kpis.pendingOrders > 5 ? 'High volume today' : 'Stable traffic'}
                     </div>
                 </div>
-                <GradientButton variant="ghost" size="sm" iconRight="arrow">Review</GradientButton>
+                <GradientButton variant="ghost" size="sm" iconRight="arrow" onClick={() => router.push('/orders')}>Review</GradientButton>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20, opacity: refetching ? 0.6 : 1, transition: "opacity 0.2s" }}>
-                <KPI label={`Revenue · ${stats.kpis.rangeLabel}`} value={`Rs ${stats.kpis.revenueToday.toLocaleString()}`} sub={`${stats.kpis.ordersToday} orders · Live Data`} delta="18.4%" deltaUp icon="dollar" highlight />
+                <KPI label={`Revenue · ${stats.kpis.rangeLabel}`} value={`Rs ${stats.kpis.revenueToday.toLocaleString()}`} sub={`${stats.kpis.ordersToday} orders · Live Data`} delta={stats.kpis.revenueDelta} deltaUp={stats.kpis.revenueDeltaUp} icon="dollar" highlight />
                 <KPI label="Pending Action" value={stats.kpis.pendingOrders.toString()} sub="Need courier booking" delta="Urgent" icon="truck" />
                 <KPI label="WhatsApp AI Rate" value={stats.kpis.aiRate} sub="Handled without you" delta="2.1%" deltaUp icon="ai" />
                 <KPI label="COD Due" value={`Rs ${stats.kpis.codDue.toLocaleString()}`} sub="Active in transit" icon="pkg" />
@@ -177,7 +179,7 @@ export default function DashboardPage() {
                         </div>
                     </div>
                     <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={salesData} barSize={10} barGap={2}>
+                        <BarChart data={stats.charts.platformByDay} barSize={10} barGap={2}>
                             <CartesianGrid strokeDasharray="3 3" stroke={T.border} vertical={false} />
                             <XAxis dataKey="day" tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} />
@@ -195,8 +197,8 @@ export default function DashboardPage() {
                             <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Revenue Trend</div>
                             <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2 }}>{stats.kpis.rangeLabel} · {refetching ? 'Updating...' : 'Real data'}</div>
                         </div>
-                        <div style={{ padding: "3px 9px", borderRadius: T.r20, background: T.greenBg, border: `1px solid ${T.green}33` }}>
-                            <span style={{ fontSize: 11, color: T.green, fontWeight: 700 }}>↑ 23.4%</span>
+                        <div style={{ padding: "3px 9px", borderRadius: T.r20, background: stats.kpis.revenueDeltaUp ? T.greenBg : "rgba(239,68,68,0.08)", border: `1px solid ${stats.kpis.revenueDeltaUp ? T.green : T.red}33` }}>
+                            <span style={{ fontSize: 11, color: stats.kpis.revenueDeltaUp ? T.green : T.red, fontWeight: 700 }}>{stats.kpis.revenueDeltaUp ? "↑" : "↓"} {stats.kpis.revenueDelta}</span>
                         </div>
                     </div>
                     <ResponsiveContainer width="100%" height={200}>
@@ -282,9 +284,9 @@ export default function DashboardPage() {
                         <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 12 }}>Quick Actions</div>
                         {[
                             { icon: "truck", label: "Book couriers", sub: `${stats.kpis.pendingOrders} pending`, color: T.j300 },
-                            { icon: "check", label: "Confirm orders", sub: "3 awaiting", color: T.yellow },
-                            { icon: "pkg", label: "Approve POs", sub: "2 low stock", color: T.green },
-                            { icon: "chat", label: "Reply to support", sub: "1 escalated", color: T.red },
+                            { icon: "check", label: "Confirm orders", sub: `${stats.kpis.awaitingConfirmation} awaiting`, color: T.yellow },
+                            { icon: "pkg", label: "Approve POs", sub: `${stats.kpis.lowStockCount} low stock`, color: T.green },
+                            { icon: "chat", label: "Reply to support", sub: `${stats.kpis.escalatedCount} escalated`, color: T.red },
                         ].map(a => (
                             <button key={a.label} style={{
                                 display: "flex", alignItems: "center", gap: 11, width: "100%",

@@ -1545,6 +1545,30 @@ export default function SettingsPage({ tabParam }) {
     const [isTraxSyncing, setIsTraxSyncing] = useState(false);
     const [traxSyncResult, setTraxSyncResult] = useState(null);
 
+    // ─── Billing Usage State ───
+    const [billingData, setBillingData] = useState(null);
+
+    // ─── Team State ───
+    const [teamMembers, setTeamMembers] = useState([]);
+    const [teamLoading, setTeamLoading] = useState(false);
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'viewer' });
+    const [inviteSaving, setInviteSaving] = useState(false);
+    const [inviteError, setInviteError] = useState(null);
+    const [teamToast, setTeamToast] = useState(null);
+
+    // ─── Notification Preferences State ───
+    const [notifPrefs, setNotifPrefs] = useState({
+        order_confirmed:  { wa: true,  email: false },
+        order_delivered:  { wa: true,  email: true  },
+        low_stock:        { wa: false, email: true  },
+        new_customer:     { wa: false, email: false },
+        wa_new_message:   { wa: true,  email: false },
+        return_request:   { wa: true,  email: true  },
+    });
+    const [notifSaving, setNotifSaving] = useState(false);
+    const [notifSaved, setNotifSaved] = useState(false);
+
     // ─── M&P Sync State ───
     const [isMPSyncing, setIsMPSyncing] = useState(false);
     const [mpSyncResult, setMPSyncResult] = useState(null);
@@ -1765,6 +1789,86 @@ export default function SettingsPage({ tabParam }) {
         } finally {
             setWaSaving(false);
         }
+    };
+
+    useEffect(() => {
+        if (tab === "billing" && !billingData) {
+            const userId = getCurrentUserId();
+            if (!userId) return;
+            fetch(`/api/billing-usage?userId=${encodeURIComponent(userId)}`)
+                .then(r => r.json())
+                .then(data => setBillingData(data))
+                .catch(() => {});
+        }
+    }, [tab]);
+
+    useEffect(() => {
+        if (tab === "team") {
+            const userId = getCurrentUserId();
+            if (!userId) return;
+            setTeamLoading(true);
+            fetch(`/api/team?userId=${encodeURIComponent(userId)}`)
+                .then(r => r.json())
+                .then(data => setTeamMembers(data.members || []))
+                .catch(() => {})
+                .finally(() => setTeamLoading(false));
+        }
+    }, [tab]);
+
+    useEffect(() => {
+        if (tab === "notifications") {
+            const userId = getCurrentUserId();
+            if (!userId) return;
+            fetch(`/api/notifications/preferences?userId=${encodeURIComponent(userId)}`)
+                .then(r => r.json())
+                .then(data => { if (data.prefs) setNotifPrefs(p => ({ ...p, ...data.prefs })); })
+                .catch(() => {});
+        }
+    }, [tab]);
+
+    const handleInviteMember = async () => {
+        if (!inviteForm.name.trim() || !inviteForm.email.trim()) { setInviteError('Name and email are required.'); return; }
+        setInviteSaving(true); setInviteError(null);
+        try {
+            const userId = getCurrentUserId();
+            const res = await fetch('/api/team', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                body: JSON.stringify(inviteForm),
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Failed to invite');
+            setTeamMembers(prev => [...prev, result.member]);
+            setShowInviteModal(false);
+            setInviteForm({ name: '', email: '', role: 'viewer' });
+            setTeamToast('Invitation sent');
+            setTimeout(() => setTeamToast(null), 3000);
+        } catch (e) { setInviteError(e.message); }
+        finally { setInviteSaving(false); }
+    };
+
+    const handleRemoveMember = async (memberId) => {
+        if (!window.confirm('Remove this team member?')) return;
+        const userId = getCurrentUserId();
+        await fetch(`/api/team?memberId=${memberId}&userId=${encodeURIComponent(userId)}`, { method: 'DELETE' });
+        setTeamMembers(prev => prev.filter(m => m.id !== memberId));
+        setTeamToast('Member removed');
+        setTimeout(() => setTeamToast(null), 3000);
+    };
+
+    const handleSaveNotifPrefs = async () => {
+        setNotifSaving(true);
+        try {
+            const userId = getCurrentUserId();
+            await fetch('/api/notifications/preferences', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                body: JSON.stringify({ prefs: notifPrefs }),
+            });
+            setNotifSaved(true);
+            setTimeout(() => setNotifSaved(false), 2500);
+        } catch { }
+        finally { setNotifSaving(false); }
     };
 
     useEffect(() => {
@@ -2152,46 +2256,168 @@ export default function SettingsPage({ tabParam }) {
                     <div style={{ maxWidth: 720 }}>
                         <h2 style={{ fontSize: 20, fontWeight: 800, color: T.text, margin: "0 0 6px", letterSpacing: "-0.4px" }}>Plan & Billing</h2>
                         <p style={{ fontSize: 13, color: T.textMuted, margin: "0 0 24px" }}>Current subscription and usage.</p>
-                        <div style={{
-                            background: T.gradHero, borderRadius: T.r14, padding: "24px 28px", marginBottom: 20,
-                            position: "relative", overflow: "hidden", boxShadow: T.shadowLg,
-                        }}>
-                            <div style={{ position: "absolute", top: -40, right: -40, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,0.2), transparent 70%)" }} />
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
-                                <div>
-                                    <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.8)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Current Plan</div>
-                                    <div style={{ fontSize: 32, fontWeight: 900, color: "#fff", marginTop: 4, letterSpacing: "-0.8px" }}>Growth</div>
-                                    <div style={{ fontSize: 14, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>Rs 8,999 / month · Billed monthly</div>
-                                </div>
-                                <button style={{ padding: "8px 16px", borderRadius: T.r8, background: "#fff", color: T.j600, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}>
-                                    <Icon name="trending" size={14} color={T.j600} /> Upgrade to Pro
-                                </button>
-                            </div>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginTop: 22, position: "relative" }}>
-                                {[["Orders Used", "1,247 / 1,500", 83], ["Team", "2 / 3", 67], ["WhatsApp", "847 / 2,000", 42]].map(([k, v, pct]) => (
-                                    <div key={k}>
-                                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 5 }}>{k}</div>
-                                        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{v}</div>
-                                        <div style={{ height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, marginTop: 6 }}>
-                                            <div style={{ height: "100%", width: `${pct}%`, background: "#fff", borderRadius: 2 }} />
+                        {(() => {
+                            const storedUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('zyro_user') || '{}') : {};
+                            const plan = storedUser.plans || {};
+                            const planName = plan.name || (storedUser.plan_id ? 'Active Plan' : 'Trial');
+                            const planPrice = plan.price ? `Rs ${Number(plan.price).toLocaleString()} / month` : (storedUser.plan_id ? 'Active' : 'Free Trial');
+                            const ordersLimit = plan.orders_limit || plan.ordersLimit || 1500;
+                            const waLimit = plan.wa_limit || plan.waLimit || plan.wa_messages_limit || 2000;
+                            const teamLimit = plan.team_limit || plan.teamLimit || 3;
+                            const ordersUsed = billingData?.ordersThisMonth ?? 0;
+                            const waUsed = billingData?.waMessagesThisMonth ?? 0;
+                            const teamUsed = billingData?.teamCount ?? 1;
+                            const ordersPct = Math.min(100, Math.round((ordersUsed / ordersLimit) * 100));
+                            const waPct = Math.min(100, Math.round((waUsed / waLimit) * 100));
+                            const teamPct = Math.min(100, Math.round((teamUsed / teamLimit) * 100));
+                            return (
+                                <div style={{
+                                    background: T.gradHero, borderRadius: T.r14, padding: "24px 28px", marginBottom: 20,
+                                    position: "relative", overflow: "hidden", boxShadow: T.shadowLg,
+                                }}>
+                                    <div style={{ position: "absolute", top: -40, right: -40, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,0.2), transparent 70%)" }} />
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
+                                        <div>
+                                            <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.8)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Current Plan</div>
+                                            <div style={{ fontSize: 32, fontWeight: 900, color: "#fff", marginTop: 4, letterSpacing: "-0.8px" }}>{planName}</div>
+                                            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>{planPrice} · Billed monthly</div>
                                         </div>
+                                        <button style={{ padding: "8px 16px", borderRadius: T.r8, background: "#fff", color: T.j600, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}>
+                                            <Icon name="trending" size={14} color={T.j600} /> Upgrade to Pro
+                                        </button>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginTop: 22, position: "relative" }}>
+                                        {[
+                                            ["Orders Used", `${ordersUsed.toLocaleString()} / ${ordersLimit.toLocaleString()}`, ordersPct],
+                                            ["Team", `${teamUsed} / ${teamLimit}`, teamPct],
+                                            ["WhatsApp", `${waUsed.toLocaleString()} / ${waLimit.toLocaleString()}`, waPct],
+                                        ].map(([k, v, pct]) => (
+                                            <div key={k}>
+                                                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 5 }}>{k}</div>
+                                                <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{v}</div>
+                                                <div style={{ height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, marginTop: 6 }}>
+                                                    <div style={{ height: "100%", width: `${pct}%`, background: "#fff", borderRadius: 2 }} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
                 )}
 
-                {/* ── OTHER TABS ── */}
-                {(tab !== "stores" && tab !== "whatsapp" && tab !== "billing" && tab !== "couriers") && (
-                    <div style={{ maxWidth: 720 }}>
-                        <h2 style={{ fontSize: 20, fontWeight: 800, color: T.text, margin: "0 0 6px", letterSpacing: "-0.4px" }}>
-                            {tabs.find(t => t.id === tab)?.label}
-                        </h2>
-                        <div style={{ padding: "60px 40px", textAlign: "center", background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.r12, marginTop: 20 }}>
-                            <div style={{ fontSize: 13, color: T.textMuted }}>
-                                Configure {tabs.find(t => t.id === tab)?.label.toLowerCase()} settings here
+                {/* ── TEAM TAB ── */}
+                {tab === "team" && (
+                    <div style={{ maxWidth: 760 }}>
+                        {teamToast && (
+                            <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 2000, background: T.j400, color: "#fff", padding: "12px 20px", borderRadius: T.r10, fontSize: 13, fontWeight: 600 }}>{teamToast}</div>
+                        )}
+                        {showInviteModal && (
+                            <div onClick={e => { if (e.target === e.currentTarget) setShowInviteModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}>
+                                <div style={{ background: T.bgCard, border: `1px solid ${T.borderMid}`, borderRadius: T.r14, padding: 28, width: 420, boxShadow: "0 24px 64px rgba(0,0,0,0.3)" }}>
+                                    <div style={{ fontSize: 16, fontWeight: 800, color: T.text, marginBottom: 20 }}>Invite Team Member</div>
+                                    {[["Name *", "name", "text", "Full name"], ["Email *", "email", "email", "colleague@company.com"]].map(([lbl, k, type, ph]) => (
+                                        <div key={k} style={{ marginBottom: 14 }}>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>{lbl}</div>
+                                            <input type={type} placeholder={ph} value={inviteForm[k]} onChange={e => setInviteForm(f => ({ ...f, [k]: e.target.value }))} style={{ width: "100%", padding: "9px 12px", background: T.bgElev, border: `1px solid ${T.borderMid}`, borderRadius: T.r8, color: T.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+                                        </div>
+                                    ))}
+                                    <div style={{ marginBottom: 16 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Role</div>
+                                        <select value={inviteForm.role} onChange={e => setInviteForm(f => ({ ...f, role: e.target.value }))} style={{ width: "100%", padding: "9px 12px", background: T.bgElev, border: `1px solid ${T.borderMid}`, borderRadius: T.r8, color: T.text, fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}>
+                                            <option value="viewer">Viewer — read only</option>
+                                            <option value="manager">Manager — can edit orders & inventory</option>
+                                            <option value="admin">Admin — full access</option>
+                                        </select>
+                                    </div>
+                                    {inviteError && <div style={{ fontSize: 12, color: T.red, padding: "8px 12px", background: T.redBg, borderRadius: T.r6, marginBottom: 12 }}>{inviteError}</div>}
+                                    <div style={{ display: "flex", gap: 10 }}>
+                                        <GradientButton variant="secondary" full onClick={() => { setShowInviteModal(false); setInviteError(null); }}>Cancel</GradientButton>
+                                        <GradientButton variant="primary" full onClick={handleInviteMember} disabled={inviteSaving}>{inviteSaving ? 'Sending...' : 'Send Invite'}</GradientButton>
+                                    </div>
+                                </div>
                             </div>
+                        )}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+                            <div>
+                                <h2 style={{ fontSize: 20, fontWeight: 800, color: T.text, margin: "0 0 6px", letterSpacing: "-0.4px" }}>Team</h2>
+                                <p style={{ fontSize: 13, color: T.textMuted, margin: 0 }}>Manage who has access to your Zyro account.</p>
+                            </div>
+                            <GradientButton variant="primary" size="sm" icon="plus" onClick={() => setShowInviteModal(true)}>Invite Member</GradientButton>
+                        </div>
+                        <Card pad={0}>
+                            {teamLoading ? (
+                                <div style={{ padding: 40, textAlign: "center", color: T.textFaint, fontSize: 13 }}>Loading team...</div>
+                            ) : teamMembers.length === 0 ? (
+                                <div style={{ padding: 40, textAlign: "center" }}>
+                                    <div style={{ fontSize: 13, color: T.textMuted, marginBottom: 12 }}>No team members yet.</div>
+                                    <GradientButton variant="secondary" size="sm" onClick={() => setShowInviteModal(true)}>Invite your first team member</GradientButton>
+                                </div>
+                            ) : (
+                                teamMembers.map((m, i) => (
+                                    <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderBottom: i < teamMembers.length - 1 ? `1px solid ${T.border}` : "none" }}>
+                                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: `linear-gradient(135deg, ${T.j400}, ${T.j600})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: "#fff", flexShrink: 0 }}>
+                                            {(m.name || '?').split(" ").map(w => w[0]).join("").slice(0, 2)}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{m.name}</div>
+                                            <div style={{ fontSize: 12, color: T.textFaint }}>{m.email}</div>
+                                        </div>
+                                        <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: T.r4, background: m.role === "admin" ? `${T.j300}22` : m.role === "manager" ? T.blueBg : T.bgElev, color: m.role === "admin" ? T.j200 : m.role === "manager" ? T.blue : T.textMuted, textTransform: "capitalize" }}>{m.role}</span>
+                                        <span style={{ fontSize: 11, padding: "3px 9px", borderRadius: T.r4, background: m.status === "active" ? T.greenBg : T.yellowBg, color: m.status === "active" ? T.green : T.yellow }}>{m.status === "active" ? "Active" : "Pending"}</span>
+                                        <GradientButton size="xs" variant="ghost" onClick={() => handleRemoveMember(m.id)}>Remove</GradientButton>
+                                    </div>
+                                ))
+                            )}
+                        </Card>
+                    </div>
+                )}
+
+                {/* ── NOTIFICATIONS TAB ── */}
+                {tab === "notifications" && (
+                    <div style={{ maxWidth: 680 }}>
+                        <h2 style={{ fontSize: 20, fontWeight: 800, color: T.text, margin: "0 0 6px", letterSpacing: "-0.4px" }}>Notifications</h2>
+                        <p style={{ fontSize: 13, color: T.textMuted, margin: "0 0 24px" }}>Choose how you want to be notified for each event.</p>
+                        <Card pad={0}>
+                            <div style={{ padding: "12px 20px 8px", display: "grid", gridTemplateColumns: "1fr 80px 80px", borderBottom: `1px solid ${T.border}`, gap: 8 }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.08em" }}>Event</div>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "center" }}>WhatsApp</div>
+                                <div style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "center" }}>Email</div>
+                            </div>
+                            {[
+                                ["order_confirmed",  "Order Confirmed",    "When an order status moves to confirmed"],
+                                ["order_delivered",  "Order Delivered",    "When an order is marked as delivered"],
+                                ["low_stock",        "Low Stock Alert",    "When a product drops below 5 units"],
+                                ["new_customer",     "New Customer",       "When a new customer is added"],
+                                ["wa_new_message",   "New WhatsApp Message", "When a customer sends a new message"],
+                                ["return_request",   "Return / RTO Alert", "When an order is returned or RTO flagged"],
+                            ].map(([key, title, desc], i, arr) => {
+                                const pref = notifPrefs[key] || { wa: false, email: false };
+                                const Toggle = ({ val, onChange }) => (
+                                    <button onClick={() => onChange(!val)} style={{ width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer", background: val ? T.j300 : T.bgHigh, position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+                                        <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: val ? 21 : 3, transition: "left 0.2s", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
+                                    </button>
+                                );
+                                return (
+                                    <div key={key} style={{ display: "grid", gridTemplateColumns: "1fr 80px 80px", alignItems: "center", padding: "14px 20px", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none", gap: 8 }}>
+                                        <div>
+                                            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{title}</div>
+                                            <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2 }}>{desc}</div>
+                                        </div>
+                                        <div style={{ display: "flex", justifyContent: "center" }}>
+                                            <Toggle val={pref.wa} onChange={v => setNotifPrefs(p => ({ ...p, [key]: { ...p[key], wa: v } }))} />
+                                        </div>
+                                        <div style={{ display: "flex", justifyContent: "center" }}>
+                                            <Toggle val={pref.email} onChange={v => setNotifPrefs(p => ({ ...p, [key]: { ...p[key], email: v } }))} />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </Card>
+                        <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12 }}>
+                            <GradientButton variant="primary" onClick={handleSaveNotifPrefs} disabled={notifSaving}>{notifSaving ? 'Saving...' : 'Save Preferences'}</GradientButton>
+                            {notifSaved && <span style={{ fontSize: 13, color: T.green, fontWeight: 600 }}>Saved</span>}
                         </div>
                     </div>
                 )}
