@@ -224,28 +224,32 @@ export default function MarketingPage() {
     if (!svg || !tooltip) return;
 
     const days = 30;
+    // Spend: distribute total evenly — real per-day breakdown requires Meta daily insights API
     const spendSeries = Array.from({ length: days }, (_, i) => totals.spend * (i + 1) / days);
+    const hasRealRevenue = dailyRevSeries && dailyRevSeries.length > 0;
 
-    // Use real daily order revenue if available, otherwise distribute evenly
-    let revSeries;
-    if (dailyRevSeries && dailyRevSeries.length > 0) {
-      revSeries = Array.from({ length: days }, (_, i) => dailyRevSeries[i] ?? dailyRevSeries[dailyRevSeries.length - 1] ?? 0);
-    } else {
-      let rAcc = 0;
-      revSeries = Array.from({ length: days }, (_, i) => {
-        const p = i / (days - 1);
-        rAcc += (totals.revenue / days) * (0.5 + p);
-        return rAcc;
-      });
-    }
+    // Revenue: only draw from real order data. If unavailable, show a flat zero line.
+    const revSeries = hasRealRevenue
+      ? Array.from({ length: days }, (_, i) => dailyRevSeries[i] ?? dailyRevSeries[dailyRevSeries.length - 1] ?? 0)
+      : Array(days).fill(0);
+
     const maxVal = Math.max(...revSeries, ...spendSeries) * 1.08 || 1;
     const xAt = (i) => (i / (days - 1)) * 1000;
     const yAt = (v) => 200 - (v / maxVal) * 190;
     const pts = (s) => s.map((v, i) => `${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(" ");
 
+    const noDataNote = !hasRealRevenue
+      ? `<text x="500" y="105" text-anchor="middle" fill="rgba(255,255,255,0.3)" font-size="13" font-family="system-ui,sans-serif">Revenue trend — connect your store to see day-by-day data</text>`
+      : '';
+    const spendNote = totals.spend > 0
+      ? `<text x="500" y="190" text-anchor="middle" fill="rgba(59,130,246,0.5)" font-size="10" font-family="system-ui,sans-serif">Spend line = even daily distribution (est.) — actual daily breakdown requires Meta Insights API</text>`
+      : '';
+
     svg.innerHTML = `
-      <polyline points="${pts(spendSeries)}" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-      <polyline points="${pts(revSeries)}" fill="none" stroke="#7ef2c0" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <polyline points="${pts(spendSeries)}" fill="none" stroke="${totals.spend > 0 ? '#3b82f6' : 'transparent'}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="${totals.spend > 0 ? 'none' : '0'}"/>
+      <polyline points="${pts(revSeries)}" fill="none" stroke="${hasRealRevenue ? '#7ef2c0' : 'transparent'}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${noDataNote}
+      ${spendNote}
       <line id="cg" x1="0" y1="0" x2="0" y2="200" stroke="rgba(255,255,255,0.13)" stroke-width="1" style="opacity:0;transition:opacity .1s;pointer-events:none;"/>
       <circle id="ps" r="4" fill="#0e1713" stroke="#3b82f6" stroke-width="2" style="opacity:0;transition:opacity .1s;pointer-events:none;"/>
       <circle id="pr" r="4" fill="#0e1713" stroke="#7ef2c0" stroke-width="2" style="opacity:0;transition:opacity .1s;pointer-events:none;"/>

@@ -9,20 +9,20 @@ import { getCurrentUserId } from "../../../lib/auth";
 // ── static courier registry ──────────────────────────────────────────────────
 
 const INIT_COURIERS = {
-    tcs:      { name: "TCS",          code: "TCS", color: "#E85955", bg: "rgba(224,57,54,0.12)",   connected: true,  score: null, successRate: "—", avgDays: "1–3 days", rto: "—", cost: "Rs 210", load: 0, bestFor: "Metro cities, electronics" },
-    leopards: { name: "Leopards",     code: "LP",  color: "#4ADE80", bg: "rgba(34,197,94,0.12)",   connected: true,  score: null, successRate: "—", avgDays: "2–4 days", rto: "—", cost: "Rs 185", load: 0, bestFor: "Urban areas, high volume" },
-    mnp:      { name: "M&P Courier",  code: "M&P", color: "#C084FC", bg: "rgba(168,85,247,0.12)", connected: true,  score: null, successRate: "—", avgDays: "2–4 days", rto: "—", cost: "Rs 240", load: 0, bestFor: "Urban fallback only" },
-    postex:   { name: "PostEx",       code: "PX",  color: "#60A5FA", bg: "rgba(59,130,246,0.12)",  connected: true,  score: null, successRate: "—", avgDays: "2–4 days", rto: "—", cost: "Rs 165", load: 0, bestFor: "Rural / remote, COD" },
-    trax:     { name: "Trax",         code: "TX",  color: "#FBBF24", bg: "rgba(245,158,11,0.12)",  connected: true,  score: null, successRate: "—", avgDays: "3–5 days", rto: "—", cost: "Rs 150", load: 0, bestFor: "Rural / remote" },
-    callc:    { name: "Call Courier", code: "CC",  color: "#F87171", bg: "rgba(242,114,107,0.12)", connected: true,  score: null, successRate: "—", avgDays: "3–5 days", rto: "—", cost: "Rs 175", load: 0, bestFor: "Urban areas" },
-    rider:    { name: "Rider",        code: "RD",  color: "#FCD34D", bg: "rgba(234,179,8,0.12)",   connected: true,  score: null, successRate: "—", avgDays: "1–2 days", rto: "—", cost: "Rs 140", load: 0, bestFor: "Karachi same-day" },
-    swyft:    { name: "Swyft",        code: "SW",  color: "#94A3B8", bg: "rgba(100,116,139,0.12)", connected: false, score: null, successRate: "—", avgDays: "—", rto: "—", cost: "—", load: 0, bestFor: "—" },
+    tcs:      { name: "TCS",          code: "TCS", color: "#E85955", bg: "rgba(224,57,54,0.12)",   connected: false, score: null, successRate: "—", avgDays: "1–3 days", rto: "—", cost: "Rs 210", load: 0, bestFor: "Metro cities, electronics" },
+    leopards: { name: "Leopards",     code: "LP",  color: "#4ADE80", bg: "rgba(34,197,94,0.12)",   connected: false, score: null, successRate: "—", avgDays: "2–4 days", rto: "—", cost: "Rs 185", load: 0, bestFor: "Urban areas, high volume" },
+    mnp:      { name: "M&P Courier",  code: "M&P", color: "#C084FC", bg: "rgba(168,85,247,0.12)",  connected: false, score: null, successRate: "—", avgDays: "2–4 days", rto: "—", cost: "Rs 240", load: 0, bestFor: "Urban fallback only" },
+    postex:   { name: "PostEx",       code: "PX",  color: "#60A5FA", bg: "rgba(59,130,246,0.12)",  connected: false, score: null, successRate: "—", avgDays: "2–4 days", rto: "—", cost: "Rs 165", load: 0, bestFor: "Rural / remote, COD" },
+    trax:     { name: "Trax",         code: "TX",  color: "#FBBF24", bg: "rgba(245,158,11,0.12)",  connected: false, score: null, successRate: "—", avgDays: "3–5 days", rto: "—", cost: "Rs 150", load: 0, bestFor: "Rural / remote" },
+    callc:    { name: "Call Courier", code: "CC",  color: "#F87171", bg: "rgba(242,114,107,0.12)", connected: false, score: null, successRate: "—", avgDays: "3–5 days", rto: "—", cost: "Rs 175", load: 0, bestFor: "Urban areas" },
+    rider:    { name: "Rider",        code: "RD",  color: "#FCD34D", bg: "rgba(234,179,8,0.12)",   connected: false, score: null, successRate: "—", avgDays: "1–2 days", rto: "—", cost: "Rs 140", load: 0, bestFor: "Karachi same-day" },
+    swyft:    { name: "Swyft",        code: "SW",  color: "#94A3B8", bg: "rgba(100,116,139,0.12)", connected: false, score: null, successRate: "—", avgDays: "—",        rto: "—", cost: "—",       load: 0, bestFor: "—" },
 };
 
 const ZONES = {
-    metro: { label: "Metro",         base: { courier: "TCS",      score: "94%", days: "2 days" }, risk: { courier: "Leopards", score: "94%", days: "3 days" } },
-    urban: { label: "Urban",         base: { courier: "Leopards", score: "91%", days: "2 days" }, risk: { courier: "TCS",      score: "92%", days: "3 days" } },
-    rural: { label: "Rural/Remote",  base: { courier: "Trax",     score: "83%", days: "3 days" }, risk: { courier: "PostEx",   score: "90%", days: "4 days" } },
+    metro: { label: "Metro",         base: { courier: "TCS",      days: "2 days" }, risk: { courier: "Leopards", days: "3 days" } },
+    urban: { label: "Urban",         base: { courier: "Leopards", days: "2 days" }, risk: { courier: "TCS",      days: "3 days" } },
+    rural: { label: "Rural/Remote",  base: { courier: "Trax",     days: "3 days" }, risk: { courier: "PostEx",   days: "4 days" } },
 };
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -242,18 +242,23 @@ function ConnectModal({ courierKey, courierName, onSave, onClose }) {
 // ── Book Shipment View ────────────────────────────────────────────────────────
 
 function BookView({ couriers, onBack, onToast }) {
-    const [form, setForm] = useState({ name: "", phone: "", address: "House 12, Street 4, Gulshan-e-Iqbal, Karachi", category: "general", weight: "1.2", l: "20", w: "15", h: "10", value: "18500", payment: "cod", buyer: "first" });
+    const [form, setForm] = useState({ name: "", phone: "", address: "", category: "general", weight: "1.2", l: "20", w: "15", h: "10", value: "", payment: "cod", buyer: "first" });
     const [errs, setErrs] = useState({});
     const [zone, setZone] = useState("metro");
     const [manualPick, setManualPick] = useState(null);
     const [showPicker, setShowPicker] = useState(false);
     const [booking, setBooking] = useState(false);
     const [booked, setBooked] = useState(null);
-    const [bookingCounter, setBookingCounter] = useState(88231);
     const [recentBookings, setRecentBookings] = useState([]);
     const [confirmed, setConfirmed] = useState(false);
 
     const setF = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+    const realScore = (courierName) => {
+        const key = courierKeyFromName(courierName, couriers);
+        const s = couriers[key]?.score;
+        return s != null ? `${s}%` : "—";
+    };
 
     const computePick = () => {
         const cat = form.category;
@@ -263,17 +268,17 @@ function BookView({ couriers, onBack, onToast }) {
         const highRisk = cod && firstTime;
         const zoneData = ZONES[zone];
 
-        if (cat === "electronics") return { courier: "TCS", score: "94%", days: "2 days", why: "Electronics category — hard rule always ships via TCS", risky: false, trace: ["Package category: Electronics", "Hard rule → always TCS, regardless of zone or risk"] };
+        if (cat === "electronics") return { courier: "TCS", score: realScore("TCS"), days: "2 days", why: "Electronics category — hard rule always ships via TCS", risky: false, trace: ["Package category: Electronics", "Hard rule → always TCS, regardless of zone or risk"] };
         if (wt < 0.5) {
             const cheap = zone === "rural" ? "Trax" : "Leopards";
-            return { courier: cheap, score: "—", days: "2–3 days", why: "Under 0.5kg — cheapest courier in this zone", risky: false, trace: [`Weight: ${wt}kg (under 0.5kg threshold)`, `Hard rule → cheapest courier in ${zoneData.label}`] };
+            return { courier: cheap, score: realScore(cheap), days: "2–3 days", why: "Under 0.5kg — cheapest courier in this zone", risky: false, trace: [`Weight: ${wt}kg (under 0.5kg threshold)`, `Hard rule → cheapest courier in ${zoneData.label}`] };
         }
         if (highRisk) {
             const r = zoneData.risk;
-            return { courier: r.courier, score: r.score, days: r.days, why: "Best COD success rate for this zone right now", risky: true, trace: [`Zone rule: ${zoneData.label} → ${zoneData.base.courier} suggested`, "COD + first-time buyer → high RTO risk flagged", `Switched to ${r.courier} — better COD success here`] };
+            return { courier: r.courier, score: realScore(r.courier), days: r.days, why: "Best COD success rate for this zone right now", risky: true, trace: [`Zone rule: ${zoneData.label} → ${zoneData.base.courier} suggested`, "COD + first-time buyer → high RTO risk flagged", `Switched to ${r.courier} — better COD success here`] };
         }
         const b = zoneData.base;
-        return { courier: b.courier, score: b.score, days: b.days, why: "Zone rule default — no override needed", risky: false, trace: [`Zone rule: ${zoneData.label} → ${b.courier} suggested`, !cod ? "Prepaid — no RTO exposure" : "COD, repeat buyer — risk low enough", "Rule confirmed — no risk override triggered"] };
+        return { courier: b.courier, score: realScore(b.courier), days: b.days, why: "Zone rule default — no override needed", risky: false, trace: [`Zone rule: ${zoneData.label} → ${b.courier} suggested`, !cod ? "Prepaid — no RTO exposure" : "COD, repeat buyer — risk low enough", "Rule confirmed — no risk override triggered"] };
     };
 
     const pick = manualPick ? {
@@ -312,7 +317,7 @@ function BookView({ couriers, onBack, onToast }) {
             setConfirmed(true);
             onToast("Customer confirmed via WhatsApp — booking courier automatically");
         }
-        const trackNo = `ZY-${bookingCounter + recentBookings.length}`;
+        const trackNo = `ZY-${Date.now().toString(36).toUpperCase().slice(-7)}`;
         setBooked({ trackNo, courier: pick.courier, name: form.name, cod: form.payment === "cod" ? `Rs ${Number(form.value || 0).toLocaleString()}` : "Prepaid" });
         setRecentBookings(prev => [{ trackNo, name: form.name, courier: pick.courier }, ...prev]);
         onToast(`Booked with ${pick.courier} — receipt sent to your WhatsApp`);
@@ -424,9 +429,10 @@ function BookView({ couriers, onBack, onToast }) {
                         </div>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, color: T.textMuted }}>
-                        <span>Estimated cost <span style={{ fontSize: 11, color: T.textFaint }}>{chargeable.isVol ? "(volumetric)" : ""}</span></span>
+                        <span>Est. cost <span style={{ fontSize: 11, color: T.textFaint }}>{chargeable.isVol ? "(volumetric)" : ""}</span></span>
                         <span style={{ fontSize: 15, fontWeight: 800, color: T.text }}>Rs {chargeable.total}</span>
                     </div>
+                    <div style={{ fontSize: 11, color: T.textFaint }}>Est. market rate — actual may differ by contract</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         {pick.trace.map((t, i) => (
                             <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: T.textFaint }}>
@@ -600,6 +606,24 @@ export default function CouriersPage() {
             .then(data => {
                 if (Array.isArray(data.hardRules)) setHardRules(data.hardRules);
                 if (data.zoneRules) setRules(data.zoneRules);
+            })
+            .catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        const userId = getCurrentUserId();
+        if (!userId) return;
+        fetch(`/api/couriers/credentials?userId=${encodeURIComponent(userId)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!Array.isArray(data.connected)) return;
+                setCouriers(prev => {
+                    const next = { ...prev };
+                    for (const key of Object.keys(next)) {
+                        next[key] = { ...next[key], connected: data.connected.includes(key) };
+                    }
+                    return next;
+                });
             })
             .catch(() => {});
     }, []);

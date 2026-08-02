@@ -78,18 +78,30 @@ function parseCSV(text) {
 
 // ── Manual Order Modal ───────────────────────────────────────────────────────
 
-const COURIERS = {
-    tcs:      { name: 'TCS',      code: 'TCS', color: '#e85955', days: '2 days' },
-    leopards: { name: 'Leopards', code: 'LP',  color: '#4ade80', days: '2 days' },
-    postex:   { name: 'PostEx',   code: 'PX',  color: '#60a5fa', days: '3 days' },
-    trax:     { name: 'Trax',     code: 'TX',  color: '#fbbf24', days: '3 days' },
+const COURIER_REGISTRY = {
+    tcs:      { name: 'TCS',          code: 'TCS', color: '#e85955', days: '2 days' },
+    leopards: { name: 'Leopards',     code: 'LP',  color: '#4ade80', days: '2 days' },
+    postex:   { name: 'PostEx',       code: 'PX',  color: '#60a5fa', days: '3 days' },
+    trax:     { name: 'Trax',         code: 'TX',  color: '#fbbf24', days: '3 days' },
+    mnp:      { name: 'M&P',          code: 'M&P', color: '#c084fc', days: '3 days' },
+    callc:    { name: 'Call Courier', code: 'CC',  color: '#f87171', days: '3 days' },
+    rider:    { name: 'Rider',        code: 'RD',  color: '#fcd34d', days: '2 days' },
+    swyft:    { name: 'Swyft',        code: 'SW',  color: '#94a3b8', days: '3 days' },
 };
 
-const ZONES = {
-    metro: { label: 'Metro',         color: '#60A5FA', base: 'tcs',      risk: 'leopards' },
-    urban: { label: 'Urban',         color: '#FBBF24', base: 'leopards', risk: 'tcs'      },
-    rural: { label: 'Rural / Remote', color: '#A78BFA', base: 'trax',    risk: 'postex'   },
+const DEFAULT_ZONES = {
+    metro: { label: 'Metro',          color: '#60A5FA', base: 'tcs',      risk: 'leopards' },
+    urban: { label: 'Urban',          color: '#FBBF24', base: 'leopards', risk: 'tcs'      },
+    rural: { label: 'Rural / Remote', color: '#A78BFA', base: 'trax',     risk: 'postex'   },
 };
+
+function nameToKey(name) {
+    if (!name) return null;
+    const n = name.toLowerCase().replace(/[^a-z]/g, '');
+    return Object.keys(COURIER_REGISTRY).find(k =>
+        COURIER_REGISTRY[k].name.toLowerCase().replace(/[^a-z]/g, '') === n
+    ) || null;
+}
 
 function detectZone(address) {
     if (!address) return 'rural';
@@ -99,14 +111,16 @@ function detectZone(address) {
     return 'rural';
 }
 
-function computeRec(zone, isFirstTime, isCOD, manualPick) {
-    if (manualPick) return { key: manualPick, trace: [`Manual override: ${COURIERS[manualPick].name}`] };
-    const zc = ZONES[zone];
+function computeRec(zone, isFirstTime, isCOD, manualPick, couriers, zones) {
+    if (manualPick) return { key: manualPick, trace: [`Manual override: ${couriers[manualPick].name}`] };
+    const zc = zones[zone];
     let key = zc.base;
-    const trace = [`${zc.label} zone → ${COURIERS[key].name} recommended`];
+    if (!couriers[key]) key = Object.keys(couriers)[0];
+    const trace = [`${zc.label} zone → ${couriers[key].name} recommended`];
     if (isCOD && isFirstTime) {
-        key = zc.risk;
-        trace.push(`COD + new customer → switched to ${COURIERS[key].name} (lower COD risk)`);
+        const risk = couriers[zc.risk] ? zc.risk : key;
+        key = risk;
+        trace.push(`COD + new customer → switched to ${couriers[key].name} (lower COD risk)`);
     }
     return { key, trace };
 }
@@ -125,8 +139,32 @@ export function NewOrderModal({ onClose, onCreated }) {
     const [errors, setErrors] = useState({});
     const [flowState, setFlowState] = useState('form');
     const [createdOrder, setCreatedOrder] = useState(null);
+    const [couriers, setCouriers] = useState({ tcs: COURIER_REGISTRY.tcs, leopards: COURIER_REGISTRY.leopards, postex: COURIER_REGISTRY.postex, trax: COURIER_REGISTRY.trax });
+    const [zones, setZones] = useState(DEFAULT_ZONES);
     const phoneTimerRef = useRef(null);
     const overlayRef = useRef(null);
+
+    useEffect(() => {
+        const userId = getCurrentUserId();
+        if (!userId) return;
+        Promise.all([
+            fetch(`/api/couriers/credentials?userId=${encodeURIComponent(userId)}`).then(r => r.json()).catch(() => null),
+            fetch(`/api/couriers/rules?userId=${encodeURIComponent(userId)}`).then(r => r.json()).catch(() => null),
+        ]).then(([creds, rules]) => {
+            if (creds?.connected?.length > 0) {
+                const connected = {};
+                creds.connected.forEach(key => { if (COURIER_REGISTRY[key]) connected[key] = COURIER_REGISTRY[key]; });
+                if (Object.keys(connected).length > 0) setCouriers(connected);
+            }
+            if (rules?.zoneRules) {
+                setZones(prev => ({
+                    metro: { ...prev.metro, base: nameToKey(rules.zoneRules.metro) || prev.metro.base },
+                    urban: { ...prev.urban, base: nameToKey(rules.zoneRules.urban) || prev.urban.base },
+                    rural: { ...prev.rural, base: nameToKey(rules.zoneRules.rural) || prev.rural.base },
+                }));
+            }
+        });
+    }, []);
 
     const setField = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -161,8 +199,8 @@ export function NewOrderModal({ onClose, onCreated }) {
         return () => document.removeEventListener('keydown', onKey);
     }, [onClose, flowState]);
 
-    const rec = computeRec(zone, isReturning === false, payType === 'cod', manualCourier);
-    const recCourier = COURIERS[rec.key];
+    const rec = computeRec(zone, isReturning === false, payType === 'cod', manualCourier, couriers, zones);
+    const recCourier = couriers[rec.key] || Object.values(couriers)[0];
     const showRiskNote = payType === 'cod' && isReturning === false && !manualCourier;
 
     const validate = () => {
@@ -438,7 +476,7 @@ export function NewOrderModal({ onClose, onCreated }) {
 
                         {showCourierPicker && (
                             <div style={{ borderTop: `1px solid ${T.border}`, padding: '6px 8px' }}>
-                                {Object.entries(COURIERS).map(([key, c]) => {
+                                {Object.entries(couriers).map(([key, c]) => {
                                     const active = manualCourier === key || (!manualCourier && rec.key === key);
                                     return (
                                         <button key={key} onClick={() => { setManualCourier(key); setShowCourierPicker(false); }} style={{
