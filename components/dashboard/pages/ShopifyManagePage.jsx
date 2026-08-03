@@ -100,28 +100,52 @@ export default function ShopifyManagePage({ onBack }) {
     // ─── Credential state ─────────────────────────────────────────────────────
     const [isConfiguring, setIsConfiguring] = useState(false);
     const [saveMsg, setSaveMsg] = useState(null);
-    const [config, setConfig] = useState({ domain: "" });
+    const [isSaving, setIsSaving] = useState(false);
+    const [config, setConfig] = useState({ domain: "", accessToken: "" });
 
     const fetchConfig = async () => {
         try {
             const userId = getCurrentUserId();
             const { data } = await supabase
                 .from('users')
-                .select('shopify_store_domain')
+                .select('shopify_store_domain, shopify_access_token')
                 .eq('id', userId)
                 .single();
             if (data) {
-                setConfig({ domain: data.shopify_store_domain || "" });
+                setConfig({
+                    domain: data.shopify_store_domain || "",
+                    accessToken: data.shopify_access_token ? "••••••••••••••••••••" : "",
+                });
             }
         } catch (e) {
             console.error("Failed to fetch Shopify config:", e);
         }
     };
 
-    const handleConnectOAuth = () => {
-        const userId = getCurrentUserId();
-        const shop = config.domain.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
-        window.location.href = `/api/shopify/install?shop=${encodeURIComponent(shop)}&userId=${encodeURIComponent(userId)}`;
+    const handleSaveCredentials = async () => {
+        const domain = config.domain.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+        const token = config.accessToken.trim();
+        if (!domain || !token || token.startsWith('•')) return;
+        setIsSaving(true);
+        setSaveMsg(null);
+        try {
+            const userId = getCurrentUserId();
+            const res = await fetch('/api/shopify/save-credentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                body: JSON.stringify({ storeDomain: domain, accessToken: token }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to save');
+            setSaveMsg({ type: 'success', text: '✓ Shopify connected successfully!' });
+            setIsConfiguring(false);
+            fetchConfig();
+            fetchOrders(1);
+        } catch (e) {
+            setSaveMsg({ type: 'error', text: '✗ ' + e.message });
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleDisconnect = async () => {
@@ -132,7 +156,7 @@ export default function ShopifyManagePage({ onBack }) {
             headers: { 'x-user-id': userId },
         });
         if (res.ok) {
-            setConfig({ domain: "" });
+            setConfig({ domain: "", accessToken: "" });
             setSaveMsg(null);
             fetchOrders(1);
         }
@@ -329,27 +353,72 @@ export default function ShopifyManagePage({ onBack }) {
                         maxWidth: 580, margin: "0 auto", background: T.bgCard,
                         borderRadius: T.r12, border: `1px solid ${T.border}`, padding: 32,
                     }}>
-                        <h3 style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 8 }}>
-                            Connect Shopify Store
+                        <h3 style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 4 }}>
+                            Connect Your Shopify Store
                         </h3>
                         <p style={{ fontSize: 13, color: T.textMuted, marginBottom: 24 }}>
-                            Enter your store's .myshopify.com domain to start the secure OAuth connection.
+                            Follow the steps below to get your access token from Shopify.
                         </p>
 
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 24 }}>
-                            <label style={{ fontSize: 13, fontWeight: 700, color: T.textSub }}>Store Domain</label>
-                            <input
-                                type="text"
-                                value={config.domain}
-                                onChange={e => setConfig({ ...config, domain: e.target.value.trim() })}
-                                placeholder="your-store.myshopify.com or yourcustomdomain.com"
-                                style={{
-                                    padding: "10px 14px", borderRadius: T.r8, background: T.bgElev,
-                                    border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 14,
-                                    fontFamily: "monospace", outline: "none",
-                                }}
-                            />
-                            <span style={{ fontSize: 11, color: T.textFaint }}>Enter your .myshopify.com domain or custom store domain</span>
+                        {/* Step-by-step guide */}
+                        <div style={{
+                            marginBottom: 28, padding: 18, borderRadius: T.r10,
+                            background: "rgba(150,191,72,0.05)", border: `1px solid rgba(150,191,72,0.2)`,
+                        }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: SHOPIFY_GREEN, marginBottom: 14, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                                How to get your access token
+                            </div>
+                            {[
+                                { n: 1, text: "Go to your Shopify Admin → Settings → Apps and sales channels" },
+                                { n: 2, text: "Click Develop apps → Allow custom app development → confirm" },
+                                { n: 3, text: "Click Create an app → name it anything (e.g. Zyro)" },
+                                { n: 4, text: "Click Configure Admin API scopes → check: read_orders, write_orders, read_customers, read_products, read_inventory, read_fulfillments, write_fulfillments → Save" },
+                                { n: 5, text: "Click Install app → confirm" },
+                                { n: 6, text: "Click API credentials tab → Reveal token once → copy the shpat_xxx token" },
+                            ].map(s => (
+                                <div key={s.n} style={{ display: "flex", gap: 12, marginBottom: 10, alignItems: "flex-start" }}>
+                                    <div style={{
+                                        width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                                        background: SHOPIFY_GREEN, color: "#fff",
+                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                        fontSize: 11, fontWeight: 800, marginTop: 1,
+                                    }}>{s.n}</div>
+                                    <div style={{ fontSize: 12, color: T.textMuted, lineHeight: 1.6 }}>{s.text}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Inputs */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                <label style={{ fontSize: 13, fontWeight: 700, color: T.textSub }}>Store Domain</label>
+                                <input
+                                    type="text"
+                                    value={config.domain}
+                                    onChange={e => setConfig({ ...config, domain: e.target.value.trim() })}
+                                    placeholder="your-store.myshopify.com or yourcustomdomain.com"
+                                    style={{
+                                        padding: "10px 14px", borderRadius: T.r8, background: T.bgElev,
+                                        border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 13,
+                                        fontFamily: "monospace", outline: "none", width: "100%", boxSizing: "border-box",
+                                    }}
+                                />
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                <label style={{ fontSize: 13, fontWeight: 700, color: T.textSub }}>Access Token</label>
+                                <input
+                                    type="password"
+                                    value={config.accessToken}
+                                    onChange={e => setConfig({ ...config, accessToken: e.target.value })}
+                                    placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                    style={{
+                                        padding: "10px 14px", borderRadius: T.r8, background: T.bgElev,
+                                        border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 13,
+                                        fontFamily: "monospace", outline: "none", width: "100%", boxSizing: "border-box",
+                                    }}
+                                />
+                                <span style={{ fontSize: 11, color: T.textFaint }}>Starts with shpat_ — only shown once by Shopify</span>
+                            </div>
                         </div>
 
                         {saveMsg && (
@@ -363,30 +432,22 @@ export default function ShopifyManagePage({ onBack }) {
 
                         <div style={{ display: "flex", gap: 12 }}>
                             <button
-                                onClick={handleConnectOAuth}
-                                disabled={!config.domain.trim()}
+                                onClick={handleSaveCredentials}
+                                disabled={isSaving || !config.domain.trim() || !config.accessToken.trim() || config.accessToken.startsWith('•')}
                                 style={{
-                                    padding: "10px 20px", borderRadius: T.r8, fontSize: 13, fontWeight: 700,
+                                    padding: "10px 24px", borderRadius: T.r8, fontSize: 13, fontWeight: 700,
                                     background: SHOPIFY_GRAD, color: "#fff", border: "none",
-                                    cursor: !config.domain.trim() ? "not-allowed" : "pointer",
-                                    opacity: !config.domain.trim() ? 0.5 : 1,
+                                    cursor: (isSaving || !config.domain.trim() || !config.accessToken.trim()) ? "not-allowed" : "pointer",
+                                    opacity: (isSaving || !config.domain.trim() || !config.accessToken.trim()) ? 0.5 : 1,
                                     boxShadow: "0 2px 8px rgba(150,191,72,0.35)", fontFamily: "inherit",
                                     display: "flex", alignItems: "center", gap: 8,
                                 }}
                             >
-                                🛍 Connect with Shopify
+                                {isSaving ? "Connecting…" : "🛍 Save & Connect"}
                             </button>
                             <GradientButton variant="secondary" onClick={() => { setIsConfiguring(false); setSaveMsg(null); }}>
                                 Cancel
                             </GradientButton>
-                        </div>
-
-                        <div style={{
-                            marginTop: 24, padding: 14, borderRadius: T.r10,
-                            background: "rgba(150,191,72,0.06)", border: `1px solid rgba(150,191,72,0.2)`,
-                            fontSize: 12, color: T.textMuted, lineHeight: 1.7,
-                        }}>
-                            You'll be redirected to Shopify to approve the connection. After approving, you'll be brought back to Zyro automatically.
                         </div>
                     </div>
                 </div>
