@@ -342,14 +342,14 @@ export default function ShopifyManagePage({ onBack }) {
                                 type="text"
                                 value={config.domain}
                                 onChange={e => setConfig({ ...config, domain: e.target.value.trim() })}
-                                placeholder="your-store.myshopify.com"
+                                placeholder="your-store.myshopify.com or yourcustomdomain.com"
                                 style={{
                                     padding: "10px 14px", borderRadius: T.r8, background: T.bgElev,
                                     border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 14,
                                     fontFamily: "monospace", outline: "none",
                                 }}
                             />
-                            <span style={{ fontSize: 11, color: T.textFaint }}>Must end with .myshopify.com</span>
+                            <span style={{ fontSize: 11, color: T.textFaint }}>Enter your .myshopify.com domain or custom store domain</span>
                         </div>
 
                         {saveMsg && (
@@ -364,12 +364,12 @@ export default function ShopifyManagePage({ onBack }) {
                         <div style={{ display: "flex", gap: 12 }}>
                             <button
                                 onClick={handleConnectOAuth}
-                                disabled={!config.domain.includes('.myshopify.com')}
+                                disabled={!config.domain.trim()}
                                 style={{
                                     padding: "10px 20px", borderRadius: T.r8, fontSize: 13, fontWeight: 700,
                                     background: SHOPIFY_GRAD, color: "#fff", border: "none",
-                                    cursor: !config.domain.includes('.myshopify.com') ? "not-allowed" : "pointer",
-                                    opacity: !config.domain.includes('.myshopify.com') ? 0.5 : 1,
+                                    cursor: !config.domain.trim() ? "not-allowed" : "pointer",
+                                    opacity: !config.domain.trim() ? 0.5 : 1,
                                     boxShadow: "0 2px 8px rgba(150,191,72,0.35)", fontFamily: "inherit",
                                     display: "flex", alignItems: "center", gap: 8,
                                 }}

@@ -15,15 +15,25 @@ const SCOPES = [
  */
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
-    const shop = searchParams.get('shop')?.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    let shop = searchParams.get('shop')?.replace(/^https?:\/\//, '').replace(/\/+$/, '');
     const userId = searchParams.get('userId');
 
     if (!shop || !userId) {
         return NextResponse.json({ error: 'Missing shop or userId' }, { status: 400 });
     }
 
+    // Resolve custom domain to .myshopify.com
     if (!shop.includes('.myshopify.com')) {
-        return NextResponse.json({ error: 'Invalid shop domain — must end with .myshopify.com' }, { status: 400 });
+        try {
+            const meta = await fetch(`https://${shop}/meta.json`, { redirect: 'follow' }).then(r => r.json());
+            if (meta?.myshopify_domain) {
+                shop = meta.myshopify_domain;
+            } else {
+                return NextResponse.json({ error: 'Could not resolve Shopify store from this domain' }, { status: 400 });
+            }
+        } catch {
+            return NextResponse.json({ error: 'Could not reach store — check the domain and try again' }, { status: 400 });
+        }
     }
 
     const apiKey = process.env.SHOPIFY_API_KEY;
