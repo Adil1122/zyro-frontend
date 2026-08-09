@@ -230,7 +230,7 @@ export default function PlansPage() {
       </div>
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <div style={{ padding: "72px 40px 56px", textAlign: "center", background: `radial-gradient(700px 300px at 50% -10%, rgba(34,197,94,0.13), transparent 60%), ${BG}` }}>
+      <div className="plans-hero" style={{ padding: "72px 40px 56px", textAlign: "center", background: `radial-gradient(700px 300px at 50% -10%, rgba(34,197,94,0.13), transparent 60%), ${BG}` }}>
         <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: GREEN, marginBottom: 14 }}>Pricing</div>
         <h1 style={{ fontSize: "clamp(30px, 4vw, 46px)", fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 16, lineHeight: 1.1 }}>
           One platform. Three ways to scale.
@@ -262,12 +262,12 @@ export default function PlansPage() {
       </div>
 
       {/* ── PLAN CARDS ───────────────────────────────────────────────────── */}
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 32px 80px", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, alignItems: "start" }}>
+      <div className="plans-cards-grid" style={{ maxWidth: 1200, margin: "0 auto", padding: "0 32px 80px", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24, alignItems: "start" }}>
         {(plans.length > 0 ? plans : [{name:"Starter",price:"5999"},{name:"Growth",price:"8999"},{name:"Professional",price:"12999"}]).map((plan, i) => {
           const meta = PLAN_META[i] || PLAN_META[0];
           const isCurrent = userPlanId === plan.id;
           return (
-            <div key={plan.id || i} style={{
+            <div key={plan.id || i} className={meta.featured ? "plan-card-featured" : undefined} style={{
               background: meta.featured ? `${GRADSOFT}, ${CARD}` : CARD,
               border: `1px solid ${meta.featured ? GREEN : BORDER}`,
               borderRadius: 20, padding: "36px 32px",
@@ -414,7 +414,7 @@ export default function PlansPage() {
           <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: GREEN, marginBottom: 12 }}>Security & reliability</div>
           <h2 style={{ fontSize: "clamp(22px, 2.8vw, 32px)", fontWeight: 800, letterSpacing: "-0.02em" }}>Built to be trusted with your business</h2>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
+        <div className="plans-trust-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
           {[
             { icon: "🔒", title: "Encrypted & backed up", body: "Data encrypted end to end, backed up continuously." },
             { icon: "⏱️", title: "99.98% uptime", body: "Monitored around the clock, every day of the year." },

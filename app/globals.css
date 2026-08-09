@@ -222,4 +222,19 @@ select {
   .zyro-page-content > * {
     max-width: 100%;
   }
+
+  /* ── Plans page ── */
+  .plans-hero {
+    padding: 40px 16px 32px !important;
+  }
+  .plans-cards-grid {
+    grid-template-columns: 1fr !important;
+    padding: 0 16px 48px !important;
+  }
+  .plan-card-featured {
+    transform: none !important;
+  }
+  .plans-trust-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
 }
