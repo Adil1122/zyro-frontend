@@ -8,7 +8,7 @@ import { getCurrentUserId } from "../../lib/auth";
 
 import Link from "next/link";
 
-export default function Sidebar({ page, collapsed, setCollapsed, badgeCounts }) {
+export default function Sidebar({ page, collapsed, setCollapsed, badgeCounts, drawerOpen, onClose }) {
     const [user, setUser] = useState(null);
 
     useEffect(() => {
@@ -24,13 +24,16 @@ export default function Sidebar({ page, collapsed, setCollapsed, badgeCounts }) 
     };
 
     return (
-        <div style={{
-            width: collapsed ? 62 : 232, background: T.bgCard,
-            borderRight: `1px solid ${T.border}`,
-            display: "flex", flexDirection: "column",
-            transition: "width 0.2s cubic-bezier(0.4,0,0.2,1)",
-            flexShrink: 0, overflow: "hidden",
-        }}>
+        <div
+            className={`zyro-sidebar${drawerOpen ? " zyro-sidebar--open" : ""}`}
+            style={{
+                width: collapsed ? 62 : 232, background: T.bgCard,
+                borderRight: `1px solid ${T.border}`,
+                display: "flex", flexDirection: "column",
+                transition: "width 0.2s cubic-bezier(0.4,0,0.2,1)",
+                flexShrink: 0, overflow: "hidden",
+            }}
+        >
             <div style={{
                 height: 60, padding: collapsed ? "0 14px" : "0 16px",
                 borderBottom: `1px solid ${T.border}`,
@@ -67,6 +70,7 @@ export default function Sidebar({ page, collapsed, setCollapsed, badgeCounts }) 
                     return (
                         <Link key={item.id} href={href}
                             title={collapsed ? item.label : undefined}
+                            onClick={() => onClose?.()}
                             style={{
                                 display: "flex", alignItems: "center",
                                 gap: collapsed ? 0 : 11, width: "100%",

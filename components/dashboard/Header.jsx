@@ -21,7 +21,7 @@ function saveSeenIds(ids) {
     try { localStorage.setItem("zyro_notif_seen", JSON.stringify([...ids])); } catch {}
 }
 
-export default function Header({ user }) {
+export default function Header({ user, onMenuToggle }) {
     const router = useRouter();
 
     // Popovers
@@ -133,16 +133,32 @@ export default function Header({ user }) {
     };
 
     return (
-        <header style={{
+        <header className="zyro-header" style={{
             height: 60, background: T.bgCard,
             borderBottom: `1px solid ${T.border}`,
             display: "flex", alignItems: "center",
             justifyContent: "space-between", padding: "0 28px",
             flexShrink: 0,
         }}>
+            {/* ── Hamburger (mobile only) ── */}
+            <button
+                className="zyro-hamburger"
+                onClick={onMenuToggle}
+                style={{
+                    display: "none", alignItems: "center", justifyContent: "center",
+                    width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                    background: "none", border: `1px solid ${T.border}`,
+                    cursor: "pointer", color: T.textMuted,
+                }}
+            >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+            </button>
+
             {/* ── Left: search + plan badge ── */}
-            <div style={{ flex: 1, display: "flex", justifyContent: "flex-start", alignItems: "center", gap: 20 }}>
-                <div style={{
+            <div className="zyro-header-left" style={{ flex: 1, display: "flex", justifyContent: "flex-start", alignItems: "center", gap: 20 }}>
+                <div className="zyro-search" style={{
                     display: "flex", alignItems: "center", gap: 10,
                     background: T.bgElev, border: `1px solid ${T.border}`,
                     borderRadius: 24, padding: "7px 18px", width: "100%", maxWidth: 380,
@@ -185,7 +201,7 @@ export default function Header({ user }) {
 
             {/* ── Right: live badge + icons + avatar ── */}
             <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: T.j700, borderRadius: 20, border: `1px solid ${T.j500}33` }}>
+                <div className="zyro-live-badge" style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: T.j700, borderRadius: 20, border: `1px solid ${T.j500}33` }}>
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: T.green, boxShadow: `0 0 8px ${T.green}` }} />
                     <span style={{ fontSize: 11, fontWeight: 700, color: T.j200 }}>Live Sync Status</span>
                 </div>

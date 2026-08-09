@@ -165,3 +165,61 @@ select {
 .shadow-zyro-lg {
   box-shadow: var(--shadow-lg);
 }
+
+/* ─── Mobile responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Sidebar becomes a fixed off-canvas drawer */
+  .zyro-sidebar {
+    position: fixed !important;
+    left: -240px !important;
+    top: 0 !important;
+    height: 100dvh !important;
+    width: 232px !important;
+    z-index: 400 !important;
+    transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+  .zyro-sidebar.zyro-sidebar--open {
+    left: 0 !important;
+    box-shadow: 4px 0 32px rgba(0, 0, 0, 0.65) !important;
+  }
+
+  /* Dim backdrop behind open drawer */
+  .zyro-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 399;
+  }
+
+  /* Show hamburger button */
+  .zyro-hamburger {
+    display: flex !important;
+    margin-right: 6px;
+  }
+
+  /* Compact header padding */
+  .zyro-header {
+    padding: 0 14px !important;
+  }
+
+  /* Hide search bar and live sync badge — too wide for mobile */
+  .zyro-header-left {
+    display: none !important;
+  }
+  .zyro-live-badge {
+    display: none !important;
+  }
+
+  /* Hide status bar — no space on small screens */
+  .zyro-statusbar {
+    display: none !important;
+  }
+
+  /* Page tables scroll horizontally rather than breaking layout */
+  .zyro-page-content table {
+    min-width: 600px;
+  }
+  .zyro-page-content > * {
+    max-width: 100%;
+  }
+}

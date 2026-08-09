@@ -6,12 +6,11 @@ import { supabase } from "@/lib/supabase";
 import { T } from "./constants";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import ZyroMobile from "./MobileApp";
 
 export default function DashboardLayout({ children }) {
     const [collapsed, setCollapsed] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
+    const [drawerOpen, setDrawerOpen] = useState(false);
     const [badgeCounts, setBadgeCounts] = useState({});
     const pathname = usePathname();
 
@@ -147,15 +146,10 @@ export default function DashboardLayout({ children }) {
         window.addEventListener('storage', checkAuth);
         window.addEventListener('authChange', checkAuth);
 
-        const handleResize = () => setIsMobile(window.innerWidth < 768);
-        handleResize();
-        window.addEventListener('resize', handleResize);
-
         return () => {
             clearInterval(badgeInterval);
             window.removeEventListener('storage', checkAuth);
             window.removeEventListener('authChange', checkAuth);
-            window.removeEventListener('resize', handleResize);
         };
     }, [pathname, isLoginPage, isSignupPage, isPlansPage, router]);
 
@@ -191,17 +185,18 @@ export default function DashboardLayout({ children }) {
         }}>{children}</div>;
     }
 
-    if (isMobile && !isPublicPage) {
-        return <ZyroMobile />;
-    }
-
     return (
-        <div style={{
-            width: "100%", height: "100vh", background: T.bg,
+        <div className="zyro-app" style={{
+            width: "100%", height: "100dvh", background: T.bg,
             display: "flex", color: T.text, fontSize: 13,
             fontFamily: "'Inter', 'Plus Jakarta Sans', system-ui, sans-serif",
             overflow: "hidden",
         }}>
+            {/* MOBILE DRAWER BACKDROP */}
+            {drawerOpen && (
+                <div className="zyro-sidebar-backdrop" onClick={() => setDrawerOpen(false)} />
+            )}
+
             {/* LEFT SIDEBAR */}
             {showSidebar && (
                 <Sidebar
@@ -209,21 +204,23 @@ export default function DashboardLayout({ children }) {
                     collapsed={collapsed}
                     setCollapsed={setCollapsed}
                     badgeCounts={badgeCounts}
+                    drawerOpen={drawerOpen}
+                    onClose={() => setDrawerOpen(false)}
                 />
             )}
 
             {/* MAIN CONTENT AREA */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
+            <div className="zyro-main" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
                 {/* TOP HEADER */}
-                <Header user={user} />
+                <Header user={user} onMenuToggle={() => setDrawerOpen(o => !o)} />
 
                 {/* PAGE CONTENT */}
-                <div style={{ flex: 1, overflow: "auto", background: T.bg }}>
+                <div className="zyro-page-content" style={{ flex: 1, overflow: "auto", background: T.bg }}>
                     {children}
                 </div>
 
                 {/* BOTTOM STATUS BAR (Global) */}
-                <div style={{
+                <div className="zyro-statusbar" style={{
                     height: 28, background: T.bgElev, borderTop: `1px solid ${T.border}`,
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     padding: "0 14px", fontSize: 10, fontWeight: 600, color: T.textFaint,
