@@ -328,7 +328,7 @@ function BookView({ couriers, onBack, onToast }) {
     const C = (v, a, b) => v === a ? b : "";
 
     return (
-        <div style={{ padding: "28px 32px", maxWidth: 1280 }}>
+        <div className="page-outer" style={{ padding: "28px 32px", maxWidth: 1280 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: T.textFaint, marginBottom: 16 }}>
                 <button onClick={onBack} style={{ background: "none", border: "none", color: T.textFaint, cursor: "pointer", fontFamily: "inherit", fontSize: 12 }}>Couriers</button>
                 <span>/</span><span style={{ color: T.textMuted }}>Book a shipment</span>
@@ -365,7 +365,7 @@ function BookView({ couriers, onBack, onToast }) {
                 </div>
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 400px", gap: 24, alignItems: "start" }}>
+            <div className="courier-booking-grid" style={{ display: "grid", gridTemplateColumns: "1fr 400px", gap: 24, alignItems: "start" }}>
                 <Card pad={26}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 18 }}>
                         <FormField label="Customer name *" error={errs.name && "Customer name is required"}>

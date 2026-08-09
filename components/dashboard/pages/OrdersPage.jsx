@@ -820,7 +820,7 @@ export default function OrdersPage() {
             {/* Hidden file input for import */}
             <input ref={importRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleImportFile} />
 
-            <div style={{ flex: 1, padding: "28px 28px", overflow: "auto" }}>
+            <div className="page-outer" style={{ flex: 1, padding: "28px 28px", overflow: "auto" }}>
                 <PageHeader
                     title="Orders"
                     subtitle={`${counts.all} total · Manage your shop orders`}
@@ -839,7 +839,7 @@ export default function OrdersPage() {
                 />
 
                 {/* Status filter cards */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 20 }}>
+                <div className="stat-grid-5" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 20 }}>
                     {[
                         ["all", "All Orders", counts.all, T.j300],
                         ["pending", "Pending", counts.pending, T.yellow],
@@ -861,7 +861,7 @@ export default function OrdersPage() {
                 </div>
 
                 {/* Search bar */}
-                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                <div className="filter-bar" style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                     <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: T.bgElev, border: `1px solid ${T.border}`, borderRadius: T.r8, padding: "8px 13px" }}>
                         <Icon name="search" size={13} color={T.textFaint} />
                         <input value={search} onChange={e => setSearch(e.target.value)}
@@ -903,6 +903,7 @@ export default function OrdersPage() {
 
                 {/* Orders table */}
                 <Card pad={0}>
+                    <div className="table-scroll">
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
                             <tr style={{ borderBottom: `1px solid ${T.border}`, background: "rgba(92,168,124,0.03)" }}>
@@ -974,6 +975,7 @@ export default function OrdersPage() {
                             )}
                         </tbody>
                     </table>
+                    </div>
                     {meta && (
                         <div style={{ padding: "12px 16px", borderTop: `1px solid ${T.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div style={{ fontSize: 12, color: T.textFaint }}>
@@ -990,7 +992,7 @@ export default function OrdersPage() {
 
             {/* Side panel */}
             {selOrder && (
-                <div style={{ width: 340, borderLeft: `1px solid ${T.border}`, background: T.bgCard, overflow: "auto", flexShrink: 0 }}>
+                <div className="order-detail-panel" style={{ width: 340, borderLeft: `1px solid ${T.border}`, background: T.bgCard, overflow: "auto", flexShrink: 0 }}>
                     <div style={{ padding: "18px 20px", borderBottom: `1px solid ${T.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={{ fontSize: 14, fontWeight: 800, color: T.text, fontFamily: "monospace" }}>{selOrder.order_id}</span>
                         <button onClick={() => setSel(null)} style={{

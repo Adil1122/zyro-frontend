@@ -199,7 +199,7 @@ export default function WhatsAppPage() {
                         <h1 style={{ fontSize: 22, fontWeight: 800, color: T.text, margin: 0, letterSpacing: "-0.5px" }}>WhatsApp Command Center</h1>
                         <p style={{ fontSize: 13, color: T.textMuted, margin: "5px 0 0" }}>Dual-number system · Bot handles automation, Support team handles complaints & returns</p>
                     </div>
-                    <div style={{ display: "flex", gap: 16 }}>
+                    <div className="kpi-row" style={{ display: "flex", gap: 16 }}>
                         {[[kpis.today, "Today", T.text], [kpis.aiRate, "AI rate", T.green], [kpis.avgReply, "Avg reply", T.j200], [kpis.escalated, "Escalated", T.yellow]].map(([v, l, c]) => (
                             <div key={l} style={{ textAlign: "center", padding: "6px 14px", background: T.bgElev, borderRadius: T.r8, border: `1px solid ${T.border}`, minWidth: 68 }}>
                                 <div style={{ fontSize: 17, fontWeight: 800, color: c }}>{v}</div>
@@ -211,7 +211,7 @@ export default function WhatsAppPage() {
             </div>
 
             {/* Dual frame */}
-            <div style={{ flex: "0 0 600px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: T.border, overflow: "hidden" }}>
+            <div className="wa-dual-frame" style={{ flex: "0 0 600px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: T.border, overflow: "hidden" }}>
 
                 {/* LEFT: BOT */}
                 <div style={{ background: T.bg, display: "flex", flexDirection: "column", overflow: "hidden" }}>

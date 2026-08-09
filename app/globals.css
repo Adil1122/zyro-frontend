@@ -237,4 +237,115 @@ select {
   .plans-trust-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
+
+  /* ── All dashboard pages ── */
+  .page-outer {
+    padding: 16px !important;
+  }
+
+  /* 4-column KPI grids → 2 columns */
+  .stat-grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* 5-column status filter cards → 2 columns */
+  .stat-grid-5 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* 2-column chart/section grids → stack */
+  .chart-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 3-column channel grid → stack */
+  .chart-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Dashboard bottom grid (1fr 320px) → stack */
+  .dash-bottom-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Filter bars wrap instead of overflow */
+  .filter-bar {
+    flex-wrap: wrap !important;
+  }
+
+  /* Tables scroll horizontally */
+  .table-scroll {
+    overflow-x: auto !important;
+  }
+  .table-scroll table {
+    min-width: 600px;
+  }
+
+  /* Orders detail panel → full width, stacked below list */
+  .order-detail-panel {
+    width: 100% !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border-default);
+    max-height: 70vh;
+  }
+
+  /* WhatsApp KPI tiles → wrap to 2 per row */
+  .kpi-row {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  .kpi-row > div {
+    flex: 1 1 calc(50% - 4px) !important;
+    min-width: 0;
+  }
+
+  /* WhatsApp dual chat frame → stack vertically */
+  .wa-dual-frame {
+    flex: none !important;
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+  }
+
+  /* Courier booking form → stack form above summary */
+  .courier-booking-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Marketing MetricGrid → 2 columns */
+  .metric-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Settings: nav sidebar → horizontal scrollable tab strip */
+  .settings-layout {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .settings-nav {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-default) !important;
+    padding: 6px 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    flex-shrink: 0 !important;
+    scrollbar-width: none;
+  }
+  .settings-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .settings-nav button {
+    white-space: nowrap !important;
+    border-left: none !important;
+    border-bottom: 3px solid transparent !important;
+    padding: 8px 14px !important;
+    flex-shrink: 0 !important;
+  }
+  .settings-content {
+    padding: 20px 16px !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
 }

@@ -1975,9 +1975,9 @@ export default function SettingsPage({ tabParam }) {
     }
 
     return (
-        <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
+        <div className="settings-layout" style={{ display: "flex", height: "100%", overflow: "hidden" }}>
             {/* LEFT SIDEBAR */}
-            <div style={{ width: 220, borderRight: `1px solid ${T.border}`, padding: "24px 0", background: T.bgCard, flexShrink: 0 }}>
+            <div className="settings-nav" style={{ width: 220, borderRight: `1px solid ${T.border}`, padding: "24px 0", background: T.bgCard, flexShrink: 0 }}>
                 <div style={{ padding: "0 18px 14px", fontSize: 11, fontWeight: 700, color: T.textFaint, letterSpacing: "0.08em", textTransform: "uppercase" }}>Settings</div>
                 {tabs.map(t => (
                     <button key={t.id} onClick={() => handleTabChange(t.id)} style={{
@@ -1997,7 +1997,7 @@ export default function SettingsPage({ tabParam }) {
             </div>
 
             {/* MAIN CONTENT */}
-            <div style={{ flex: 1, padding: "32px 36px", overflow: "auto" }}>
+            <div className="settings-content" style={{ flex: 1, padding: "32px 36px", overflow: "auto" }}>
 
                 {/* ── CONNECTED STORES TAB ── */}
                 {tab === "stores" && (

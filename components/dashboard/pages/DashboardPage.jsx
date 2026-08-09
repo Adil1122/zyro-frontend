@@ -108,7 +108,7 @@ export default function DashboardPage() {
     if (!stats) return <div style={{ padding: 28, color: T.red }}>Error connecting to backend database.</div>;
 
     return (
-        <div style={{ padding: "28px 32px", maxWidth: 1280 }}>
+        <div className="page-outer" style={{ padding: "28px 32px", maxWidth: 1280 }}>
             {showNewOrder && (
                 <NewOrderModal
                     onClose={() => setShowNewOrder(false)}
@@ -155,14 +155,14 @@ export default function DashboardPage() {
                 <GradientButton variant="ghost" size="sm" iconRight="arrow" onClick={() => router.push('/orders')}>Review</GradientButton>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20, opacity: refetching ? 0.6 : 1, transition: "opacity 0.2s" }}>
+            <div className="stat-grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20, opacity: refetching ? 0.6 : 1, transition: "opacity 0.2s" }}>
                 <KPI label={`Revenue · ${stats.kpis.rangeLabel}`} value={`Rs ${stats.kpis.revenueToday.toLocaleString()}`} sub={`${stats.kpis.ordersToday} orders · Live Data`} delta={stats.kpis.revenueDelta} deltaUp={stats.kpis.revenueDeltaUp} icon="dollar" highlight />
                 <KPI label="Pending Action" value={stats.kpis.pendingOrders.toString()} sub="Need courier booking" delta="Urgent" icon="truck" />
                 <KPI label="WhatsApp AI Rate" value={stats.kpis.aiRate} sub="Handled without you" icon="ai" />
                 <KPI label="COD Due" value={`Rs ${stats.kpis.codDue.toLocaleString()}`} sub="Active in transit" icon="pkg" />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+            <div className="chart-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
                 <Card>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                         <div>
@@ -219,7 +219,7 @@ export default function DashboardPage() {
                 </Card>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 14 }}>
+            <div className="dash-bottom-grid" style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 14 }}>
                 <Card pad={0}>
                     <div style={{ padding: "16px 20px", borderBottom: `1px solid ${T.border}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div>

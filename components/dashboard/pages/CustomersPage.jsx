@@ -171,7 +171,7 @@ export default function CustomersPage() {
     const vipCount = customers.filter(c => (c.totalSpent || 0) > 20000).length;
 
     return (
-        <div style={{ padding: "28px 32px", maxWidth: 1280 }}>
+        <div className="page-outer" style={{ padding: "28px 32px", maxWidth: 1280 }}>
             {showAddModal && (
                 <AddCustomerModal onClose={() => setShowAddModal(false)} onSaved={fetchCustomers} />
             )}
@@ -186,7 +186,7 @@ export default function CustomersPage() {
                     <GradientButton variant="primary" size="sm" icon="plus" onClick={() => setShowAddModal(true)}>Add Customer</GradientButton>
                 </>}
             />
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+            <div className="stat-grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
                 <KPI label="Total Customers" value={meta.pagination.total.toLocaleString()} sub="All-time" icon="customers" />
                 <KPI label="VIP Tier" value={vipCount} sub="Rs 20k+ spent" icon="fire" highlight />
                 <KPI label="Avg Spend" value={`Rs ${Math.floor(totalSpent / (customers.length || 1)).toLocaleString()}`} sub="Per customer" icon="dollar" />
@@ -204,7 +204,7 @@ export default function CustomersPage() {
                         />
                     </div>
                 </div>
-                <div style={{ position: "relative", minHeight: loading ? "200px" : "auto" }}>
+                <div className="table-scroll" style={{ position: "relative", minHeight: loading ? "200px" : "auto" }}>
                     {loading && (
                         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10 }}>
                             <span style={{ color: T.text, fontSize: 13 }}>Syncing...</span>

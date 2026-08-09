@@ -102,7 +102,7 @@ function Zone({ tagLabel, tagBg, tagColor, title, subtitle, heading, collapsible
 
 function MetricGrid({ cols, items }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 1, background: S.border, border: `1px solid ${S.border}`, borderRadius: S.rLg, overflow: "hidden" }}>
+    <div className="metric-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 1, background: S.border, border: `1px solid ${S.border}`, borderRadius: S.rLg, overflow: "hidden" }}>
       {items.map(({ label, value, color, note }) => (
         <div key={label} style={{ background: S.card, padding: "16px 18px" }}>
           <div style={{ fontSize: 10.5, fontWeight: 600, color: S.text3, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 7 }}>{label}</div>
@@ -379,7 +379,7 @@ export default function MarketingPage() {
   const pacingColor = { atcap: S.metaBlue, under: S.warning, onpace: S.accent };
 
   return (
-    <div style={{ background: S.bg, minHeight: "100vh", fontFamily: "'Inter',-apple-system,BlinkMacSystemFont,sans-serif", color: S.text, fontSize: 14, WebkitFontSmoothing: "antialiased", padding: "30px 32px 60px", maxWidth: 1440 }}>
+    <div className="page-outer" style={{ background: S.bg, minHeight: "100vh", fontFamily: "'Inter',-apple-system,BlinkMacSystemFont,sans-serif", color: S.text, fontSize: 14, WebkitFontSmoothing: "antialiased", padding: "30px 32px 60px", maxWidth: 1440 }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* ── page header ── */}
@@ -425,7 +425,7 @@ export default function MarketingPage() {
       </div>
 
       {/* ── channel row ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: 14, marginBottom: 30 }}>
+      <div className="chart-grid-3" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: 14, marginBottom: 30 }}>
         {/* Meta */}
         <div style={{ background: S.card, border: `1px solid ${S.border}`, borderRadius: S.rLg, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
