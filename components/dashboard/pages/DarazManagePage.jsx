@@ -92,7 +92,7 @@ function paginBtnStyle(disabled) {
 
 export default function DarazManagePage({ onBack }) {
     const [orders, setOrders] = useState([]);
-    const [pagination, setPagination] = useState({ page: 1, perPage: 10, totalOrders: 0, totalPages: 1 });
+    const [pagination, setPagination] = useState({ page: 1, perPage: 50, totalOrders: 0, totalPages: 1 });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState("");
@@ -109,13 +109,13 @@ export default function DarazManagePage({ onBack }) {
 
     const userId = getCurrentUserId();
 
-    const fetchOrders = useCallback(async (page = 1) => {
+    const fetchOrders = useCallback(async (page = 1, perPageOverride) => {
         setLoading(true);
         setError(null);
         try {
             const params = new URLSearchParams({
                 page: page.toString(),
-                perPage: pagination.perPage.toString(),
+                perPage: (perPageOverride ?? pagination.perPage).toString(),
                 status: statusFilter,
                 ...(search ? { search } : {}),
             });
@@ -487,22 +487,37 @@ export default function DarazManagePage({ onBack }) {
             </div>
 
             {/* ── PAGINATION ── */}
-            {!error && !loading && pagination.totalPages > 1 && (
+            {!error && !loading && pagination.totalOrders > 0 && (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 24px", borderTop: `1px solid ${T.border}`, background: T.bgCard, flexShrink: 0, flexWrap: "wrap", gap: 10 }}>
-                    <div style={{ fontSize: 12, color: T.textMuted }}>
-                        Showing {((pagination.page - 1) * pagination.perPage) + 1}–{Math.min(pagination.page * pagination.perPage, pagination.totalOrders)} of <strong style={{ color: T.text }}>{pagination.totalOrders.toLocaleString()}</strong> orders
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 12, color: T.textMuted }}>
+                            Showing {((pagination.page - 1) * pagination.perPage) + 1}–{Math.min(pagination.page * pagination.perPage, pagination.totalOrders)} of <strong style={{ color: T.text }}>{pagination.totalOrders.toLocaleString()}</strong> orders
+                        </span>
+                        <select
+                            value={pagination.perPage}
+                            onChange={e => {
+                                const newPerPage = parseInt(e.target.value, 10);
+                                setPagination(p => ({ ...p, perPage: newPerPage, page: 1 }));
+                                fetchOrders(1, newPerPage);
+                            }}
+                            style={{ fontSize: 12, padding: "3px 6px", background: T.bgElev, border: `1px solid ${T.borderMid}`, borderRadius: T.r6, color: T.textMuted, fontFamily: "inherit", cursor: "pointer" }}
+                        >
+                            {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n} / page</option>)}
+                        </select>
                     </div>
-                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                        <button onClick={() => goToPage(1)} disabled={pagination.page === 1} style={paginBtnStyle(pagination.page === 1)}>«</button>
-                        <button onClick={() => goToPage(pagination.page - 1)} disabled={pagination.page === 1} style={paginBtnStyle(pagination.page === 1)}>‹</button>
-                        {getPageRange(pagination.page, pagination.totalPages).map((p, i) =>
-                            p === "..." ? <span key={`e${i}`} style={{ padding: "0 8px", color: T.textFaint, fontSize: 13 }}>…</span> : (
-                                <button key={p} onClick={() => goToPage(p)} style={{ ...paginBtnStyle(false), background: p === pagination.page ? "linear-gradient(135deg,#F57D29,#E85D04)" : T.bgElev, color: p === pagination.page ? "#fff" : T.textMuted, fontWeight: p === pagination.page ? 700 : 500, border: `1px solid ${p === pagination.page ? "transparent" : T.borderMid}` }}>{p}</button>
-                            )
-                        )}
-                        <button onClick={() => goToPage(pagination.page + 1)} disabled={pagination.page === pagination.totalPages} style={paginBtnStyle(pagination.page === pagination.totalPages)}>›</button>
-                        <button onClick={() => goToPage(pagination.totalPages)} disabled={pagination.page === pagination.totalPages} style={paginBtnStyle(pagination.page === pagination.totalPages)}>»</button>
-                    </div>
+                    {pagination.totalPages > 1 && (
+                        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                            <button onClick={() => goToPage(1)} disabled={pagination.page === 1} style={paginBtnStyle(pagination.page === 1)}>«</button>
+                            <button onClick={() => goToPage(pagination.page - 1)} disabled={pagination.page === 1} style={paginBtnStyle(pagination.page === 1)}>‹</button>
+                            {getPageRange(pagination.page, pagination.totalPages).map((p, i) =>
+                                p === "..." ? <span key={`e${i}`} style={{ padding: "0 8px", color: T.textFaint, fontSize: 13 }}>…</span> : (
+                                    <button key={p} onClick={() => goToPage(p)} style={{ ...paginBtnStyle(false), background: p === pagination.page ? "linear-gradient(135deg,#F57D29,#E85D04)" : T.bgElev, color: p === pagination.page ? "#fff" : T.textMuted, fontWeight: p === pagination.page ? 700 : 500, border: `1px solid ${p === pagination.page ? "transparent" : T.borderMid}` }}>{p}</button>
+                                )
+                            )}
+                            <button onClick={() => goToPage(pagination.page + 1)} disabled={pagination.page === pagination.totalPages} style={paginBtnStyle(pagination.page === pagination.totalPages)}>›</button>
+                            <button onClick={() => goToPage(pagination.totalPages)} disabled={pagination.page === pagination.totalPages} style={paginBtnStyle(pagination.page === pagination.totalPages)}>»</button>
+                        </div>
+                    )}
                 </div>
             )}
 
