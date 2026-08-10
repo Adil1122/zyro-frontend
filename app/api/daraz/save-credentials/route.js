@@ -41,3 +41,28 @@ export async function POST(request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
+export async function DELETE(request) {
+    const userId = request.headers.get('x-user-id');
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    try {
+        const { error } = await supabase
+            .from('users')
+            .update({
+                daraz_app_key: null,
+                daraz_app_secret: null,
+                daraz_access_token: null,
+                daraz_region: null,
+                daraz_is_active: false,
+            })
+            .eq('id', userId);
+
+        if (error) throw error;
+
+        return NextResponse.json({ success: true, message: 'Daraz disconnected successfully' });
+    } catch (error) {
+        console.error('[Daraz Disconnect Error]', error.message);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
