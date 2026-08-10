@@ -142,11 +142,12 @@ export default function DarazManagePage({ onBack }) {
 
     const handleConnectOAuth = async (e) => {
         e.preventDefault();
-        setSaving(true);
         setSaveMsg(null);
-        try {
-            if (creds.accessToken.trim()) {
-                // Manual token path
+
+        if (creds.accessToken.trim()) {
+            // Manual token path
+            setSaving(true);
+            try {
                 const res = await fetch('/api/daraz/save-credentials', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
@@ -160,26 +161,22 @@ export default function DarazManagePage({ onBack }) {
                 } else {
                     setSaveMsg({ success: false, text: data.error || 'Failed to save' });
                 }
-                setSaving(false);
-                return;
-            }
-            // OAuth path — server uses its own App Key/Secret
-            const res = await fetch('/api/daraz/initiate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
-                body: JSON.stringify({ region: creds.region }),
-            });
-            const data = await res.json();
-            if (data.authUrl) {
-                window.location.href = data.authUrl;
-            } else {
-                setSaveMsg({ success: false, text: data.error || 'Failed to start OAuth' });
+            } catch (err) {
+                setSaveMsg({ success: false, text: err.message });
+            } finally {
                 setSaving(false);
             }
-        } catch (err) {
-            setSaveMsg({ success: false, text: err.message });
-            setSaving(false);
+            return;
         }
+
+        // OAuth path — direct browser navigation to the GET initiate endpoint
+        // which server-redirects to Daraz (avoids async JS navigation issues)
+        if (!userId) {
+            setSaveMsg({ success: false, text: 'Not logged in. Please refresh and try again.' });
+            return;
+        }
+        const params = new URLSearchParams({ userId, region: creds.region });
+        window.location.href = `/api/daraz/initiate?${params}`;
     };
 
     const handleDisconnect = async () => {
