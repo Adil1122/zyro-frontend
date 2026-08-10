@@ -216,12 +216,12 @@ export function ChartTip({ active, payload, label, formatter }) {
 
 export function PageHeader({ title, subtitle, actions }) {
     return (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, paddingBottom: 20, borderBottom: `1px solid ${T.border}` }}>
+        <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, paddingBottom: 20, borderBottom: `1px solid ${T.border}` }}>
             <div>
                 <h1 style={{ fontSize: 24, fontWeight: 800, color: T.text, margin: 0, letterSpacing: "-0.6px", lineHeight: 1.1 }}>{title}</h1>
                 {subtitle && <p style={{ fontSize: 13, color: T.textMuted, margin: "6px 0 0" }}>{subtitle}</p>}
             </div>
-            {actions && <div style={{ display: "flex", gap: 8, alignItems: "center" }}>{actions}</div>}
+            {actions && <div className="page-header-actions" style={{ display: "flex", gap: 8, alignItems: "center" }}>{actions}</div>}
         </div>
     );
 }

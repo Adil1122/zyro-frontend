@@ -135,7 +135,7 @@ export default function DashboardPage() {
                     <GradientButton variant="primary" size="sm" icon="plus" onClick={() => setShowNewOrder(true)}>Manual Order</GradientButton>
                 </>}
             />
-            <div style={{
+            <div className="dash-alert-banner" style={{
                 background: "linear-gradient(90deg, rgba(251,191,36,0.1) 0%, rgba(17,51,46,0.3) 100%)",
                 border: `1px solid rgba(251,191,36,0.3)`, borderRadius: T.r10, padding: "12px 18px",
                 display: "flex", alignItems: "center", gap: 12, marginBottom: 20,
@@ -229,7 +229,7 @@ export default function DashboardPage() {
                         <GradientButton variant="ghost" size="sm" iconRight="arrow">View all</GradientButton>
                     </div>
                     {stats.recentOrders.map((o, i) => (
-                        <div key={o.id} style={{
+                        <div key={o.id} className="dash-order-row" style={{
                             display: "flex", alignItems: "center", gap: 12, padding: "11px 20px",
                             borderBottom: i < stats.recentOrders.length - 1 ? `1px solid ${T.border}` : "none",
                             cursor: "pointer", transition: "background 0.1s",
@@ -250,10 +250,10 @@ export default function DashboardPage() {
                                     <span>·</span><span>{o.city}</span>
                                 </div>
                             </div>
-                            <PlatformBadge platform={o.platform.toLowerCase().includes('woo') ? 'woo' : o.platform.toLowerCase().includes('daraz') ? 'daraz' : 'shopify'} />
+                            <span className="dash-hide-mobile"><PlatformBadge platform={o.platform.toLowerCase().includes('woo') ? 'woo' : o.platform.toLowerCase().includes('daraz') ? 'daraz' : 'shopify'} /></span>
                             <Badge status={o.status.toLowerCase()} />
-                            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, minWidth: 80, textAlign: "right" }}>Rs {o.amount.toLocaleString()}</div>
-                            <div style={{ fontSize: 11, color: T.textFaint, minWidth: 36, textAlign: "right" }}>{formatTime(o.time)}</div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, textAlign: "right" }}>Rs {o.amount.toLocaleString()}</div>
+                            <div className="dash-hide-mobile" style={{ fontSize: 11, color: T.textFaint, minWidth: 36, textAlign: "right" }}>{formatTime(o.time)}</div>
                         </div>
                     ))}
                 </Card>

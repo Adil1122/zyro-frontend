@@ -238,6 +238,20 @@ select {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 
+  /* ── PageHeader — stack vertically on mobile ── */
+  .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .page-header h1 {
+    font-size: 20px !important;
+  }
+  .page-header-actions {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+
   /* ── All dashboard pages ── */
   .page-outer {
     padding: 16px !important;
@@ -279,6 +293,22 @@ select {
   }
   .table-scroll table {
     min-width: 600px;
+  }
+
+  /* Dashboard — alert banner wraps on very small screens */
+  .dash-alert-banner {
+    flex-wrap: wrap !important;
+  }
+
+  /* Dashboard — hide platform badge and time on narrow screens */
+  .dash-hide-mobile {
+    display: none !important;
+  }
+
+  /* Dashboard — order row tighter padding */
+  .dash-order-row {
+    padding: 10px 14px !important;
+    gap: 8px !important;
   }
 
   /* Orders detail panel → full width, stacked below list */
