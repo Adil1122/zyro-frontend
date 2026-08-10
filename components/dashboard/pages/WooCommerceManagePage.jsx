@@ -221,66 +221,88 @@ export default function WooCommerceManagePage({ onBack }) {
     };
 
     return (
-        <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-            {/* ── HEADER ── */}
+        <div style={{ height: "100%", display: "flex", flexDirection: "column", background: T.bgMain }}>
+
+            {/* ── HERO HEADER ── */}
             <div style={{
-                padding: "24px 32px 0", borderBottom: `1px solid ${T.border}`,
-                background: T.bgCard, flexShrink: 0,
+                background: "linear-gradient(135deg, #4a2d80 0%, #7F54B3 55%, #9B6DB5 100%)",
+                padding: "18px 28px 0",
+                flexShrink: 0,
+                position: "relative",
+                overflow: "hidden",
             }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                {/* decorative orbs */}
+                <div style={{ position: "absolute", top: -50, right: -50, width: 220, height: 220, borderRadius: "50%", background: "rgba(255,255,255,0.05)", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", bottom: 10, right: 120, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.03)", pointerEvents: "none" }} />
+
+                {/* Row 1: back + config */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, position: "relative" }}>
                     <button onClick={onBack} style={{
                         display: "inline-flex", alignItems: "center", gap: 6,
-                        background: T.bgElev, border: `1px solid ${T.borderMid}`,
-                        color: T.textMuted, fontSize: 12, fontWeight: 600,
+                        background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)",
+                        color: "#fff", fontSize: 12, fontWeight: 600,
                         borderRadius: T.r8, padding: "6px 12px", cursor: "pointer",
-                        transition: "all 0.15s", fontFamily: "inherit",
-                    }}
-                        onMouseEnter={e => e.currentTarget.style.color = T.text}
-                        onMouseLeave={e => e.currentTarget.style.color = T.textMuted}
-                    >
-                        <Icon name="arrow-left" size={13} />
+                        fontFamily: "inherit",
+                    }}>
+                        <Icon name="arrow-left" size={13} color="#fff" />
                         Back to Settings
                     </button>
+                    <button onClick={() => setIsConfiguring(!isConfiguring)} style={{
+                        display: "inline-flex", alignItems: "center", gap: 7,
+                        background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.22)",
+                        color: "#fff", fontSize: 12, fontWeight: 600,
+                        borderRadius: T.r8, padding: "6px 14px", cursor: "pointer",
+                        fontFamily: "inherit",
+                    }}>
+                        <Icon name="settings" size={13} color="rgba(255,255,255,0.85)" />
+                        {isConfiguring ? "View Orders" : "Configuration"}
+                    </button>
+                </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{
-                            width: 32, height: 32, borderRadius: T.r8,
-                            background: "linear-gradient(135deg, #7F54B3, #9B6DB5)",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 17, boxShadow: "0 2px 8px rgba(127,84,179,0.4)",
-                        }}>🛒</div>
-                        <div>
-                            <div style={{ fontSize: 18, fontWeight: 800, color: T.text, letterSpacing: "-0.4px" }}>
-                                WooCommerce Orders
-                            </div>
-                        </div>
+                {/* Row 2: brand + live badge */}
+                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20, position: "relative" }}>
+                    <div style={{
+                        width: 46, height: 46, borderRadius: 12,
+                        background: "rgba(255,255,255,0.15)",
+                        border: "1.5px solid rgba(255,255,255,0.25)",
+                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24,
+                    }}>🛒</div>
+                    <div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: "-0.4px", lineHeight: 1.2 }}>WooCommerce</div>
+                        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 3 }}>Orders &amp; Store Management</div>
                     </div>
-                    
-                    <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
-                        <GradientButton variant="secondary" icon="settings" size="sm" onClick={() => setIsConfiguring(!isConfiguring)}>
-                            {isConfiguring ? "View Orders" : "Configuration"}
-                        </GradientButton>
+                    <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "4px 12px" }}>
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />
+                        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Connected</span>
                     </div>
                 </div>
 
-                {/* ── FILTERS ROW ── */}
-                <div style={{ display: "flex", gap: 10, alignItems: "center", paddingBottom: 16, flexWrap: "wrap" }}>
-                    {/* Search */}
-                    <form onSubmit={handleSearch} style={{ display: "flex", gap: 0 }}>
+                {/* Row 3: search + status chips */}
+                <div style={{
+                    display: "flex", gap: 8, alignItems: "center",
+                    borderTop: "1px solid rgba(255,255,255,0.1)",
+                    padding: "10px 0",
+                    marginLeft: -28, marginRight: -28,
+                    paddingLeft: 28, paddingRight: 28,
+                    background: "rgba(0,0,0,0.15)",
+                }}>
+                    <form onSubmit={handleSearch} style={{ display: "flex", gap: 0, flexShrink: 0 }}>
                         <input
                             value={searchInput}
                             onChange={e => setSearchInput(e.target.value)}
                             placeholder="Search order # or email…"
                             style={{
-                                padding: "7px 12px", fontSize: 13, background: T.bgElev,
-                                border: `1px solid ${T.borderMid}`, borderRight: "none",
-                                borderRadius: `${T.r8} 0 0 ${T.r8}`, color: T.text,
-                                outline: "none", width: 230, fontFamily: "inherit",
+                                padding: "7px 12px", fontSize: 12,
+                                background: "rgba(0,0,0,0.2)",
+                                border: "1px solid rgba(255,255,255,0.15)", borderRight: "none",
+                                borderRadius: `${T.r8} 0 0 ${T.r8}`, color: "#fff",
+                                outline: "none", width: 200, fontFamily: "inherit",
                             }}
                         />
                         <button type="submit" style={{
-                            padding: "7px 13px", background: T.gradBtn, color: "#fff",
-                            border: "none", borderRadius: `0 ${T.r8} ${T.r8} 0`,
+                            padding: "7px 11px", background: "rgba(255,255,255,0.15)",
+                            border: "1px solid rgba(255,255,255,0.15)", borderLeft: "none",
+                            borderRadius: `0 ${T.r8} ${T.r8} 0`,
                             cursor: "pointer", display: "flex", alignItems: "center",
                         }}>
                             <Icon name="search" size={13} color="#fff" />
@@ -289,127 +311,109 @@ export default function WooCommerceManagePage({ onBack }) {
 
                     {searchInput && (
                         <button onClick={() => { setSearchInput(""); setSearch(""); }} style={{
-                            padding: "7px 10px", background: "transparent",
-                            border: `1px solid ${T.borderMid}`, borderRadius: T.r8,
-                            color: T.textMuted, cursor: "pointer", fontSize: 12,
-                            fontFamily: "inherit",
-                        }}>✕ Clear</button>
+                            padding: "6px 10px", background: "rgba(255,255,255,0.1)",
+                            border: "1px solid rgba(255,255,255,0.15)", borderRadius: T.r8,
+                            color: "rgba(255,255,255,0.7)", cursor: "pointer", fontSize: 12,
+                            fontFamily: "inherit", flexShrink: 0,
+                        }}>✕</button>
                     )}
 
-                    {/* Status filter tabs */}
-                    <div style={{ display: "flex", gap: 4, marginLeft: "auto", flexWrap: "wrap" }}>
-                        {STATUS_FILTERS.map(f => (
-                            <button key={f.value} onClick={() => setStatusFilter(f.value)} style={{
-                                padding: "6px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
-                                background: statusFilter === f.value ? T.gradBtn : T.bgElev,
-                                color: statusFilter === f.value ? "#fff" : T.textMuted,
-                                border: `1px solid ${statusFilter === f.value ? "transparent" : T.borderMid}`,
-                                cursor: "pointer", transition: "all 0.15s", fontFamily: "inherit",
-                            }}>
-                                {f.label}
-                            </button>
-                        ))}
+                    <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", flex: 1 }}>
+                        {STATUS_FILTERS.map(f => {
+                            const s = WC_STATUS[f.value] || WC_STATUS.any;
+                            const active = statusFilter === f.value;
+                            return (
+                                <button key={f.value} onClick={() => setStatusFilter(f.value)} style={{
+                                    display: "inline-flex", alignItems: "center", gap: 5,
+                                    padding: "5px 11px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                                    background: active ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.07)",
+                                    color: active ? "#fff" : "rgba(255,255,255,0.55)",
+                                    border: `1px solid ${active ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.1)"}`,
+                                    cursor: "pointer", fontFamily: "inherit",
+                                    whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.15s",
+                                }}>
+                                    {f.value !== "any" && <span style={{ width: 5, height: 5, borderRadius: "50%", background: s.dot, flexShrink: 0 }} />}
+                                    {f.label}
+                                </button>
+                            );
+                        })}
                     </div>
 
-                    {/* Refresh */}
-                    <button onClick={() => fetchOrders(pagination.page)} style={{
-                        padding: "7px 10px", background: T.bgElev,
-                        border: `1px solid ${T.borderMid}`, borderRadius: T.r8,
-                        color: T.textMuted, cursor: "pointer", display: "flex",
-                        alignItems: "center", transition: "all 0.15s",
-                    }}
-                        onMouseEnter={e => e.currentTarget.style.color = T.text}
-                        onMouseLeave={e => e.currentTarget.style.color = T.textMuted}
-                    >
-                        <Icon name="refresh" size={14} />
+                    <button onClick={() => fetchOrders(pagination.page)} title="Refresh" style={{
+                        padding: "7px 10px", background: "rgba(255,255,255,0.1)",
+                        border: "1px solid rgba(255,255,255,0.15)", borderRadius: T.r8,
+                        cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0,
+                    }}>
+                        <Icon name="refresh" size={14} color="rgba(255,255,255,0.85)" />
                     </button>
                 </div>
             </div>
 
             {/* ── CONFIGURATION VIEW ── */}
             {isConfiguring ? (
-                <div style={{ flex: 1, padding: 40, background: T.bgMain, overflow: "auto" }}>
+                <div style={{ flex: 1, padding: "32px 28px", background: T.bgMain, overflow: "auto" }}>
                     <Card style={{ maxWidth: 600, margin: "0 auto", padding: 32 }}>
-                        <h3 style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 8 }}>WooCommerce Configuration</h3>
-                        <p style={{ fontSize: 13, color: T.textMuted, marginBottom: 24 }}>
-                            Enter your WooCommerce REST API credentials to sync your store data.
-                        </p>
-                        
-                        <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 24 }}>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                <label style={{ fontSize: 13, fontWeight: 700, color: T.textSub }}>Store URL</label>
-                                <input 
-                                    type="text" 
-                                    value={config.url} 
-                                    onChange={e => setConfig({ ...config, url: e.target.value })}
-                                    placeholder="https://your-store.com"
-                                    style={{
-                                        padding: "10px 14px", borderRadius: T.r8, background: T.bgElev,
-                                        border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 14,
-                                        outline: "none"
-                                    }}
-                                />
-                            </div>
-
-                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                <label style={{ fontSize: 13, fontWeight: 700, color: T.textSub }}>Consumer Key</label>
-                                <input 
-                                    type="text" 
-                                    value={config.key} 
-                                    onChange={e => setConfig({ ...config, key: e.target.value })}
-                                    placeholder="ck_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                                    style={{
-                                        padding: "10px 14px", borderRadius: T.r8, background: T.bgElev,
-                                        border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 14,
-                                        fontFamily: "monospace", outline: "none"
-                                    }}
-                                />
-                            </div>
-
-                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                <label style={{ fontSize: 13, fontWeight: 700, color: T.textSub }}>Consumer Secret</label>
-                                <input 
-                                    type="password" 
-                                    value={config.secret} 
-                                    onChange={e => setConfig({ ...config, secret: e.target.value })}
-                                    placeholder="cs_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                                    style={{
-                                        padding: "10px 14px", borderRadius: T.r8, background: T.bgElev,
-                                        border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 14,
-                                        fontFamily: "monospace", outline: "none"
-                                    }}
-                                />
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+                            <div style={{
+                                width: 42, height: 42, borderRadius: T.r10,
+                                background: "linear-gradient(135deg, #7F54B3, #9B6DB5)",
+                                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
+                                boxShadow: "0 4px 12px rgba(127,84,179,0.4)",
+                            }}>🛒</div>
+                            <div>
+                                <div style={{ fontSize: 17, fontWeight: 800, color: T.text }}>WooCommerce Configuration</div>
+                                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>Enter your REST API credentials to sync store data</div>
                             </div>
                         </div>
 
-                        <div style={{ display: "flex", gap: 12 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 18, marginBottom: 24 }}>
+                            {[
+                                { label: "Store URL", key: "url", type: "text", placeholder: "https://your-store.com", mono: false },
+                                { label: "Consumer Key", key: "key", type: "text", placeholder: "ck_xxxxxxxxxxxxxxxx", mono: true },
+                                { label: "Consumer Secret", key: "secret", type: "password", placeholder: "cs_xxxxxxxxxxxxxxxx", mono: true },
+                            ].map(({ label, key, type, placeholder, mono }) => (
+                                <div key={key}>
+                                    <label style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>{label}</label>
+                                    <input
+                                        type={type}
+                                        value={config[key]}
+                                        onChange={e => setConfig({ ...config, [key]: e.target.value })}
+                                        placeholder={placeholder}
+                                        style={{
+                                            width: "100%", padding: "10px 14px", borderRadius: T.r8,
+                                            background: T.bgElev, border: `1px solid ${T.borderMid}`,
+                                            color: T.text, fontSize: 13,
+                                            fontFamily: mono ? "monospace" : "inherit",
+                                            outline: "none", boxSizing: "border-box",
+                                        }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
                             <GradientButton variant="primary" onClick={handleSaveConfig} disabled={isSaving || !config.url || !config.key || !config.secret}>
-                                {isSaving ? "Saving..." : "Save Connection"}
+                                {isSaving ? "Saving…" : "Save Connection"}
                             </GradientButton>
-                            <GradientButton variant="secondary" onClick={() => setIsConfiguring(false)}>
-                                Cancel
-                            </GradientButton>
+                            <GradientButton variant="secondary" onClick={() => setIsConfiguring(false)}>Cancel</GradientButton>
                         </div>
 
-                        <div style={{ marginTop: 24, padding: 16, background: "rgba(127,84,179,0.05)", borderRadius: T.r10, border: `1px solid ${T.border}` }}>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: T.purple, marginBottom: 6 }}>How to get these keys?</div>
-                            <ol style={{ fontSize: 12, color: T.textMuted, paddingLeft: 18, lineHeight: 1.6 }}>
-                                <li>Go to your <strong>WooCommerce Store Admin</strong>.</li>
-                                <li>Navigate to <strong>WooCommerce → Settings → Advanced → REST API</strong>.</li>
-                                <li>Click <strong>Add Key</strong> → Permissions: <strong>Read/Write</strong>.</li>
-                                <li>Generate and copy the <strong>Consumer Key</strong> and <strong>Consumer Secret</strong>.</li>
+                        <div style={{ padding: "16px 18px", background: "rgba(127,84,179,0.06)", borderRadius: T.r10, border: "1px solid rgba(127,84,179,0.2)", marginBottom: 16 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", marginBottom: 8 }}>How to get API credentials</div>
+                            <ol style={{ fontSize: 12, color: T.textMuted, paddingLeft: 18, lineHeight: 1.9, margin: 0 }}>
+                                <li>Open your <strong style={{ color: T.text }}>WooCommerce Admin</strong></li>
+                                <li>Go to <strong style={{ color: T.text }}>WooCommerce → Settings → Advanced → REST API</strong></li>
+                                <li>Click <strong style={{ color: T.text }}>Add Key</strong> → set Permissions to <strong style={{ color: T.text }}>Read/Write</strong></li>
+                                <li>Copy the <strong style={{ color: T.text }}>Consumer Key</strong> and <strong style={{ color: T.text }}>Consumer Secret</strong></li>
                             </ol>
                         </div>
 
-                        {/* ── Webhook Setup ── */}
-                        <div style={{ marginTop: 20, padding: 16, background: "rgba(34,197,94,0.05)", borderRadius: T.r10, border: `1px solid rgba(34,197,94,0.2)` }}>
-                            <div style={{ fontSize: 13, fontWeight: 700, color: T.green, marginBottom: 4 }}>
-                                Auto WhatsApp — Webhook Setup
+                        <div style={{ padding: "16px 18px", background: "rgba(34,197,94,0.05)", borderRadius: T.r10, border: "1px solid rgba(34,197,94,0.2)" }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: T.green, marginBottom: 6 }}>Auto WhatsApp — Webhook URL</div>
+                            <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 10, lineHeight: 1.6 }}>
+                                Paste this in <strong>WooCommerce → Webhooks</strong> (Topic: Order created &amp; Order updated):
                             </div>
-                            <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 12, lineHeight: 1.6 }}>
-                                Paste this URL in WooCommerce to automatically send WhatsApp messages on new orders:
-                            </div>
-                            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                                 <code style={{
                                     flex: 1, padding: "8px 12px", borderRadius: T.r8,
                                     background: T.bgElev, border: `1px solid ${T.borderMid}`,
@@ -425,217 +429,191 @@ export default function WooCommerceManagePage({ onBack }) {
                                     transition: "all 0.15s",
                                 }}>{copied ? "✓ Copied" : "Copy"}</button>
                             </div>
-                            <ol style={{ fontSize: 12, color: T.textMuted, paddingLeft: 18, lineHeight: 1.8, margin: 0 }}>
-                                <li>Go to <strong>WooCommerce → Settings → Advanced → Webhooks</strong></li>
-                                <li>Click <strong>Add webhook</strong></li>
-                                <li>Set <strong>Topic</strong> to <strong>Order created</strong></li>
-                                <li>Paste the URL above into the <strong>Delivery URL</strong> field</li>
-                                <li>Set Status to <strong>Active</strong> → Save</li>
-                                <li>Repeat for <strong>Order updated</strong> (same URL)</li>
-                            </ol>
                         </div>
                     </Card>
                 </div>
             ) : (
-                /* ── TABLE BODY ── */
+                /* ── TABLE ── */
                 <div style={{ flex: 1, overflow: "auto" }}>
-                {error ? (
-                    <div style={{
-                        display: "flex", flexDirection: "column", alignItems: "center",
-                        justifyContent: "center", padding: "80px 40px", textAlign: "center",
-                    }}>
-                        <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: T.red, marginBottom: 8 }}>Connection Error</div>
-                        <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 500, lineHeight: 1.6 }}>{error}</div>
-                        <div style={{ marginTop: 20 }}>
-                            <GradientButton variant="secondary" icon="refresh" onClick={() => fetchOrders(1)}>
-                                Retry
-                            </GradientButton>
+                    {error ? (
+                        <div style={{
+                            display: "flex", flexDirection: "column", alignItems: "center",
+                            justifyContent: "center", padding: "80px 40px", textAlign: "center",
+                        }}>
+                            <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: T.red, marginBottom: 8 }}>Connection Error</div>
+                            <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 500, lineHeight: 1.6 }}>{error}</div>
+                            <div style={{ marginTop: 20 }}>
+                                <GradientButton variant="secondary" icon="refresh" onClick={() => fetchOrders(1)}>Retry</GradientButton>
+                            </div>
                         </div>
-                    </div>
-                ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <thead>
-                            <tr>
-                                <th style={thStyle}>Order #</th>
-                                <th style={thStyle}>Customer</th>
-                                <th style={thStyle}>City</th>
-                                <th style={thStyle}>Date</th>
-                                <th style={thStyle}>Items</th>
-                                <th style={thStyle}>Total</th>
-                                <th style={thStyle}>Status</th>
-                                <th style={thStyle}>Payment</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading
-                                ? Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} />)
-                                : orders.length === 0
-                                    ? (
-                                        <tr>
-                                            <td colSpan={8} style={{ padding: "60px 40px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
-                                                No orders found{search ? ` for "${search}"` : ""}.
-                                            </td>
-                                        </tr>
-                                    )
-                                    : orders.map(order => (
-                                        <React.Fragment key={order.id}>
-                                            <tr
-                                                onClick={() => setExpandedRow(expandedRow === order.id ? null : order.id)}
-                                                style={{
-                                                    cursor: "pointer",
-                                                    background: expandedRow === order.id ? T.bgElev : "transparent",
-                                                    transition: "background 0.12s",
-                                                }}
-                                                onMouseEnter={e => { if (expandedRow !== order.id) e.currentTarget.style.background = T.bgCard; }}
-                                                onMouseLeave={e => { if (expandedRow !== order.id) e.currentTarget.style.background = "transparent"; }}
-                                            >
-                                                <td style={tdStyle}>
-                                                    <span style={{ fontWeight: 700, color: T.j200 }}>#{order.number}</span>
+                    ) : (
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <thead>
+                                <tr style={{ position: "sticky", top: 0, zIndex: 2 }}>
+                                    <th style={thStyle}>Order #</th>
+                                    <th style={thStyle}>Customer</th>
+                                    <th style={thStyle}>City</th>
+                                    <th style={thStyle}>Date</th>
+                                    <th style={thStyle}>Items</th>
+                                    <th style={thStyle}>Total</th>
+                                    <th style={thStyle}>Status</th>
+                                    <th style={thStyle}>Payment</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading
+                                    ? Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} />)
+                                    : orders.length === 0
+                                        ? (
+                                            <tr>
+                                                <td colSpan={8} style={{ padding: "60px 40px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
+                                                    No orders found{search ? ` for "${search}"` : ""}.
                                                 </td>
-                                                <td style={tdStyle}>
-                                                    <div style={{ fontWeight: 600 }}>{order.customerName}</div>
-                                                    <div style={{ fontSize: 11, color: T.textFaint, marginTop: 1 }}>{order.customerEmail}</div>
-                                                </td>
-                                                <td style={{ ...tdStyle, color: T.textMuted }}>{order.city || "—"}</td>
-                                                <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted, whiteSpace: "nowrap" }}>{formatDate(order.date)}</td>
-                                                <td style={{ ...tdStyle, textAlign: "center" }}>
-                                                    <span style={{
-                                                        display: "inline-block", minWidth: 22, textAlign: "center",
-                                                        background: T.bgHigh, borderRadius: T.r4,
-                                                        padding: "2px 7px", fontSize: 12, fontWeight: 700, color: T.textMuted,
-                                                    }}>{order.itemCount}</span>
-                                                </td>
-                                                <td style={{ ...tdStyle, fontWeight: 700, color: T.j200, whiteSpace: "nowrap" }}>
-                                                    {formatCurrency(order.total, order.currency)}
-                                                </td>
-                                                <td style={tdStyle}>
-                                                    <StatusBadge status={order.status} />
-                                                </td>
-                                                <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted }}>{order.paymentMethod || "—"}</td>
                                             </tr>
-                                            {/* ── Expanded row: Detailed Order View ── */}
-                                            {expandedRow === order.id && (
-                                                <tr>
-                                                    <td colSpan={8} style={{ padding: "0 16px 16px 16px", background: T.bgElev }}>
-                                                        <div style={{
-                                                            display: "grid", gridTemplateColumns: "320px 1fr", gap: 16,
-                                                            border: `1px solid ${T.borderMid}`, borderRadius: T.r10,
-                                                            overflow: "hidden", background: T.bgCard,
-                                                        }}>
-                                                            {/* LEFT: Customer Full Details */}
-                                                            <div style={{ padding: 20, borderRight: `1px solid ${T.border}` }}>
-                                                                <div style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 16 }}>
-                                                                    Customer Information
-                                                                </div>
-
-                                                                {/* Contact info */}
-                                                                <div style={{ marginBottom: 20 }}>
-                                                                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{order.customerName}</div>
-                                                                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, color: T.textMuted, fontSize: 12 }}>
-                                                                        <Icon name="mail" size={12} />
-                                                                        {order.customerEmail || "No email"}
-                                                                    </div>
-                                                                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, color: T.textMuted, fontSize: 12 }}>
-                                                                        <Icon name="whatsapp" size={12} />
-                                                                        {order.customerPhone || "No phone"}
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Billing Address */}
-                                                                <div style={{ marginBottom: 20 }}>
-                                                                    <div style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, marginBottom: 8 }}>BILLING ADDRESS</div>
-                                                                    <div style={{ fontSize: 12, lineHeight: 1.6, color: T.text }}>
-                                                                        {order.address?.billing?.address1}<br />
-                                                                        {order.address?.billing?.address2 && <>{order.address.billing.address2}<br /></>}
-                                                                        {order.address?.billing?.city}, {order.address?.billing?.state} {order.address?.billing?.postcode}<br />
-                                                                        {order.address?.billing?.country}
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Shipping Address (if different) */}
-                                                                <div>
-                                                                    <div style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, marginBottom: 8 }}>SHIPPING ADDRESS</div>
-                                                                    <div style={{ fontSize: 12, lineHeight: 1.6, color: T.text }}>
-                                                                        {order.address?.shipping?.first_name} {order.address?.shipping?.last_name}<br />
-                                                                        {order.address?.shipping?.address1}<br />
-                                                                        {order.address?.shipping?.address2 && <>{order.address.shipping.address2}<br /></>}
-                                                                        {order.address?.shipping?.city}, {order.address?.shipping?.state} {order.address?.shipping?.postcode}<br />
-                                                                        {order.address?.shipping?.country}
-                                                                    </div>
-                                                                </div>
-
-                                                                <div style={{ marginTop: 24 }}>
-                                                                    <GradientButton variant="secondary" size="xs" full icon="whatsapp">
-                                                                        Contact Customer
-                                                                    </GradientButton>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* RIGHT: Order Items */}
-                                                            <div style={{ display: "flex", flexDirection: "column" }}>
-                                                                <div style={{
-                                                                    padding: "12px 20px", borderBottom: `1px solid ${T.border}`,
-                                                                    fontSize: 11, fontWeight: 700, color: T.textFaint,
-                                                                    textTransform: "uppercase", letterSpacing: "0.07em",
-                                                                    background: "rgba(0,0,0,0.02)",
-                                                                }}>
-                                                                    Order Items ({order.itemCount})
-                                                                </div>
-                                                                <div style={{ flex: 1 }}>
-                                                                    {order.items.map((item, i) => (
-                                                                        <div key={i} style={{
-                                                                            display: "flex", justifyContent: "space-between",
-                                                                            alignItems: "center", padding: "12px 20px",
-                                                                            borderBottom: i < order.items.length - 1 ? `1px solid ${T.border}` : "none",
-                                                                        }}>
-                                                                            <div style={{ flex: 1 }}>
-                                                                                <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{item.name}</div>
-                                                                                <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2 }}>SKU: {item.sku || "N/A"}</div>
-                                                                            </div>
-                                                                            <div style={{ display: "flex", gap: 32, alignItems: "center", textAlign: "right" }}>
-                                                                                <div style={{ minWidth: 40 }}>
-                                                                                    <div style={{ fontSize: 10, color: T.textFaint }}>QTY</div>
-                                                                                    <div style={{ fontSize: 13, fontWeight: 700 }}>×{item.quantity}</div>
-                                                                                </div>
-                                                                                <div style={{ minWidth: 80 }}>
-                                                                                    <div style={{ fontSize: 10, color: T.textFaint }}>PRICE</div>
-                                                                                    <div style={{ fontSize: 12 }}>{formatCurrency(item.price, order.currency)}</div>
-                                                                                </div>
-                                                                                <div style={{ minWidth: 100 }}>
-                                                                                    <div style={{ fontSize: 10, color: T.textFaint }}>TOTAL</div>
-                                                                                    <div style={{ fontSize: 13, fontWeight: 800, color: T.j200 }}>{formatCurrency(item.subtotal, order.currency)}</div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                                {/* Summary Footer */}
-                                                                <div style={{
-                                                                    padding: "16px 20px", background: "rgba(0,0,0,0.03)",
-                                                                    borderTop: `1px solid ${T.border}`,
-                                                                    display: "flex", justifyContent: "flex-end", gap: 40,
-                                                                }}>
-                                                                    <div style={{ textAlign: "right" }}>
-                                                                        <div style={{ fontSize: 11, color: T.textFaint, fontWeight: 600 }}>PAYMENT METHOD</div>
-                                                                        <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginTop: 2 }}>{order.paymentMethod || "N/A"}</div>
-                                                                    </div>
-                                                                    <div style={{ textAlign: "right" }}>
-                                                                        <div style={{ fontSize: 11, color: T.textFaint, fontWeight: 600 }}>GRAND TOTAL</div>
-                                                                        <div style={{ fontSize: 18, fontWeight: 900, color: T.j200, marginTop: 1 }}>{formatCurrency(order.total, order.currency)}</div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                        )
+                                        : orders.map(order => (
+                                            <React.Fragment key={order.id}>
+                                                <tr
+                                                    onClick={() => setExpandedRow(expandedRow === order.id ? null : order.id)}
+                                                    style={{
+                                                        cursor: "pointer",
+                                                        background: expandedRow === order.id ? "rgba(127,84,179,0.08)" : "transparent",
+                                                        transition: "background 0.12s",
+                                                    }}
+                                                    onMouseEnter={e => { if (expandedRow !== order.id) e.currentTarget.style.background = T.bgCard; }}
+                                                    onMouseLeave={e => { if (expandedRow !== order.id) e.currentTarget.style.background = "transparent"; }}
+                                                >
+                                                    <td style={tdStyle}>
+                                                        <span style={{
+                                                            fontWeight: 700, color: "#a78bfa",
+                                                            background: "rgba(167,139,250,0.1)",
+                                                            padding: "2px 8px", borderRadius: T.r4, fontSize: 13,
+                                                        }}>#{order.number}</span>
                                                     </td>
+                                                    <td style={tdStyle}>
+                                                        <div style={{ fontWeight: 600, color: T.text }}>{order.customerName}</div>
+                                                        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 1 }}>{order.customerEmail}</div>
+                                                    </td>
+                                                    <td style={{ ...tdStyle, color: T.textMuted }}>{order.city || "—"}</td>
+                                                    <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted, whiteSpace: "nowrap" }}>{formatDate(order.date)}</td>
+                                                    <td style={{ ...tdStyle, textAlign: "center" }}>
+                                                        <span style={{
+                                                            display: "inline-block", minWidth: 24, textAlign: "center",
+                                                            background: T.bgHigh, borderRadius: T.r4,
+                                                            padding: "2px 7px", fontSize: 12, fontWeight: 700, color: T.textMuted,
+                                                        }}>{order.itemCount}</span>
+                                                    </td>
+                                                    <td style={{ ...tdStyle, fontWeight: 700, color: T.j200, whiteSpace: "nowrap" }}>
+                                                        {formatCurrency(order.total, order.currency)}
+                                                    </td>
+                                                    <td style={tdStyle}><StatusBadge status={order.status} /></td>
+                                                    <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted }}>{order.paymentMethod || "—"}</td>
                                                 </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))
-                            }
-                        </tbody>
-                    </table>
-                )}
+
+                                                {/* ── Expanded detail ── */}
+                                                {expandedRow === order.id && (
+                                                    <tr>
+                                                        <td colSpan={8} style={{ padding: "0 16px 16px", background: "rgba(127,84,179,0.04)" }}>
+                                                            <div style={{
+                                                                display: "grid", gridTemplateColumns: "300px 1fr",
+                                                                border: "1px solid rgba(127,84,179,0.25)", borderRadius: T.r10,
+                                                                overflow: "hidden", background: T.bgCard,
+                                                            }}>
+                                                                {/* Customer panel */}
+                                                                <div style={{ padding: 20, borderRight: `1px solid ${T.border}` }}>
+                                                                    <div style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14 }}>Customer</div>
+                                                                    <div style={{ marginBottom: 16 }}>
+                                                                        <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{order.customerName}</div>
+                                                                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5, color: T.textMuted, fontSize: 12 }}>
+                                                                            <Icon name="mail" size={11} />{order.customerEmail || "No email"}
+                                                                        </div>
+                                                                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, color: T.textMuted, fontSize: 12 }}>
+                                                                            <Icon name="whatsapp" size={11} />{order.customerPhone || "No phone"}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div style={{ marginBottom: 14 }}>
+                                                                        <div style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Billing</div>
+                                                                        <div style={{ fontSize: 12, color: T.text, lineHeight: 1.7 }}>
+                                                                            {order.address?.billing?.address1}<br />
+                                                                            {order.address?.billing?.address2 && <>{order.address.billing.address2}<br /></>}
+                                                                            {order.address?.billing?.city}, {order.address?.billing?.state}<br />
+                                                                            {order.address?.billing?.country}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div style={{ marginBottom: 20 }}>
+                                                                        <div style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Shipping</div>
+                                                                        <div style={{ fontSize: 12, color: T.text, lineHeight: 1.7 }}>
+                                                                            {order.address?.shipping?.first_name} {order.address?.shipping?.last_name}<br />
+                                                                            {order.address?.shipping?.address1}<br />
+                                                                            {order.address?.shipping?.address2 && <>{order.address.shipping.address2}<br /></>}
+                                                                            {order.address?.shipping?.city}, {order.address?.shipping?.state}
+                                                                        </div>
+                                                                    </div>
+                                                                    <GradientButton variant="secondary" size="xs" full icon="whatsapp">Contact Customer</GradientButton>
+                                                                </div>
+
+                                                                {/* Items panel */}
+                                                                <div style={{ display: "flex", flexDirection: "column" }}>
+                                                                    <div style={{
+                                                                        padding: "12px 20px", borderBottom: `1px solid ${T.border}`,
+                                                                        fontSize: 10, fontWeight: 700, color: "#a78bfa",
+                                                                        textTransform: "uppercase", letterSpacing: "0.07em",
+                                                                        background: "rgba(127,84,179,0.06)",
+                                                                    }}>Order Items · {order.itemCount}</div>
+                                                                    <div style={{ flex: 1 }}>
+                                                                        {order.items.map((item, i) => (
+                                                                            <div key={i} style={{
+                                                                                display: "flex", justifyContent: "space-between", alignItems: "center",
+                                                                                padding: "12px 20px",
+                                                                                borderBottom: i < order.items.length - 1 ? `1px solid ${T.border}` : "none",
+                                                                            }}>
+                                                                                <div style={{ flex: 1 }}>
+                                                                                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{item.name}</div>
+                                                                                    <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2 }}>SKU: {item.sku || "N/A"}</div>
+                                                                                </div>
+                                                                                <div style={{ display: "flex", gap: 28, alignItems: "center", textAlign: "right" }}>
+                                                                                    <div>
+                                                                                        <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>QTY</div>
+                                                                                        <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>×{item.quantity}</div>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>PRICE</div>
+                                                                                        <div style={{ fontSize: 12, color: T.textMuted }}>{formatCurrency(item.price, order.currency)}</div>
+                                                                                    </div>
+                                                                                    <div style={{ minWidth: 90 }}>
+                                                                                        <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>SUBTOTAL</div>
+                                                                                        <div style={{ fontSize: 13, fontWeight: 800, color: T.j200 }}>{formatCurrency(item.subtotal, order.currency)}</div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                    <div style={{
+                                                                        padding: "14px 20px", background: "rgba(0,0,0,0.06)",
+                                                                        borderTop: `1px solid ${T.border}`,
+                                                                        display: "flex", justifyContent: "flex-end", gap: 36,
+                                                                    }}>
+                                                                        <div style={{ textAlign: "right" }}>
+                                                                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 700, letterSpacing: "0.06em" }}>PAYMENT</div>
+                                                                            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginTop: 2 }}>{order.paymentMethod || "N/A"}</div>
+                                                                        </div>
+                                                                        <div style={{ textAlign: "right" }}>
+                                                                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 700, letterSpacing: "0.06em" }}>GRAND TOTAL</div>
+                                                                            <div style={{ fontSize: 20, fontWeight: 900, color: T.j200, marginTop: 1 }}>{formatCurrency(order.total, order.currency)}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        ))
+                                }
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             )}
 
@@ -644,7 +622,7 @@ export default function WooCommerceManagePage({ onBack }) {
                 <div style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     padding: "12px 24px", borderTop: `1px solid ${T.border}`,
-                    background: T.bgCard, flexShrink: 0,
+                    background: T.bgCard, flexShrink: 0, flexWrap: "wrap", gap: 10,
                 }}>
                     <div style={{ fontSize: 12, color: T.textMuted }}>
                         Showing {((pagination.page - 1) * pagination.perPage) + 1}–{Math.min(pagination.page * pagination.perPage, pagination.totalOrders)} of <strong style={{ color: T.text }}>{pagination.totalOrders.toLocaleString()}</strong> orders
@@ -652,22 +630,19 @@ export default function WooCommerceManagePage({ onBack }) {
                     <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                         <button onClick={() => goToPage(1)} disabled={pagination.page === 1} style={paginBtnStyle(pagination.page === 1)}>«</button>
                         <button onClick={() => goToPage(pagination.page - 1)} disabled={pagination.page === 1} style={paginBtnStyle(pagination.page === 1)}>‹</button>
-
-                        {/* Page number pills */}
                         {getPageRange(pagination.page, pagination.totalPages).map((p, i) =>
                             p === "..." ? (
                                 <span key={`e${i}`} style={{ padding: "0 8px", color: T.textFaint, fontSize: 13 }}>…</span>
                             ) : (
                                 <button key={p} onClick={() => goToPage(p)} style={{
                                     ...paginBtnStyle(false),
-                                    background: p === pagination.page ? T.gradBtn : T.bgElev,
+                                    background: p === pagination.page ? "linear-gradient(135deg,#7F54B3,#9B6DB5)" : T.bgElev,
                                     color: p === pagination.page ? "#fff" : T.textMuted,
                                     fontWeight: p === pagination.page ? 700 : 500,
                                     border: `1px solid ${p === pagination.page ? "transparent" : T.borderMid}`,
                                 }}>{p}</button>
                             )
                         )}
-
                         <button onClick={() => goToPage(pagination.page + 1)} disabled={pagination.page === pagination.totalPages} style={paginBtnStyle(pagination.page === pagination.totalPages)}>›</button>
                         <button onClick={() => goToPage(pagination.totalPages)} disabled={pagination.page === pagination.totalPages} style={paginBtnStyle(pagination.page === pagination.totalPages)}>»</button>
                     </div>
@@ -675,10 +650,7 @@ export default function WooCommerceManagePage({ onBack }) {
             )}
 
             <style>{`
-                @keyframes pulse {
-                    0%, 100% { opacity: 0.4; }
-                    50% { opacity: 0.8; }
-                }
+                @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
             `}</style>
         </div>
     );
