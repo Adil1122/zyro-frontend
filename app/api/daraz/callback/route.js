@@ -84,6 +84,7 @@ export async function GET(request) {
         const accessToken = tokenData.access_token || tokenData.result?.access_token;
         if (!accessToken) {
             const errMsg = tokenData.message || tokenData.result?.message || 'token_exchange_failed';
+            console.error('[Daraz Callback] Token exchange failed:', errMsg, 'Response:', raw);
             return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=${encodeURIComponent(errMsg)}`);
         }
 
@@ -101,11 +102,28 @@ export async function GET(request) {
             console.warn('[Daraz Callback] Could not fetch seller ID:', e.message);
         }
 
-        await supabase.from('users').update({
+        const { error: dbError } = await supabase.from('users').update({
             daraz_access_token: accessToken,
             daraz_is_active: true,
             ...(sellerId ? { daraz_seller_id: sellerId } : {}),
         }).eq('id', userId);
+
+        if (dbError) {
+            console.error('[Daraz Callback] DB update failed:', dbError);
+            return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=${encodeURIComponent('db_error: ' + dbError.message)}`);
+        }
+
+        // Verify the token was actually written (catches silent update failures e.g. RLS or wrong userId)
+        const { data: verifyUser } = await supabase
+            .from('users')
+            .select('daraz_access_token')
+            .eq('id', userId)
+            .single();
+
+        if (!verifyUser?.daraz_access_token) {
+            console.error('[Daraz Callback] Token not found after save. userId:', userId);
+            return NextResponse.redirect(`${appUrl}/settings/stores?daraz=error&msg=token_save_failed`);
+        }
 
         return NextResponse.redirect(`${appUrl}/settings/stores?daraz=connected`);
     } catch (err) {
