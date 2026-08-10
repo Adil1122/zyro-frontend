@@ -697,11 +697,16 @@ export default function CouriersPage() {
                 </div>
                 <Card pad={0}>
                     <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
                             <thead>
                                 <tr style={{ borderBottom: `1px solid ${T.border}`, background: "rgba(92,168,124,0.03)" }}>
-                                    {["Tracking #", "Customer", "City", "Courier", "Status", "Progress", "ETA", "COD", "Risk", ""].map(h => (
-                                        <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, color: T.textFaint, letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
+                                    {[
+                                        { h: "Tracking #" }, { h: "Customer" },
+                                        { h: "City", cls: "ship-hide-mob" }, { h: "Courier" }, { h: "Status" },
+                                        { h: "Progress", cls: "ship-hide-mob" }, { h: "ETA", cls: "ship-hide-mob" },
+                                        { h: "COD" }, { h: "Risk", cls: "ship-hide-mob" }, { h: "", cls: "ship-hide-mob" },
+                                    ].map(({ h, cls }) => (
+                                        <th key={h} className={cls} style={{ padding: "11px 16px", textAlign: "left", fontSize: 10, fontWeight: 700, color: T.textFaint, letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
@@ -784,7 +789,7 @@ export default function CouriersPage() {
                 </div>
                 <Card pad={0}>
                     <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
                             <thead>
                                 <tr style={{ borderBottom: `1px solid ${T.border}` }}>
                                     {["Courier", "Score", "Success rate", "Avg. delivery", "RTO %", "Avg. cost", "Current load", "Best for"].map(h => (
@@ -902,22 +907,22 @@ function ShipmentRow({ s, onBook }) {
         <tr onMouseEnter={e => e.currentTarget.style.background = "rgba(92,168,124,0.04)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
             <td style={{ padding: "13px 16px", fontFamily: "monospace", fontSize: 12, color: T.j200, fontWeight: 600, whiteSpace: "nowrap" }}>{s.tracking}</td>
             <td style={{ padding: "13px 16px", fontSize: 13, fontWeight: 600, color: T.text, whiteSpace: "nowrap" }}>{s.customer}</td>
-            <td style={{ padding: "13px 16px", fontSize: 13, color: T.textMuted, whiteSpace: "nowrap" }}>{s.city}</td>
+            <td className="ship-hide-mob" style={{ padding: "13px 16px", fontSize: 13, color: T.textMuted, whiteSpace: "nowrap" }}>{s.city}</td>
             <td style={{ padding: "13px 16px", fontSize: 13, color: s.courier === "—" ? T.textFaint : T.text, fontWeight: 600, whiteSpace: "nowrap" }}>{s.courier}</td>
             <td style={{ padding: "13px 16px", whiteSpace: "nowrap" }}>
                 <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 20, background: sc.bg, color: sc.color }}>{s.status}</span>
             </td>
-            <td style={{ padding: "13px 16px" }}>
+            <td className="ship-hide-mob" style={{ padding: "13px 16px" }}>
                 <div style={{ width: 64, height: 5, borderRadius: 3, background: T.bgHigh, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${s.progress}%`, background: T.gradBtn, borderRadius: 3 }} />
                 </div>
             </td>
-            <td style={{ padding: "13px 16px", fontSize: 13, color: T.textMuted, whiteSpace: "nowrap" }}>{s.eta}</td>
+            <td className="ship-hide-mob" style={{ padding: "13px 16px", fontSize: 13, color: T.textMuted, whiteSpace: "nowrap" }}>{s.eta}</td>
             <td style={{ padding: "13px 16px", fontSize: 13, fontWeight: 700, color: T.j200, whiteSpace: "nowrap" }}>Rs {(s.cod || 0).toLocaleString()}</td>
-            <td style={{ padding: "13px 16px", whiteSpace: "nowrap" }}>
+            <td className="ship-hide-mob" style={{ padding: "13px 16px", whiteSpace: "nowrap" }}>
                 <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20, background: rc.bg, color: rc.color }}>{s.risk}</span>
             </td>
-            <td style={{ padding: "13px 16px", whiteSpace: "nowrap" }}>
+            <td className="ship-hide-mob" style={{ padding: "13px 16px", whiteSpace: "nowrap" }}>
                 {s.status === "Needs booking" && (
                     <button onClick={onBook} style={{ background: "none", border: "none", color: T.j200, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Book now →</button>
                 )}

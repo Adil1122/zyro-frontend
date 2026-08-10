@@ -341,6 +341,9 @@ select {
     grid-template-columns: 1fr !important;
   }
 
+  /* Couriers shipment table → hide secondary columns on narrow screens */
+  .ship-hide-mob { display: none !important; }
+
   /* Courier section headers → stack buttons below title */
   .section-header {
     flex-direction: column !important;
