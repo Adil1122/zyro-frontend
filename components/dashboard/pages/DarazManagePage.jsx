@@ -223,7 +223,7 @@ export default function DarazManagePage({ onBack }) {
 
             {/* ── HERO HEADER ── */}
             <div style={{
-                background: "linear-gradient(135deg, #b84e00 0%, #F57D29 55%, #ff9a50 100%)",
+                background: "linear-gradient(135deg, #7c3200 0%, #E85D04 50%, #F57D29 100%)",
                 padding: "18px 28px 0",
                 flexShrink: 0,
                 position: "relative",
@@ -253,7 +253,7 @@ export default function DarazManagePage({ onBack }) {
                             }}>Disconnect</button>
                         )}
                         <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "4px 12px" }}>
-                            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />
+                            <div style={{ width: 6, height: 6, borderRadius: "50%", background: isConfigured ? "#4ade80" : "rgba(255,255,255,0.3)", boxShadow: isConfigured ? "0 0 8px #4ade80" : "none" }} />
                             <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Open Platform · PK</span>
                         </div>
                     </div>
@@ -274,8 +274,8 @@ export default function DarazManagePage({ onBack }) {
                     </div>
                 </div>
 
-                {/* Row 3: search + status chips */}
-                <div style={{
+                {/* Row 3: search + status chips — only when connected */}
+                {isConfigured === true && <div style={{
                     display: "flex", gap: 8, alignItems: "center",
                     borderTop: "1px solid rgba(255,255,255,0.1)",
                     padding: "10px 0",
@@ -339,17 +339,17 @@ export default function DarazManagePage({ onBack }) {
                     }}>
                         <Icon name="refresh" size={14} color="rgba(255,255,255,0.85)" />
                     </button>
-                </div>
+                </div>}
 
-                {/* DataMoat notice */}
-                <div style={{
+                {/* DataMoat notice — only when connected */}
+                {isConfigured === true && <div style={{
                     marginLeft: -28, marginRight: -28, paddingLeft: 28, paddingRight: 28,
                     paddingTop: 7, paddingBottom: 7,
                     background: "rgba(0,0,0,0.2)", borderTop: "1px solid rgba(255,255,255,0.08)",
                     fontSize: 11, color: "rgba(255,255,255,0.6)", lineHeight: 1.5,
                 }}>
                     ⚠️ Customer names &amp; phones may be masked by Daraz's DataMoat privacy system. Apply for <strong style={{ color: "rgba(255,255,255,0.85)" }}>Sensitive Data Privilege</strong> in your Daraz App Console. Search is limited to Order ID.
-                </div>
+                </div>}
             </div>
 
             {/* ── BODY ── */}
