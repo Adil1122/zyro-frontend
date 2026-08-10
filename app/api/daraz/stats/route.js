@@ -9,7 +9,7 @@ export async function GET(request) {
     try {
         const { data: user } = await supabase
             .from('users')
-            .select('daraz_app_key, daraz_app_secret, daraz_access_token, daraz_region')
+            .select('daraz_access_token, daraz_region')
             .eq('id', userId)
             .single();
 
