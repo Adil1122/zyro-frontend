@@ -247,8 +247,8 @@ export default function DarazManagePage({ onBack }) {
                         {isConfigured && (
                             <button onClick={handleDisconnect} style={{
                                 padding: "5px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
-                                background: "rgba(248,113,113,0.15)", color: "#fca5a5",
-                                border: "1px solid rgba(248,113,113,0.3)",
+                                background: "rgba(255,255,255,0.12)", color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.2)",
                                 cursor: "pointer", fontFamily: "inherit",
                             }}>Disconnect</button>
                         )}
