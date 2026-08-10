@@ -401,9 +401,10 @@
   .page-h h1 { font-size:22px; }
   .page-h-actions { width:100%; }
   .page-h-actions .btn { flex:1; min-width:0; }
-  /* Hide desktop tables, show mobile cards */
-  .table-wrap { display:none; }
-  .m-list { display:flex; }
+  /* Scroll table horizontally on mobile instead of hiding */
+  .table-wrap { overflow-x:auto !important; }
+  .table { min-width:700px; }
+  .m-list { display:none; }
   /* Sub-tabs full-bleed scroll */
   .inv-tabs { margin:0 -16px 18px; padding:0 16px; }
   /* Cards tighter */
