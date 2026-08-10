@@ -341,6 +341,18 @@ select {
     grid-template-columns: 1fr !important;
   }
 
+  /* Courier section headers → stack buttons below title */
+  .section-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  /* Routing rules zone cards → stack vertically */
+  .routing-rules-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   /* Marketing MetricGrid → 2 columns */
   .metric-grid {
     grid-template-columns: repeat(2, 1fr) !important;

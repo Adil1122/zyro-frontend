@@ -661,7 +661,7 @@ export default function CouriersPage() {
     };
 
     return (
-        <div style={{ padding: "28px 32px", maxWidth: 1280 }}>
+        <div className="page-outer" style={{ padding: "28px 32px", maxWidth: 1280 }}>
             {toast && <Toast msg={toast} onHide={() => setToast(null)} />}
             {showEditRules && <EditRulesModal rules={rules} onSave={r => { setRules(r); setShowEditRules(false); showToast("Routing rules updated"); saveRulesToDB(hardRules, r); }} onClose={() => setShowEditRules(false)} />}
             {showHardRule && <HardRuleModal onSave={r => { const next = [...hardRules, r]; setHardRules(next); setShowHardRule(false); showToast("Hard rule added"); saveRulesToDB(next, rules); }} onClose={() => setShowHardRule(false)} />}
@@ -685,7 +685,7 @@ export default function CouriersPage() {
 
             {/* ── Live Shipment Tracking ── */}
             <div style={{ marginBottom: 28 }}>
-                <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 16, gap: 12 }}>
+                <div className="section-header" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 16, gap: 12 }}>
                     <div>
                         <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 4 }}>Live Shipment Tracking</div>
                         <div style={{ fontSize: 13, color: T.textFaint }}>Auto-synced every 30 minutes</div>
@@ -733,13 +733,13 @@ export default function CouriersPage() {
 
             {/* ── Smart Routing Rules ── */}
             <div style={{ marginBottom: 28 }}>
-                <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 16 }}>
+                <div className="section-header" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 16 }}>
                     <div>
                         <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 4 }}>Smart Routing Rules</div>
                         <div style={{ fontSize: 13, color: T.textFaint }}>Zyro checks these zone rules first, before anything else runs</div>
                     </div>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr) auto", gap: 14, alignItems: "stretch", marginBottom: 14 }}>
+                <div className="routing-rules-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr) auto", gap: 14, alignItems: "stretch", marginBottom: 14 }}>
                     {Object.values(ruleZoneData).map(z => (
                         <Card key={z.label} pad={20}>
                             <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>{z.label}</div>
