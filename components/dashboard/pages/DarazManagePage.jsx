@@ -206,188 +206,154 @@ export default function DarazManagePage({ onBack }) {
     };
 
     return (
-        <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+        <div style={{ height: "100%", display: "flex", flexDirection: "column", background: T.bgMain }}>
 
-            {/* ── HEADER ── */}
+            {/* ── HERO HEADER ── */}
             <div style={{
-                padding: "24px 32px 0", borderBottom: `1px solid ${T.border}`,
-                background: T.bgCard, flexShrink: 0,
+                background: "linear-gradient(135deg, #b84e00 0%, #F57D29 55%, #ff9a50 100%)",
+                padding: "18px 28px 0",
+                flexShrink: 0,
+                position: "relative",
+                overflow: "hidden",
             }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                    {/* Back button */}
+                <div style={{ position: "absolute", top: -50, right: -50, width: 220, height: 220, borderRadius: "50%", background: "rgba(255,255,255,0.06)", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", bottom: 10, right: 120, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.03)", pointerEvents: "none" }} />
+
+                {/* Row 1: back + status pill */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, position: "relative" }}>
                     <button onClick={onBack} style={{
                         display: "inline-flex", alignItems: "center", gap: 6,
-                        background: T.bgElev, border: `1px solid ${T.borderMid}`,
-                        color: T.textMuted, fontSize: 12, fontWeight: 600,
-                        borderRadius: T.r8, padding: "6px 12px", cursor: "pointer",
-                        transition: "all 0.15s", fontFamily: "inherit",
-                    }}
-                        onMouseEnter={e => e.currentTarget.style.color = T.text}
-                        onMouseLeave={e => e.currentTarget.style.color = T.textMuted}
-                    >
-                        <Icon name="arrow-left" size={13} />
+                        background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)",
+                        color: "#fff", fontSize: 12, fontWeight: 600,
+                        borderRadius: T.r8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit",
+                    }}>
+                        <Icon name="arrow-left" size={13} color="#fff" />
                         Back to Settings
                     </button>
-
-                    {/* Title */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{
-                            width: 32, height: 32, borderRadius: T.r8,
-                            background: "linear-gradient(135deg, #F57D29 0%, #E85D04 100%)",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 17, boxShadow: "0 2px 8px rgba(245,125,41,0.4)",
-                        }}>🏪</div>
-                        <div>
-                            <div style={{ fontSize: 18, fontWeight: 800, color: T.text, letterSpacing: "-0.4px" }}>
-                                Daraz Orders
-                            </div>
-                            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 1 }}>
-                                {loading
-                                    ? "Loading…"
-                                    : `${(pagination.totalOrders || 0).toLocaleString()} total orders`
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Daraz info pill */}
-                    <div style={{
-                        marginLeft: "auto", display: "flex", alignItems: "center", gap: 6,
-                        background: "rgba(245,125,41,0.12)", border: "1px solid rgba(245,125,41,0.25)",
-                        borderRadius: T.r8, padding: "5px 11px", fontSize: 11, color: "#F57D29", fontWeight: 600,
-                    }}>
-                        <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#F57D29", boxShadow: "0 0 5px #F57D29" }} />
-                        Daraz Open Platform · PK
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "4px 12px" }}>
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />
+                        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Open Platform · PK</span>
                     </div>
                 </div>
 
-                {/* ── FILTERS ── */}
-                <div style={{ display: "flex", gap: 10, alignItems: "center", paddingBottom: 16, flexWrap: "wrap" }}>
-                    {/* Search (by order ID) */}
-                    <form onSubmit={handleSearch} style={{ display: "flex", gap: 0 }}>
+                {/* Row 2: brand */}
+                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20, position: "relative" }}>
+                    <div style={{
+                        width: 46, height: 46, borderRadius: 12,
+                        background: "rgba(255,255,255,0.15)", border: "1.5px solid rgba(255,255,255,0.25)",
+                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24,
+                    }}>🏪</div>
+                    <div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: "-0.4px", lineHeight: 1.2 }}>Daraz</div>
+                        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 3 }}>
+                            {loading ? "Loading…" : `${(pagination.totalOrders || 0).toLocaleString()} total orders`}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Row 3: search + status chips */}
+                <div style={{
+                    display: "flex", gap: 8, alignItems: "center",
+                    borderTop: "1px solid rgba(255,255,255,0.1)",
+                    padding: "10px 0",
+                    marginLeft: -28, marginRight: -28, paddingLeft: 28, paddingRight: 28,
+                    background: "rgba(0,0,0,0.15)",
+                }}>
+                    <form onSubmit={handleSearch} style={{ display: "flex", gap: 0, flexShrink: 0 }}>
                         <input
                             value={searchInput}
                             onChange={e => setSearchInput(e.target.value)}
                             placeholder="Search by Order ID…"
                             style={{
-                                padding: "7px 12px", fontSize: 13, background: T.bgElev,
-                                border: `1px solid ${T.borderMid}`, borderRight: "none",
-                                borderRadius: `${T.r8} 0 0 ${T.r8}`, color: T.text,
-                                outline: "none", width: 220, fontFamily: "inherit",
+                                padding: "7px 12px", fontSize: 12,
+                                background: "rgba(0,0,0,0.2)",
+                                border: "1px solid rgba(255,255,255,0.15)", borderRight: "none",
+                                borderRadius: `${T.r8} 0 0 ${T.r8}`, color: "#fff",
+                                outline: "none", width: 190, fontFamily: "inherit",
                             }}
                         />
                         <button type="submit" style={{
-                            padding: "7px 13px", background: "linear-gradient(135deg,#F57D29,#E85D04)",
-                            color: "#fff", border: "none", borderRadius: `0 ${T.r8} ${T.r8} 0`,
+                            padding: "7px 11px", background: "rgba(255,255,255,0.15)",
+                            border: "1px solid rgba(255,255,255,0.15)", borderLeft: "none",
+                            borderRadius: `0 ${T.r8} ${T.r8} 0`,
                             cursor: "pointer", display: "flex", alignItems: "center",
                         }}>
                             <Icon name="search" size={13} color="#fff" />
                         </button>
                     </form>
-
                     {searchInput && (
                         <button onClick={() => { setSearchInput(""); setSearch(""); }} style={{
-                            padding: "7px 10px", background: "transparent",
-                            border: `1px solid ${T.borderMid}`, borderRadius: T.r8,
-                            color: T.textMuted, cursor: "pointer", fontSize: 12, fontFamily: "inherit",
-                        }}>✕ Clear</button>
+                            padding: "6px 10px", background: "rgba(255,255,255,0.1)",
+                            border: "1px solid rgba(255,255,255,0.15)", borderRadius: T.r8,
+                            color: "rgba(255,255,255,0.7)", cursor: "pointer", fontSize: 12,
+                            fontFamily: "inherit", flexShrink: 0,
+                        }}>✕</button>
                     )}
-
-                    {/* Status filter tabs */}
-                    <div style={{ display: "flex", gap: 4, marginLeft: "auto", flexWrap: "wrap" }}>
-                        {STATUS_FILTERS.map(f => (
-                            <button key={f.value} onClick={() => setStatusFilter(f.value)} style={{
-                                padding: "6px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
-                                background: statusFilter === f.value
-                                    ? "linear-gradient(135deg,#F57D29,#E85D04)"
-                                    : T.bgElev,
-                                color: statusFilter === f.value ? "#fff" : T.textMuted,
-                                border: `1px solid ${statusFilter === f.value ? "transparent" : T.borderMid}`,
-                                cursor: "pointer", transition: "all 0.15s", fontFamily: "inherit",
-                            }}>
-                                {f.label}
-                            </button>
-                        ))}
+                    <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", flex: 1 }}>
+                        {STATUS_FILTERS.map(f => {
+                            const s = DARAZ_STATUS[f.value] || DARAZ_STATUS.pending;
+                            const active = statusFilter === f.value;
+                            return (
+                                <button key={f.value} onClick={() => setStatusFilter(f.value)} style={{
+                                    display: "inline-flex", alignItems: "center", gap: 5,
+                                    padding: "5px 11px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                                    background: active ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.07)",
+                                    color: active ? "#fff" : "rgba(255,255,255,0.55)",
+                                    border: `1px solid ${active ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.1)"}`,
+                                    cursor: "pointer", fontFamily: "inherit",
+                                    whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.15s",
+                                }}>
+                                    {f.value !== "all" && <span style={{ width: 5, height: 5, borderRadius: "50%", background: s.dot, flexShrink: 0 }} />}
+                                    {f.label}
+                                </button>
+                            );
+                        })}
                     </div>
-
-                    {/* Refresh */}
-                    <button onClick={() => fetchOrders(pagination.page)} style={{
-                        padding: "7px 10px", background: T.bgElev,
-                        border: `1px solid ${T.borderMid}`, borderRadius: T.r8,
-                        color: T.textMuted, cursor: "pointer", display: "flex",
-                        alignItems: "center", transition: "all 0.15s",
-                    }}
-                        onMouseEnter={e => e.currentTarget.style.color = T.text}
-                        onMouseLeave={e => e.currentTarget.style.color = T.textMuted}
-                    >
-                        <Icon name="refresh" size={14} />
+                    <button onClick={() => fetchOrders(pagination.page)} title="Refresh" style={{
+                        padding: "7px 10px", background: "rgba(255,255,255,0.1)",
+                        border: "1px solid rgba(255,255,255,0.15)", borderRadius: T.r8,
+                        cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0,
+                    }}>
+                        <Icon name="refresh" size={14} color="rgba(255,255,255,0.85)" />
                     </button>
                 </div>
 
-                {/* Daraz note banner */}
+                {/* DataMoat notice */}
                 <div style={{
-                    marginBottom: 12, padding: "8px 14px",
-                    background: "rgba(245,125,41,0.07)", border: "1px solid rgba(245,125,41,0.15)",
-                    borderRadius: T.r8, fontSize: 11, color: "#F57D29", lineHeight: 1.5,
+                    marginLeft: -28, marginRight: -28, paddingLeft: 28, paddingRight: 28,
+                    paddingTop: 7, paddingBottom: 7,
+                    background: "rgba(0,0,0,0.2)", borderTop: "1px solid rgba(255,255,255,0.08)",
+                    fontSize: 11, color: "rgba(255,255,255,0.6)", lineHeight: 1.5,
                 }}>
-                    ⚠️ <strong>Note:</strong> Customer names & phone numbers may appear masked by Daraz's DataMoat privacy system.
-                    To access full data, apply for <strong>Sensitive Data Privilege</strong> in your Daraz App Console.
-                    &nbsp;Search is limited to <strong>Order ID</strong> (Daraz API does not support name search).
+                    ⚠️ Customer names &amp; phones may be masked by Daraz's DataMoat privacy system. Apply for <strong style={{ color: "rgba(255,255,255,0.85)" }}>Sensitive Data Privilege</strong> in your Daraz App Console. Search is limited to Order ID.
                 </div>
             </div>
 
-            {/* ── TABLE ── */}
+            {/* ── BODY ── */}
             <div style={{ flex: 1, overflow: "auto" }}>
                 {isConfigured === false ? (
-                    /* ── CREDENTIALS SETUP FORM ── */
                     <div style={{ display: "flex", justifyContent: "center", padding: "40px 24px" }}>
-                        <div style={{
-                            width: "100%", maxWidth: 520,
-                            background: T.bgCard, border: `1px solid ${T.border}`,
-                            borderRadius: 14, padding: 28,
-                        }}>
-                            <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 6 }}>Connect Your Daraz Store</div>
-                            <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 20, lineHeight: 1.6 }}>
-                                Get your credentials from{" "}
-                                <span style={{ color: "#F57D29" }}>open.daraz.com</span>
-                                {" "}→ My Apps → your app → App Info
+                        <div style={{ width: "100%", maxWidth: 520, background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: 14, padding: 28 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                                <div style={{ width: 42, height: 42, borderRadius: T.r10, background: "linear-gradient(135deg,#F57D29,#E85D04)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: "0 4px 12px rgba(245,125,41,0.4)" }}>🏪</div>
+                                <div>
+                                    <div style={{ fontSize: 17, fontWeight: 800, color: T.text }}>Connect Your Daraz Store</div>
+                                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>Get credentials from open.daraz.com → My Apps → your app</div>
+                                </div>
                             </div>
-
                             <form onSubmit={handleConnectOAuth} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                                 {[
                                     { key: "appKey", label: "App Key", placeholder: "e.g. 505264", type: "text" },
                                     { key: "appSecret", label: "App Secret", placeholder: "Paste your App Secret", type: "password" },
                                 ].map(({ key, label, placeholder, type }) => (
                                     <div key={key}>
-                                        <div style={{ fontSize: 12, fontWeight: 600, color: T.textMuted, marginBottom: 5 }}>{label}</div>
-                                        <input
-                                            type={type}
-                                            value={creds[key]}
-                                            onChange={e => setCreds(p => ({ ...p, [key]: e.target.value }))}
-                                            placeholder={placeholder}
-                                            required
-                                            style={{
-                                                width: "100%", padding: "9px 12px", fontSize: 13,
-                                                background: T.bgElev, border: `1px solid ${T.borderMid}`,
-                                                borderRadius: 8, color: T.text, outline: "none",
-                                                fontFamily: "inherit", boxSizing: "border-box",
-                                            }}
-                                        />
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>{label}</div>
+                                        <input type={type} value={creds[key]} onChange={e => setCreds(p => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} required style={{ width: "100%", padding: "9px 12px", fontSize: 13, background: T.bgElev, border: `1px solid ${T.borderMid}`, borderRadius: 8, color: T.text, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
                                     </div>
                                 ))}
-
                                 <div>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: T.textMuted, marginBottom: 5 }}>Region</div>
-                                    <select
-                                        value={creds.region}
-                                        onChange={e => setCreds(p => ({ ...p, region: e.target.value }))}
-                                        style={{
-                                            width: "100%", padding: "9px 12px", fontSize: 13,
-                                            background: T.bgElev, border: `1px solid ${T.borderMid}`,
-                                            borderRadius: 8, color: T.text, outline: "none",
-                                            fontFamily: "inherit", boxSizing: "border-box",
-                                        }}
-                                    >
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Region</div>
+                                    <select value={creds.region} onChange={e => setCreds(p => ({ ...p, region: e.target.value }))} style={{ width: "100%", padding: "9px 12px", fontSize: 13, background: T.bgElev, border: `1px solid ${T.borderMid}`, borderRadius: 8, color: T.text, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}>
                                         <option value="pk">Pakistan (pk)</option>
                                         <option value="bd">Bangladesh (bd)</option>
                                         <option value="lk">Sri Lanka (lk)</option>
@@ -395,80 +361,38 @@ export default function DarazManagePage({ onBack }) {
                                         <option value="sg">Singapore (sg)</option>
                                     </select>
                                 </div>
-
-                                {/* Optional manual Access Token */}
                                 <div>
-                                    <button type="button" onClick={() => setShowManualToken(p => !p)} style={{
-                                        background: "none", border: "none", padding: 0, cursor: "pointer",
-                                        fontSize: 12, color: "#F57D29", fontFamily: "inherit", textDecoration: "underline",
-                                    }}>
+                                    <button type="button" onClick={() => setShowManualToken(p => !p)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12, color: "#F57D29", fontFamily: "inherit", textDecoration: "underline" }}>
                                         {showManualToken ? "▾ Hide" : "▸ Have an Access Token? Paste it manually"}
                                     </button>
                                     {showManualToken && (
-                                        <div style={{ marginTop: 8 }}>
-                                            <input
-                                                type="password"
-                                                value={creds.accessToken}
-                                                onChange={e => setCreds(p => ({ ...p, accessToken: e.target.value }))}
-                                                placeholder="Paste Access Token from API Explorer or Daraz portal"
-                                                style={{
-                                                    width: "100%", padding: "9px 12px", fontSize: 13,
-                                                    background: T.bgElev, border: `1px solid ${T.borderMid}`,
-                                                    borderRadius: 8, color: T.text, outline: "none",
-                                                    fontFamily: "inherit", boxSizing: "border-box",
-                                                }}
-                                            />
-                                        </div>
+                                        <input type="password" value={creds.accessToken} onChange={e => setCreds(p => ({ ...p, accessToken: e.target.value }))} placeholder="Paste Access Token from API Explorer" style={{ width: "100%", marginTop: 8, padding: "9px 12px", fontSize: 13, background: T.bgElev, border: `1px solid ${T.borderMid}`, borderRadius: 8, color: T.text, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
                                     )}
                                 </div>
-
                                 {saveMsg && (
-                                    <div style={{
-                                        padding: "10px 14px", borderRadius: 8, fontSize: 12,
-                                        background: saveMsg.success ? T.greenBg : T.redBg,
-                                        border: `1px solid ${saveMsg.success ? T.green : T.red}`,
-                                        color: saveMsg.success ? T.green : T.red,
-                                    }}>{saveMsg.text}</div>
+                                    <div style={{ padding: "10px 14px", borderRadius: 8, fontSize: 12, background: saveMsg.success ? T.greenBg : T.redBg, border: `1px solid ${saveMsg.success ? T.green : T.red}`, color: saveMsg.success ? T.green : T.red }}>{saveMsg.text}</div>
                                 )}
-
-                                <button type="submit" disabled={saving} style={{
-                                    padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700,
-                                    background: saving ? T.bgHigh : "linear-gradient(135deg,#F57D29,#E85D04)",
-                                    color: saving ? T.textMuted : "#fff", border: "none",
-                                    cursor: saving ? "not-allowed" : "pointer", fontFamily: "inherit",
-                                }}>
-                                    {saving
-                                        ? (creds.accessToken.trim() ? "Connecting…" : "Redirecting to Daraz…")
-                                        : (creds.accessToken.trim() ? "✓ Save & Connect" : "🔗 Connect with Daraz OAuth")}
+                                <button type="submit" disabled={saving} style={{ padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: saving ? T.bgHigh : "linear-gradient(135deg,#F57D29,#E85D04)", color: saving ? T.textMuted : "#fff", border: "none", cursor: saving ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
+                                    {saving ? (creds.accessToken.trim() ? "Connecting…" : "Redirecting to Daraz…") : (creds.accessToken.trim() ? "✓ Save & Connect" : "🔗 Connect with Daraz OAuth")}
                                 </button>
                             </form>
-
-                            <div style={{ marginTop: 20, padding: "12px 14px", background: "rgba(245,125,41,0.07)", borderRadius: 8, fontSize: 11, color: "#F57D29", lineHeight: 1.6 }}>
-                                <strong>Option A — OAuth (for Daraz sellers):</strong><br />
-                                Enter App Key + App Secret → click Connect → authorize on Daraz<br /><br />
-                                <strong>Option B — Manual token (for developers/ISV):</strong><br />
-                                1. Go to <strong>open.daraz.com</strong> → your app → <strong>API Explorer</strong><br />
-                                2. Find the Access Token shown there (or generate one)<br />
-                                3. Click "Have an Access Token?" above → paste it → Save
+                            <div style={{ marginTop: 18, padding: "12px 14px", background: "rgba(245,125,41,0.06)", borderRadius: 8, fontSize: 11, color: "#F57D29", lineHeight: 1.7 }}>
+                                <strong>Option A — OAuth:</strong> Enter App Key + App Secret → click Connect → authorize on Daraz<br />
+                                <strong>Option B — Manual token:</strong> Go to open.daraz.com → your app → API Explorer → paste Access Token above
                             </div>
                         </div>
                     </div>
                 ) : error ? (
-                    <div style={{
-                        display: "flex", flexDirection: "column", alignItems: "center",
-                        justifyContent: "center", padding: "80px 40px", textAlign: "center",
-                    }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 40px", textAlign: "center" }}>
                         <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
                         <div style={{ fontSize: 15, fontWeight: 700, color: T.red, marginBottom: 8 }}>Connection Error</div>
                         <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 520, lineHeight: 1.6 }}>{error}</div>
-                        <div style={{ marginTop: 20 }}>
-                            <GradientButton variant="secondary" icon="refresh" onClick={() => fetchOrders(1)}>Retry</GradientButton>
-                        </div>
+                        <div style={{ marginTop: 20 }}><GradientButton variant="secondary" icon="refresh" onClick={() => fetchOrders(1)}>Retry</GradientButton></div>
                     </div>
                 ) : (
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
-                            <tr>
+                            <tr style={{ position: "sticky", top: 0, zIndex: 2 }}>
                                 <th style={thStyle}>Order ID</th>
                                 <th style={thStyle}>Customer</th>
                                 <th style={thStyle}>City</th>
@@ -483,79 +407,42 @@ export default function DarazManagePage({ onBack }) {
                             {loading
                                 ? Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} />)
                                 : orders.length === 0
-                                    ? (
-                                        <tr>
-                                            <td colSpan={8} style={{ padding: "60px 40px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
-                                                No orders found{search ? ` for ID "${search}"` : ""}.
-                                            </td>
-                                        </tr>
-                                    )
+                                    ? <tr><td colSpan={8} style={{ padding: "60px 40px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>No orders found{search ? ` for ID "${search}"` : ""}.</td></tr>
                                     : orders.map(order => (
                                         <React.Fragment key={order.id}>
                                             <tr
                                                 onClick={() => setExpandedRow(expandedRow === order.id ? null : order.id)}
-                                                style={{
-                                                    cursor: "pointer",
-                                                    background: expandedRow === order.id ? T.bgElev : "transparent",
-                                                    transition: "background 0.12s",
-                                                }}
+                                                style={{ cursor: "pointer", background: expandedRow === order.id ? "rgba(245,125,41,0.07)" : "transparent", transition: "background 0.12s" }}
                                                 onMouseEnter={e => { if (expandedRow !== order.id) e.currentTarget.style.background = T.bgCard; }}
                                                 onMouseLeave={e => { if (expandedRow !== order.id) e.currentTarget.style.background = "transparent"; }}
                                             >
                                                 <td style={tdStyle}>
-                                                    <span style={{ fontWeight: 700, color: "#F57D29", fontFamily: "monospace", fontSize: 12 }}>
-                                                        #{order.number}
-                                                    </span>
+                                                    <span style={{ fontWeight: 700, color: "#F57D29", background: "rgba(245,125,41,0.1)", padding: "2px 8px", borderRadius: T.r4, fontSize: 12, fontFamily: "monospace" }}>#{order.number}</span>
                                                 </td>
                                                 <td style={tdStyle}>
                                                     <div style={{ fontWeight: 600 }}>{order.customerName}</div>
-                                                    {order.customerPhone && (
-                                                        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 1 }}>{order.customerPhone}</div>
-                                                    )}
+                                                    {order.customerPhone && <div style={{ fontSize: 11, color: T.textFaint, marginTop: 1 }}>{order.customerPhone}</div>}
                                                 </td>
                                                 <td style={{ ...tdStyle, color: T.textMuted }}>{order.city || "—"}</td>
                                                 <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted, whiteSpace: "nowrap" }}>{formatDate(order.date)}</td>
                                                 <td style={{ ...tdStyle, textAlign: "center" }}>
-                                                    <span style={{
-                                                        display: "inline-block", minWidth: 22, textAlign: "center",
-                                                        background: T.bgHigh, borderRadius: T.r4,
-                                                        padding: "2px 7px", fontSize: 12, fontWeight: 700, color: T.textMuted,
-                                                    }}>{order.itemCount}</span>
+                                                    <span style={{ display: "inline-block", minWidth: 24, textAlign: "center", background: T.bgHigh, borderRadius: T.r4, padding: "2px 7px", fontSize: 12, fontWeight: 700, color: T.textMuted }}>{order.itemCount}</span>
                                                 </td>
-                                                <td style={{ ...tdStyle, fontWeight: 700, color: "#F57D29", whiteSpace: "nowrap" }}>
-                                                    {formatCurrency(order.total)}
-                                                </td>
+                                                <td style={{ ...tdStyle, fontWeight: 700, color: "#F57D29", whiteSpace: "nowrap" }}>{formatCurrency(order.total)}</td>
                                                 <td style={tdStyle}><StatusBadge status={order.status} /></td>
                                                 <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted }}>{order.paymentMethod || "—"}</td>
                                             </tr>
-
-                                            {/* ── Expanded row: items ── */}
                                             {expandedRow === order.id && (
                                                 <tr>
-                                                    <td colSpan={8} style={{ padding: "0 16px 16px", background: T.bgElev }}>
-                                                        <div style={{
-                                                            border: `1px solid rgba(245,125,41,0.25)`,
-                                                            borderRadius: T.r10, overflow: "hidden",
-                                                        }}>
-                                                            <div style={{
-                                                                padding: "10px 14px", background: T.bgCard,
-                                                                borderBottom: `1px solid ${T.border}`,
-                                                                fontSize: 11, fontWeight: 700, color: "#F57D29",
-                                                                textTransform: "uppercase", letterSpacing: "0.07em",
-                                                            }}>
-                                                                Order Items — #{order.number}
+                                                    <td colSpan={8} style={{ padding: "0 16px 16px", background: "rgba(245,125,41,0.04)" }}>
+                                                        <div style={{ border: "1px solid rgba(245,125,41,0.25)", borderRadius: T.r10, overflow: "hidden", background: T.bgCard }}>
+                                                            <div style={{ padding: "10px 16px", background: "rgba(245,125,41,0.07)", borderBottom: `1px solid ${T.border}`, fontSize: 10, fontWeight: 700, color: "#F57D29", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                                                                Order Items · #{order.number}
                                                             </div>
                                                             {order.items.length === 0 ? (
-                                                                <div style={{ padding: "16px", fontSize: 12, color: T.textMuted }}>
-                                                                    Item details not included in this response. Use Daraz API Explorer to fetch order items separately.
-                                                                </div>
+                                                                <div style={{ padding: 16, fontSize: 12, color: T.textMuted }}>Item details not included in this response.</div>
                                                             ) : order.items.map((item, i) => (
-                                                                <div key={i} style={{
-                                                                    display: "flex", justifyContent: "space-between",
-                                                                    alignItems: "center", padding: "10px 14px",
-                                                                    borderBottom: i < order.items.length - 1 ? `1px solid ${T.border}` : "none",
-                                                                    background: i % 2 === 0 ? "transparent" : T.bgCard,
-                                                                }}>
+                                                                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderBottom: i < order.items.length - 1 ? `1px solid ${T.border}` : "none" }}>
                                                                     <div style={{ flex: 1 }}>
                                                                         <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{item.name}</div>
                                                                         {item.sku && <div style={{ fontSize: 11, color: T.textFaint, marginTop: 1 }}>SKU: {item.sku}</div>}
@@ -570,13 +457,9 @@ export default function DarazManagePage({ onBack }) {
                                                                     </div>
                                                                 </div>
                                                             ))}
-                                                            <div style={{
-                                                                display: "flex", justifyContent: "flex-end",
-                                                                padding: "10px 14px", borderTop: `1px solid rgba(245,125,41,0.2)`,
-                                                                background: T.bgCard, gap: 24, alignItems: "center",
-                                                            }}>
+                                                            <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 16px", borderTop: "1px solid rgba(245,125,41,0.2)", background: "rgba(0,0,0,0.04)", gap: 24, alignItems: "center" }}>
                                                                 <span style={{ fontSize: 12, fontWeight: 600, color: T.textMuted }}>Order Total</span>
-                                                                <span style={{ fontSize: 14, fontWeight: 800, color: "#F57D29" }}>{formatCurrency(order.total)}</span>
+                                                                <span style={{ fontSize: 16, fontWeight: 800, color: "#F57D29" }}>{formatCurrency(order.total)}</span>
                                                             </div>
                                                         </div>
                                                     </td>
@@ -592,11 +475,7 @@ export default function DarazManagePage({ onBack }) {
 
             {/* ── PAGINATION ── */}
             {!error && !loading && pagination.totalPages > 1 && (
-                <div style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "12px 24px", borderTop: `1px solid ${T.border}`,
-                    background: T.bgCard, flexShrink: 0,
-                }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 24px", borderTop: `1px solid ${T.border}`, background: T.bgCard, flexShrink: 0, flexWrap: "wrap", gap: 10 }}>
                     <div style={{ fontSize: 12, color: T.textMuted }}>
                         Showing {((pagination.page - 1) * pagination.perPage) + 1}–{Math.min(pagination.page * pagination.perPage, pagination.totalOrders)} of <strong style={{ color: T.text }}>{pagination.totalOrders.toLocaleString()}</strong> orders
                     </div>
@@ -604,16 +483,8 @@ export default function DarazManagePage({ onBack }) {
                         <button onClick={() => goToPage(1)} disabled={pagination.page === 1} style={paginBtnStyle(pagination.page === 1)}>«</button>
                         <button onClick={() => goToPage(pagination.page - 1)} disabled={pagination.page === 1} style={paginBtnStyle(pagination.page === 1)}>‹</button>
                         {getPageRange(pagination.page, pagination.totalPages).map((p, i) =>
-                            p === "..." ? (
-                                <span key={`e${i}`} style={{ padding: "0 8px", color: T.textFaint, fontSize: 13 }}>…</span>
-                            ) : (
-                                <button key={p} onClick={() => goToPage(p)} style={{
-                                    ...paginBtnStyle(false),
-                                    background: p === pagination.page ? "linear-gradient(135deg,#F57D29,#E85D04)" : T.bgElev,
-                                    color: p === pagination.page ? "#fff" : T.textMuted,
-                                    fontWeight: p === pagination.page ? 700 : 500,
-                                    border: `1px solid ${p === pagination.page ? "transparent" : T.borderMid}`,
-                                }}>{p}</button>
+                            p === "..." ? <span key={`e${i}`} style={{ padding: "0 8px", color: T.textFaint, fontSize: 13 }}>…</span> : (
+                                <button key={p} onClick={() => goToPage(p)} style={{ ...paginBtnStyle(false), background: p === pagination.page ? "linear-gradient(135deg,#F57D29,#E85D04)" : T.bgElev, color: p === pagination.page ? "#fff" : T.textMuted, fontWeight: p === pagination.page ? 700 : 500, border: `1px solid ${p === pagination.page ? "transparent" : T.borderMid}` }}>{p}</button>
                             )
                         )}
                         <button onClick={() => goToPage(pagination.page + 1)} disabled={pagination.page === pagination.totalPages} style={paginBtnStyle(pagination.page === pagination.totalPages)}>›</button>
@@ -622,12 +493,7 @@ export default function DarazManagePage({ onBack }) {
                 </div>
             )}
 
-            <style>{`
-                @keyframes pulse {
-                    0%, 100% { opacity: 0.4; }
-                    50% { opacity: 0.8; }
-                }
-            `}</style>
+            <style>{`@keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }`}</style>
         </div>
     );
 }

@@ -220,154 +220,150 @@ export default function ShopifyManagePage({ onBack }) {
     };
 
     return (
-        <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+        <div style={{ height: "100%", display: "flex", flexDirection: "column", background: T.bgMain }}>
 
-            {/* ── HEADER ── */}
+            {/* ── HERO HEADER ── */}
             <div style={{
-                padding: "24px 32px 0", borderBottom: `1px solid ${T.border}`,
-                background: T.bgCard, flexShrink: 0,
+                background: "linear-gradient(135deg, #2d4a1a 0%, #96BF48 55%, #5E8E3E 100%)",
+                padding: "18px 28px 0",
+                flexShrink: 0,
+                position: "relative",
+                overflow: "hidden",
             }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                <div style={{ position: "absolute", top: -50, right: -50, width: 220, height: 220, borderRadius: "50%", background: "rgba(255,255,255,0.06)", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", bottom: 10, right: 120, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.03)", pointerEvents: "none" }} />
+
+                {/* Row 1: back + action buttons */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, position: "relative" }}>
                     <button onClick={onBack} style={{
                         display: "inline-flex", alignItems: "center", gap: 6,
-                        background: T.bgElev, border: `1px solid ${T.borderMid}`,
-                        color: T.textMuted, fontSize: 12, fontWeight: 600,
-                        borderRadius: T.r8, padding: "6px 12px", cursor: "pointer",
-                        transition: "all 0.15s", fontFamily: "inherit",
-                    }}
-                        onMouseEnter={e => e.currentTarget.style.color = T.text}
-                        onMouseLeave={e => e.currentTarget.style.color = T.textMuted}
-                    >
-                        <Icon name="arrow-left" size={13} />
+                        background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)",
+                        color: "#fff", fontSize: 12, fontWeight: 600,
+                        borderRadius: T.r8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit",
+                    }}>
+                        <Icon name="arrow-left" size={13} color="#fff" />
                         Back to Settings
                     </button>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{
-                            width: 32, height: 32, borderRadius: T.r8,
-                            background: SHOPIFY_GRAD,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 17, boxShadow: `0 2px 8px rgba(150,191,72,0.4)`,
-                        }}>🏬</div>
-                        <div>
-                            <div style={{ fontSize: 18, fontWeight: 800, color: T.text, letterSpacing: "-0.4px" }}>
-                                Shopify Orders
-                            </div>
-                            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 1 }}>
-                                {loading
-                                    ? "Loading…"
-                                    : `${(pagination.totalOrders || 0).toLocaleString()} total orders`
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         {saveMsg && (
-                            <span style={{
-                                fontSize: 12, fontWeight: 600,
-                                color: saveMsg.type === 'success' ? T.green : T.red,
-                            }}>{saveMsg.text}</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: saveMsg.type === "success" ? "#bbf7d0" : "#fca5a5" }}>{saveMsg.text}</span>
                         )}
-                        {config.domain && (
+                        {config.domain && !isConfiguring && (
                             <button onClick={handleDisconnect} style={{
                                 padding: "5px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
-                                background: T.redBg, color: T.red, border: `1px solid ${T.red}44`,
+                                background: "rgba(248,113,113,0.15)", color: "#fca5a5",
+                                border: "1px solid rgba(248,113,113,0.3)",
                                 cursor: "pointer", fontFamily: "inherit",
                             }}>Disconnect</button>
                         )}
                         <button onClick={() => { setSaveMsg(null); setIsConfiguring(v => !v); }} style={{
                             padding: "5px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
-                            background: SHOPIFY_GRAD, color: "#fff", border: "none",
+                            background: "rgba(255,255,255,0.15)", color: "#fff",
+                            border: "1px solid rgba(255,255,255,0.25)",
                             cursor: "pointer", fontFamily: "inherit",
-                            boxShadow: "0 2px 8px rgba(150,191,72,0.35)",
                         }}>{isConfiguring ? "Cancel" : config.domain ? "Edit Credentials" : "Connect Store"}</button>
                     </div>
                 </div>
 
-                {/* ── FILTERS ── */}
+                {/* Row 2: brand */}
+                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20, position: "relative" }}>
+                    <div style={{
+                        width: 46, height: 46, borderRadius: 12,
+                        background: "rgba(255,255,255,0.15)", border: "1.5px solid rgba(255,255,255,0.25)",
+                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24,
+                    }}>🏬</div>
+                    <div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: "-0.4px", lineHeight: 1.2 }}>Shopify</div>
+                        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginTop: 3 }}>
+                            {loading ? "Loading…" : `${(pagination.totalOrders || 0).toLocaleString()} total orders`}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Row 3: search + chips (hidden when configuring) */}
                 {!isConfiguring && (
-                    <div style={{ display: "flex", gap: 10, alignItems: "center", paddingBottom: 16, flexWrap: "wrap" }}>
-                        <form onSubmit={handleSearch} style={{ display: "flex", gap: 0 }}>
+                    <div style={{
+                        display: "flex", gap: 8, alignItems: "center",
+                        borderTop: "1px solid rgba(255,255,255,0.1)",
+                        padding: "10px 0",
+                        marginLeft: -28, marginRight: -28, paddingLeft: 28, paddingRight: 28,
+                        background: "rgba(0,0,0,0.15)",
+                    }}>
+                        <form onSubmit={handleSearch} style={{ display: "flex", gap: 0, flexShrink: 0 }}>
                             <input
                                 value={searchInput}
                                 onChange={e => setSearchInput(e.target.value)}
                                 placeholder="Search by order # or email…"
                                 style={{
-                                    padding: "7px 12px", fontSize: 13, background: T.bgElev,
-                                    border: `1px solid ${T.borderMid}`, borderRight: "none",
-                                    borderRadius: `${T.r8} 0 0 ${T.r8}`, color: T.text,
-                                    outline: "none", width: 220, fontFamily: "inherit",
+                                    padding: "7px 12px", fontSize: 12,
+                                    background: "rgba(0,0,0,0.2)",
+                                    border: "1px solid rgba(255,255,255,0.15)", borderRight: "none",
+                                    borderRadius: `${T.r8} 0 0 ${T.r8}`, color: "#fff",
+                                    outline: "none", width: 200, fontFamily: "inherit",
                                 }}
                             />
                             <button type="submit" style={{
-                                padding: "7px 13px", background: SHOPIFY_GRAD,
-                                color: "#fff", border: "none", borderRadius: `0 ${T.r8} ${T.r8} 0`,
+                                padding: "7px 11px", background: "rgba(255,255,255,0.15)",
+                                border: "1px solid rgba(255,255,255,0.15)", borderLeft: "none",
+                                borderRadius: `0 ${T.r8} ${T.r8} 0`,
                                 cursor: "pointer", display: "flex", alignItems: "center",
                             }}>
                                 <Icon name="search" size={13} color="#fff" />
                             </button>
                         </form>
-
                         {searchInput && (
                             <button onClick={() => { setSearchInput(""); setSearch(""); }} style={{
-                                padding: "7px 10px", background: "transparent",
-                                border: `1px solid ${T.borderMid}`, borderRadius: T.r8,
-                                color: T.textMuted, cursor: "pointer", fontSize: 12, fontFamily: "inherit",
-                            }}>✕ Clear</button>
+                                padding: "6px 10px", background: "rgba(255,255,255,0.1)",
+                                border: "1px solid rgba(255,255,255,0.15)", borderRadius: T.r8,
+                                color: "rgba(255,255,255,0.7)", cursor: "pointer", fontSize: 12,
+                                fontFamily: "inherit", flexShrink: 0,
+                            }}>✕</button>
                         )}
-
-                        <div style={{ display: "flex", gap: 4, marginLeft: "auto", flexWrap: "wrap" }}>
-                            {STATUS_FILTERS.map(f => (
-                                <button key={f.value} onClick={() => setStatusFilter(f.value)} style={{
-                                    padding: "6px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
-                                    background: statusFilter === f.value ? SHOPIFY_GRAD : T.bgElev,
-                                    color: statusFilter === f.value ? "#fff" : T.textMuted,
-                                    border: `1px solid ${statusFilter === f.value ? "transparent" : T.borderMid}`,
-                                    cursor: "pointer", transition: "all 0.15s", fontFamily: "inherit",
-                                }}>
-                                    {f.label}
-                                </button>
-                            ))}
+                        <div style={{ display: "flex", gap: 5, overflowX: "auto", scrollbarWidth: "none", flex: 1 }}>
+                            {STATUS_FILTERS.map(f => {
+                                const s = SHOPIFY_STATUS[f.value] || SHOPIFY_STATUS.pending;
+                                const active = statusFilter === f.value;
+                                return (
+                                    <button key={f.value} onClick={() => setStatusFilter(f.value)} style={{
+                                        display: "inline-flex", alignItems: "center", gap: 5,
+                                        padding: "5px 11px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+                                        background: active ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.07)",
+                                        color: active ? "#fff" : "rgba(255,255,255,0.55)",
+                                        border: `1px solid ${active ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.1)"}`,
+                                        cursor: "pointer", fontFamily: "inherit",
+                                        whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.15s",
+                                    }}>
+                                        {f.value !== "all" && <span style={{ width: 5, height: 5, borderRadius: "50%", background: s.dot, flexShrink: 0 }} />}
+                                        {f.label}
+                                    </button>
+                                );
+                            })}
                         </div>
-
-                        <button onClick={() => fetchOrders(pagination.page)} style={{
-                            padding: "7px 10px", background: T.bgElev,
-                            border: `1px solid ${T.borderMid}`, borderRadius: T.r8,
-                            color: T.textMuted, cursor: "pointer", display: "flex",
-                            alignItems: "center", transition: "all 0.15s",
-                        }}
-                            onMouseEnter={e => e.currentTarget.style.color = T.text}
-                            onMouseLeave={e => e.currentTarget.style.color = T.textMuted}
-                        >
-                            <Icon name="refresh" size={14} />
+                        <button onClick={() => fetchOrders(pagination.page)} title="Refresh" style={{
+                            padding: "7px 10px", background: "rgba(255,255,255,0.1)",
+                            border: "1px solid rgba(255,255,255,0.15)", borderRadius: T.r8,
+                            cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0,
+                        }}>
+                            <Icon name="refresh" size={14} color="rgba(255,255,255,0.85)" />
                         </button>
                     </div>
                 )}
             </div>
 
-            {/* ── CONFIGURATION VIEW ── */}
+            {/* ── BODY ── */}
             {isConfiguring ? (
                 <div style={{ flex: 1, padding: 40, background: T.bgMain, overflow: "auto" }}>
-                    <div style={{
-                        maxWidth: 580, margin: "0 auto", background: T.bgCard,
-                        borderRadius: T.r12, border: `1px solid ${T.border}`, padding: 32,
-                    }}>
-                        <h3 style={{ fontSize: 20, fontWeight: 800, color: T.text, marginBottom: 4 }}>
-                            Connect Your Shopify Store
-                        </h3>
-                        <p style={{ fontSize: 13, color: T.textMuted, marginBottom: 24 }}>
-                            Follow the steps below to get your access token from Shopify.
-                        </p>
-
-                        {/* Step-by-step guide */}
-                        <div style={{
-                            marginBottom: 28, padding: 18, borderRadius: T.r10,
-                            background: "rgba(150,191,72,0.05)", border: `1px solid rgba(150,191,72,0.2)`,
-                        }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: SHOPIFY_GREEN, marginBottom: 14, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                                How to get your access token
+                    <div style={{ maxWidth: 580, margin: "0 auto", background: T.bgCard, borderRadius: T.r12, border: `1px solid ${T.border}`, padding: 32 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                            <div style={{ width: 42, height: 42, borderRadius: T.r10, background: SHOPIFY_GRAD, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, boxShadow: "0 4px 12px rgba(150,191,72,0.4)" }}>🏬</div>
+                            <div>
+                                <div style={{ fontSize: 17, fontWeight: 800, color: T.text }}>Connect Your Shopify Store</div>
+                                <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>Follow the steps below to get your access token from Shopify</div>
                             </div>
+                        </div>
+
+                        <div style={{ marginBottom: 28, padding: 18, borderRadius: T.r10, background: "rgba(150,191,72,0.05)", border: "1px solid rgba(150,191,72,0.2)" }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: SHOPIFY_GREEN, marginBottom: 14, letterSpacing: "0.06em", textTransform: "uppercase" }}>How to get your access token</div>
                             {[
                                 { n: 1, text: "Go to your Shopify Admin → Settings → Apps and sales channels" },
                                 { n: 2, text: "Click Develop apps → Allow custom app development → confirm" },
@@ -377,115 +373,56 @@ export default function ShopifyManagePage({ onBack }) {
                                 { n: 6, text: "Click API credentials tab → Reveal token once → copy the shpat_xxx token" },
                             ].map(s => (
                                 <div key={s.n} style={{ display: "flex", gap: 12, marginBottom: 10, alignItems: "flex-start" }}>
-                                    <div style={{
-                                        width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
-                                        background: SHOPIFY_GREEN, color: "#fff",
-                                        display: "flex", alignItems: "center", justifyContent: "center",
-                                        fontSize: 11, fontWeight: 800, marginTop: 1,
-                                    }}>{s.n}</div>
+                                    <div style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, background: SHOPIFY_GREEN, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, marginTop: 1 }}>{s.n}</div>
                                     <div style={{ fontSize: 12, color: T.textMuted, lineHeight: 1.6 }}>{s.text}</div>
                                 </div>
                             ))}
                         </div>
 
-                        {/* Inputs */}
                         <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                <label style={{ fontSize: 13, fontWeight: 700, color: T.textSub }}>Store Domain</label>
-                                <input
-                                    type="text"
-                                    value={config.domain}
-                                    onChange={e => setConfig({ ...config, domain: e.target.value.trim() })}
-                                    placeholder="your-store.myshopify.com or yourcustomdomain.com"
-                                    style={{
-                                        padding: "10px 14px", borderRadius: T.r8, background: T.bgElev,
-                                        border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 13,
-                                        fontFamily: "monospace", outline: "none", width: "100%", boxSizing: "border-box",
-                                    }}
-                                />
+                            <div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Store Domain</div>
+                                <input type="text" value={config.domain} onChange={e => setConfig({ ...config, domain: e.target.value.trim() })} placeholder="your-store.myshopify.com" style={{ padding: "10px 14px", borderRadius: T.r8, background: T.bgElev, border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 13, fontFamily: "monospace", outline: "none", width: "100%", boxSizing: "border-box" }} />
                             </div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                <label style={{ fontSize: 13, fontWeight: 700, color: T.textSub }}>Access Token</label>
-                                <input
-                                    type="password"
-                                    value={config.accessToken}
-                                    onChange={e => setConfig({ ...config, accessToken: e.target.value })}
-                                    placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                                    style={{
-                                        padding: "10px 14px", borderRadius: T.r8, background: T.bgElev,
-                                        border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 13,
-                                        fontFamily: "monospace", outline: "none", width: "100%", boxSizing: "border-box",
-                                    }}
-                                />
-                                <span style={{ fontSize: 11, color: T.textFaint }}>Starts with shpat_ — only shown once by Shopify</span>
+                            <div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Access Token</div>
+                                <input type="password" value={config.accessToken} onChange={e => setConfig({ ...config, accessToken: e.target.value })} placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxx" style={{ padding: "10px 14px", borderRadius: T.r8, background: T.bgElev, border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 13, fontFamily: "monospace", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                                <div style={{ fontSize: 11, color: T.textFaint, marginTop: 4 }}>Starts with shpat_ — only shown once by Shopify</div>
                             </div>
                         </div>
 
                         {saveMsg && (
-                            <div style={{
-                                padding: "10px 14px", borderRadius: T.r8, marginBottom: 16, fontSize: 13,
-                                background: saveMsg.type === 'success' ? T.greenBg : T.redBg,
-                                color: saveMsg.type === 'success' ? T.green : T.red,
-                                border: `1px solid ${saveMsg.type === 'success' ? T.green : T.red}44`,
-                            }}>{saveMsg.text}</div>
+                            <div style={{ padding: "10px 14px", borderRadius: T.r8, marginBottom: 16, fontSize: 13, background: saveMsg.type === "success" ? T.greenBg : T.redBg, color: saveMsg.type === "success" ? T.green : T.red, border: `1px solid ${saveMsg.type === "success" ? T.green : T.red}44` }}>{saveMsg.text}</div>
                         )}
 
                         <div style={{ display: "flex", gap: 12 }}>
-                            <button
-                                onClick={handleSaveCredentials}
-                                disabled={isSaving || !config.domain.trim() || !config.accessToken.trim() || config.accessToken.startsWith('•')}
-                                style={{
-                                    padding: "10px 24px", borderRadius: T.r8, fontSize: 13, fontWeight: 700,
-                                    background: SHOPIFY_GRAD, color: "#fff", border: "none",
-                                    cursor: (isSaving || !config.domain.trim() || !config.accessToken.trim()) ? "not-allowed" : "pointer",
-                                    opacity: (isSaving || !config.domain.trim() || !config.accessToken.trim()) ? 0.5 : 1,
-                                    boxShadow: "0 2px 8px rgba(150,191,72,0.35)", fontFamily: "inherit",
-                                    display: "flex", alignItems: "center", gap: 8,
-                                }}
-                            >
+                            <button onClick={handleSaveCredentials} disabled={isSaving || !config.domain.trim() || !config.accessToken.trim() || config.accessToken.startsWith("•")} style={{ padding: "10px 24px", borderRadius: T.r8, fontSize: 13, fontWeight: 700, background: SHOPIFY_GRAD, color: "#fff", border: "none", cursor: (isSaving || !config.domain.trim() || !config.accessToken.trim()) ? "not-allowed" : "pointer", opacity: (isSaving || !config.domain.trim() || !config.accessToken.trim()) ? 0.5 : 1, boxShadow: "0 2px 8px rgba(150,191,72,0.35)", fontFamily: "inherit" }}>
                                 {isSaving ? "Connecting…" : "🛍 Save & Connect"}
                             </button>
-                            <GradientButton variant="secondary" onClick={() => { setIsConfiguring(false); setSaveMsg(null); }}>
-                                Cancel
-                            </GradientButton>
+                            <GradientButton variant="secondary" onClick={() => { setIsConfiguring(false); setSaveMsg(null); }}>Cancel</GradientButton>
                         </div>
                     </div>
                 </div>
             ) : (
-                /* ── TABLE / ERROR VIEW ── */
                 <div style={{ flex: 1, overflow: "auto" }}>
                     {error === "not_configured" ? (
-                        <div style={{
-                            display: "flex", flexDirection: "column", alignItems: "center",
-                            justifyContent: "center", padding: "80px 40px", textAlign: "center",
-                        }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 40px", textAlign: "center" }}>
                             <div style={{ fontSize: 40, marginBottom: 16 }}>🏬</div>
                             <div style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 8 }}>Shopify Not Connected</div>
-                            <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 400, lineHeight: 1.6, marginBottom: 20 }}>
-                                Add your Shopify store domain and access token to start syncing orders.
-                            </div>
-                            <button onClick={() => setIsConfiguring(true)} style={{
-                                padding: "10px 20px", borderRadius: T.r8, fontSize: 13, fontWeight: 700,
-                                background: SHOPIFY_GRAD, color: "#fff", border: "none",
-                                cursor: "pointer", boxShadow: "0 2px 8px rgba(150,191,72,0.35)", fontFamily: "inherit",
-                            }}>Configure Now</button>
+                            <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 400, lineHeight: 1.6, marginBottom: 20 }}>Add your Shopify store domain and access token to start syncing orders.</div>
+                            <button onClick={() => setIsConfiguring(true)} style={{ padding: "10px 20px", borderRadius: T.r8, fontSize: 13, fontWeight: 700, background: SHOPIFY_GRAD, color: "#fff", border: "none", cursor: "pointer", boxShadow: "0 2px 8px rgba(150,191,72,0.35)", fontFamily: "inherit" }}>Configure Now</button>
                         </div>
                     ) : error ? (
-                        <div style={{
-                            display: "flex", flexDirection: "column", alignItems: "center",
-                            justifyContent: "center", padding: "80px 40px", textAlign: "center",
-                        }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 40px", textAlign: "center" }}>
                             <div style={{ fontSize: 40, marginBottom: 16 }}>⚠️</div>
                             <div style={{ fontSize: 15, fontWeight: 700, color: T.red, marginBottom: 8 }}>Connection Error</div>
                             <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 520, lineHeight: 1.6 }}>{error}</div>
-                            <div style={{ marginTop: 20 }}>
-                                <GradientButton variant="secondary" icon="refresh" onClick={() => fetchOrders(1)}>Retry</GradientButton>
-                            </div>
+                            <div style={{ marginTop: 20 }}><GradientButton variant="secondary" icon="refresh" onClick={() => fetchOrders(1)}>Retry</GradientButton></div>
                         </div>
                     ) : (
                         <table style={{ width: "100%", borderCollapse: "collapse" }}>
                             <thead>
-                                <tr>
+                                <tr style={{ position: "sticky", top: 0, zIndex: 2 }}>
                                     <th style={thStyle}>Order #</th>
                                     <th style={thStyle}>Customer</th>
                                     <th style={thStyle}>City</th>
@@ -500,78 +437,42 @@ export default function ShopifyManagePage({ onBack }) {
                                 {loading
                                     ? Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} />)
                                     : orders.length === 0
-                                        ? (
-                                            <tr>
-                                                <td colSpan={8} style={{ padding: "60px 40px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>
-                                                    No orders found{search ? ` for "${search}"` : ""}.
-                                                </td>
-                                            </tr>
-                                        )
+                                        ? <tr><td colSpan={8} style={{ padding: "60px 40px", textAlign: "center", color: T.textMuted, fontSize: 13 }}>No orders found{search ? ` for "${search}"` : ""}.</td></tr>
                                         : orders.map(order => (
                                             <React.Fragment key={order.id}>
                                                 <tr
                                                     onClick={() => setExpandedRow(expandedRow === order.id ? null : order.id)}
-                                                    style={{
-                                                        cursor: "pointer",
-                                                        background: expandedRow === order.id ? T.bgElev : "transparent",
-                                                        transition: "background 0.12s",
-                                                    }}
+                                                    style={{ cursor: "pointer", background: expandedRow === order.id ? "rgba(150,191,72,0.07)" : "transparent", transition: "background 0.12s" }}
                                                     onMouseEnter={e => { if (expandedRow !== order.id) e.currentTarget.style.background = T.bgCard; }}
                                                     onMouseLeave={e => { if (expandedRow !== order.id) e.currentTarget.style.background = "transparent"; }}
                                                 >
                                                     <td style={tdStyle}>
-                                                        <span style={{ fontWeight: 700, color: SHOPIFY_GREEN, fontFamily: "monospace", fontSize: 12 }}>
-                                                            #{order.number}
-                                                        </span>
+                                                        <span style={{ fontWeight: 700, color: SHOPIFY_GREEN, background: "rgba(150,191,72,0.1)", padding: "2px 8px", borderRadius: T.r4, fontSize: 12, fontFamily: "monospace" }}>#{order.number}</span>
                                                     </td>
                                                     <td style={tdStyle}>
                                                         <div style={{ fontWeight: 600 }}>{order.customerName}</div>
-                                                        {order.customerEmail && (
-                                                            <div style={{ fontSize: 11, color: T.textFaint, marginTop: 1 }}>{order.customerEmail}</div>
-                                                        )}
+                                                        {order.customerEmail && <div style={{ fontSize: 11, color: T.textFaint, marginTop: 1 }}>{order.customerEmail}</div>}
                                                     </td>
                                                     <td style={{ ...tdStyle, color: T.textMuted }}>{order.city || "—"}</td>
                                                     <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted, whiteSpace: "nowrap" }}>{formatDate(order.date)}</td>
                                                     <td style={{ ...tdStyle, textAlign: "center" }}>
-                                                        <span style={{
-                                                            display: "inline-block", minWidth: 22, textAlign: "center",
-                                                            background: T.bgHigh, borderRadius: T.r4,
-                                                            padding: "2px 7px", fontSize: 12, fontWeight: 700, color: T.textMuted,
-                                                        }}>{order.itemCount}</span>
+                                                        <span style={{ display: "inline-block", minWidth: 24, textAlign: "center", background: T.bgHigh, borderRadius: T.r4, padding: "2px 7px", fontSize: 12, fontWeight: 700, color: T.textMuted }}>{order.itemCount}</span>
                                                     </td>
-                                                    <td style={{ ...tdStyle, fontWeight: 700, color: SHOPIFY_GREEN, whiteSpace: "nowrap" }}>
-                                                        {formatCurrency(order.total, order.currency)}
-                                                    </td>
+                                                    <td style={{ ...tdStyle, fontWeight: 700, color: SHOPIFY_GREEN, whiteSpace: "nowrap" }}>{formatCurrency(order.total, order.currency)}</td>
                                                     <td style={tdStyle}><StatusBadge status={order.status} /></td>
                                                     <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted }}>{order.paymentMethod || "—"}</td>
                                                 </tr>
-
                                                 {expandedRow === order.id && (
                                                     <tr>
-                                                        <td colSpan={8} style={{ padding: "0 16px 16px", background: T.bgElev }}>
-                                                            <div style={{
-                                                                border: `1px solid rgba(150,191,72,0.25)`,
-                                                                borderRadius: T.r10, overflow: "hidden",
-                                                            }}>
-                                                                <div style={{
-                                                                    padding: "10px 14px", background: T.bgCard,
-                                                                    borderBottom: `1px solid ${T.border}`,
-                                                                    fontSize: 11, fontWeight: 700, color: SHOPIFY_GREEN,
-                                                                    textTransform: "uppercase", letterSpacing: "0.07em",
-                                                                }}>
-                                                                    Order Items — #{order.number}
+                                                        <td colSpan={8} style={{ padding: "0 16px 16px", background: "rgba(150,191,72,0.04)" }}>
+                                                            <div style={{ border: "1px solid rgba(150,191,72,0.25)", borderRadius: T.r10, overflow: "hidden", background: T.bgCard }}>
+                                                                <div style={{ padding: "10px 16px", background: "rgba(150,191,72,0.07)", borderBottom: `1px solid ${T.border}`, fontSize: 10, fontWeight: 700, color: SHOPIFY_GREEN, textTransform: "uppercase", letterSpacing: "0.07em" }}>
+                                                                    Order Items · #{order.number}
                                                                 </div>
                                                                 {order.items.length === 0 ? (
-                                                                    <div style={{ padding: "16px", fontSize: 12, color: T.textMuted }}>
-                                                                        No item details available.
-                                                                    </div>
+                                                                    <div style={{ padding: 16, fontSize: 12, color: T.textMuted }}>No item details available.</div>
                                                                 ) : order.items.map((item, i) => (
-                                                                    <div key={i} style={{
-                                                                        display: "flex", justifyContent: "space-between",
-                                                                        alignItems: "center", padding: "10px 14px",
-                                                                        borderBottom: i < order.items.length - 1 ? `1px solid ${T.border}` : "none",
-                                                                        background: i % 2 === 0 ? "transparent" : T.bgCard,
-                                                                    }}>
+                                                                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderBottom: i < order.items.length - 1 ? `1px solid ${T.border}` : "none" }}>
                                                                         <div style={{ flex: 1 }}>
                                                                             <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{item.name}</div>
                                                                             <div style={{ display: "flex", gap: 12, marginTop: 2 }}>
@@ -586,13 +487,9 @@ export default function ShopifyManagePage({ onBack }) {
                                                                         </div>
                                                                     </div>
                                                                 ))}
-                                                                <div style={{
-                                                                    display: "flex", justifyContent: "flex-end",
-                                                                    padding: "10px 14px", borderTop: `1px solid rgba(150,191,72,0.2)`,
-                                                                    background: T.bgCard, gap: 24, alignItems: "center",
-                                                                }}>
+                                                                <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 16px", borderTop: "1px solid rgba(150,191,72,0.2)", background: "rgba(0,0,0,0.04)", gap: 24, alignItems: "center" }}>
                                                                     <span style={{ fontSize: 12, fontWeight: 600, color: T.textMuted }}>Order Total</span>
-                                                                    <span style={{ fontSize: 14, fontWeight: 800, color: SHOPIFY_GREEN }}>{formatCurrency(order.total, order.currency)}</span>
+                                                                    <span style={{ fontSize: 16, fontWeight: 800, color: SHOPIFY_GREEN }}>{formatCurrency(order.total, order.currency)}</span>
                                                                 </div>
                                                             </div>
                                                         </td>
@@ -609,11 +506,7 @@ export default function ShopifyManagePage({ onBack }) {
 
             {/* ── PAGINATION ── */}
             {!isConfiguring && !error && !loading && pagination.totalPages > 1 && (
-                <div style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "12px 24px", borderTop: `1px solid ${T.border}`,
-                    background: T.bgCard, flexShrink: 0,
-                }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 24px", borderTop: `1px solid ${T.border}`, background: T.bgCard, flexShrink: 0, flexWrap: "wrap", gap: 10 }}>
                     <div style={{ fontSize: 12, color: T.textMuted }}>
                         Showing {((pagination.page - 1) * pagination.perPage) + 1}–{Math.min(pagination.page * pagination.perPage, pagination.totalOrders)} of <strong style={{ color: T.text }}>{pagination.totalOrders.toLocaleString()}</strong> orders
                     </div>
@@ -621,16 +514,8 @@ export default function ShopifyManagePage({ onBack }) {
                         <button onClick={() => goToPage(1)} disabled={pagination.page === 1} style={paginBtnStyle(pagination.page === 1)}>«</button>
                         <button onClick={() => goToPage(pagination.page - 1)} disabled={pagination.page === 1} style={paginBtnStyle(pagination.page === 1)}>‹</button>
                         {getPageRange(pagination.page, pagination.totalPages).map((p, i) =>
-                            p === "..." ? (
-                                <span key={`e${i}`} style={{ padding: "0 8px", color: T.textFaint, fontSize: 13 }}>…</span>
-                            ) : (
-                                <button key={p} onClick={() => goToPage(p)} style={{
-                                    ...paginBtnStyle(false),
-                                    background: p === pagination.page ? SHOPIFY_GRAD : T.bgElev,
-                                    color: p === pagination.page ? "#fff" : T.textMuted,
-                                    fontWeight: p === pagination.page ? 700 : 500,
-                                    border: `1px solid ${p === pagination.page ? "transparent" : T.borderMid}`,
-                                }}>{p}</button>
+                            p === "..." ? <span key={`e${i}`} style={{ padding: "0 8px", color: T.textFaint, fontSize: 13 }}>…</span> : (
+                                <button key={p} onClick={() => goToPage(p)} style={{ ...paginBtnStyle(false), background: p === pagination.page ? SHOPIFY_GRAD : T.bgElev, color: p === pagination.page ? "#fff" : T.textMuted, fontWeight: p === pagination.page ? 700 : 500, border: `1px solid ${p === pagination.page ? "transparent" : T.borderMid}` }}>{p}</button>
                             )
                         )}
                         <button onClick={() => goToPage(pagination.page + 1)} disabled={pagination.page === pagination.totalPages} style={paginBtnStyle(pagination.page === pagination.totalPages)}>›</button>
@@ -639,12 +524,7 @@ export default function ShopifyManagePage({ onBack }) {
                 </div>
             )}
 
-            <style>{`
-                @keyframes pulse {
-                    0%, 100% { opacity: 0.4; }
-                    50% { opacity: 0.8; }
-                }
-            `}</style>
+            <style>{`@keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }`}</style>
         </div>
     );
 }
