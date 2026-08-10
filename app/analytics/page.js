@@ -110,7 +110,7 @@ export default function AnalyticsPage() {
     ];
 
     return (
-        <div style={{ padding: "32px 24px", maxWidth: 1000, margin: "0 auto" }}>
+        <div className="page-outer" style={{ padding: "32px 24px", maxWidth: 1000, margin: "0 auto" }}>
             {/* Header */}
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, flexWrap: "wrap", gap: 16 }}>
                 <div>
@@ -135,7 +135,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* KPI Cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 24 }}>
+            <div className="analytics-kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 24 }}>
                 {kpis.map(k => (
                     <div key={k.label} style={{
                         background: T.bgCard, borderRadius: T.r12,
@@ -145,7 +145,7 @@ export default function AnalyticsPage() {
                         <div style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 8 }}>
                             {k.label}
                         </div>
-                        <div style={{ fontSize: 20, fontWeight: 800, color: k.color, fontVariantNumeric: "tabular-nums" }}>
+                        <div className="analytics-kpi-val" style={{ fontSize: 20, fontWeight: 800, color: k.color, fontVariantNumeric: "tabular-nums" }}>
                             {k.value}
                         </div>
                         {k.sub && (
