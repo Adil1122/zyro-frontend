@@ -39,7 +39,10 @@ function formatCurrency(amount) {
 
 function formatDate(dateStr) {
     if (!dateStr) return "—";
-    const d = new Date(dateStr);
+    // Daraz returns "YYYY-MM-DD HH:mm:ss +0800" — convert to ISO 8601 for reliable parsing
+    const iso = dateStr.replace(' ', 'T').replace(/(\d{2}:\d{2}:\d{2}) ([+-]\d{4})$/, '$1$2');
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) + " " +
         d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
@@ -47,7 +50,7 @@ function formatDate(dateStr) {
 function SkeletonRow() {
     return (
         <tr>
-            {[100, 160, 100, 130, 70, 90, 100].map((w, i) => (
+            {[100, 160, 100, 130, 160, 90, 100, 60].map((w, i) => (
                 <td key={i} style={{ padding: "14px 16px" }}>
                     <div style={{
                         height: 13, width: w, borderRadius: T.r4,
@@ -406,7 +409,7 @@ export default function DarazManagePage({ onBack }) {
                                 <th style={thStyle}>Customer</th>
                                 <th style={thStyle}>City</th>
                                 <th style={thStyle}>Date</th>
-                                <th style={thStyle}>Items</th>
+                                <th style={thStyle}>Product</th>
                                 <th style={thStyle}>Total</th>
                                 <th style={thStyle}>Status</th>
                                 <th style={thStyle}>Payment</th>
@@ -434,8 +437,9 @@ export default function DarazManagePage({ onBack }) {
                                                 </td>
                                                 <td style={{ ...tdStyle, color: T.textMuted }}>{order.city || "—"}</td>
                                                 <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted, whiteSpace: "nowrap" }}>{formatDate(order.date)}</td>
-                                                <td style={{ ...tdStyle, textAlign: "center" }}>
-                                                    <span style={{ display: "inline-block", minWidth: 24, textAlign: "center", background: T.bgHigh, borderRadius: T.r4, padding: "2px 7px", fontSize: 12, fontWeight: 700, color: T.textMuted }}>{order.itemCount}</span>
+                                                <td style={{ ...tdStyle, maxWidth: 200 }}>
+                                                    <div style={{ fontSize: 12, fontWeight: 500, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{order.primaryProduct || "—"}</div>
+                                                    <div style={{ fontSize: 10, color: T.textFaint, marginTop: 2 }}>{order.itemCount} item{order.itemCount !== 1 ? "s" : ""}</div>
                                                 </td>
                                                 <td style={{ ...tdStyle, fontWeight: 700, color: "#F57D29", whiteSpace: "nowrap" }}>{formatCurrency(order.total)}</td>
                                                 <td style={tdStyle}><StatusBadge status={order.status} /></td>
