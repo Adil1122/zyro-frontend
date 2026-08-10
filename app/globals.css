@@ -370,6 +370,28 @@ select {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 
+  /* Settings: WhatsApp template grid → 1 column */
+  .wa-template-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Settings: Billing plan hero header → stack plan name + upgrade button */
+  .billing-plan-header {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  /* Settings: Billing usage stats → stack vertically */
+  .billing-usage-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Settings: Team member rows → wrap badges below name */
+  .team-member-row {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
   /* Settings: nav sidebar → horizontal scrollable tab strip */
   .settings-layout {
     flex-direction: column !important;

@@ -2206,7 +2206,7 @@ export default function SettingsPage({ tabParam }) {
                                     <div style={{ marginBottom: 24 }}>
                                         <div style={{ fontSize: 13, fontWeight: 800, color: T.text, marginBottom: 14, paddingBottom: 8, borderBottom: `1px solid ${T.border}` }}>Approved Template Names</div>
                                         <div style={{ fontSize: 11, color: T.textFaint, marginBottom: 14 }}>Each name must exactly match a pre-approved template in your Meta Business Manager.</div>
-                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                                        <div className="wa-template-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                                             {[
                                                 ["templateName",  "🛍️ New Order (order_created)",        "order_created",         "3 params: name, order#, total"],
                                                 ["tplPayment",    "💳 Payment Received",                  "payment_received",      "3 params: name, order#, total"],
@@ -2276,7 +2276,7 @@ export default function SettingsPage({ tabParam }) {
                                     position: "relative", overflow: "hidden", boxShadow: T.shadowLg,
                                 }}>
                                     <div style={{ position: "absolute", top: -40, right: -40, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,0.2), transparent 70%)" }} />
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
+                                    <div className="billing-plan-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative" }}>
                                         <div>
                                             <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.8)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Current Plan</div>
                                             <div style={{ fontSize: 32, fontWeight: 900, color: "#fff", marginTop: 4, letterSpacing: "-0.8px" }}>{planName}</div>
@@ -2286,7 +2286,7 @@ export default function SettingsPage({ tabParam }) {
                                             <Icon name="trending" size={14} color={T.j600} /> Upgrade to Pro
                                         </button>
                                     </div>
-                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginTop: 22, position: "relative" }}>
+                                    <div className="billing-usage-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginTop: 22, position: "relative" }}>
                                         {[
                                             ["Orders Used", `${ordersUsed.toLocaleString()} / ${ordersLimit.toLocaleString()}`, ordersPct],
                                             ["Team", `${teamUsed} / ${teamLimit}`, teamPct],
@@ -2356,7 +2356,7 @@ export default function SettingsPage({ tabParam }) {
                                 </div>
                             ) : (
                                 teamMembers.map((m, i) => (
-                                    <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderBottom: i < teamMembers.length - 1 ? `1px solid ${T.border}` : "none" }}>
+                                    <div key={m.id} className="team-member-row" style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px", borderBottom: i < teamMembers.length - 1 ? `1px solid ${T.border}` : "none" }}>
                                         <div style={{ width: 36, height: 36, borderRadius: "50%", background: `linear-gradient(135deg, ${T.j400}, ${T.j600})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, color: "#fff", flexShrink: 0 }}>
                                             {(m.name || '?').split(" ").map(w => w[0]).join("").slice(0, 2)}
                                         </div>
