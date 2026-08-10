@@ -105,7 +105,6 @@ export async function GET(request) {
         const { error: dbError } = await supabase.from('users').update({
             daraz_access_token: accessToken,
             daraz_is_active: true,
-            ...(sellerId ? { daraz_seller_id: sellerId } : {}),
         }).eq('id', userId);
 
         if (dbError) {
