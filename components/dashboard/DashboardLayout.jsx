@@ -6,6 +6,15 @@ import { supabase } from "@/lib/supabase";
 import { T } from "./constants";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import Icon from "./Icon";
+
+const BOTTOM_NAV_ITEMS = [
+    { id: "dashboard", label: "Dashboard", icon: "dashboard", href: "/dashboard", match: (p) => p === "/" || p === "/dashboard" },
+    { id: "couriers",  label: "Couriers",  icon: "couriers",  href: "/couriers",  match: (p) => p.startsWith("/couriers") },
+    { id: "whatsapp",  label: "WhatsApp",  icon: "whatsapp",  href: "/whatsapp",  match: (p) => p.startsWith("/whatsapp") },
+    { id: "marketing", label: "Marketing", icon: "marketing", href: "/marketing", match: (p) => p.startsWith("/marketing") },
+    { id: "settings",  label: "Settings",  icon: "settings",  href: "/settings",  match: (p) => p.startsWith("/settings") },
+];
 
 export default function DashboardLayout({ children }) {
     const [collapsed, setCollapsed] = useState(false);
@@ -245,6 +254,43 @@ export default function DashboardLayout({ children }) {
                     </div>
                 </div>
             </div>
+
+            {/* MOBILE BOTTOM NAV */}
+            {showSidebar && (
+                <nav className="zyro-bottom-nav" style={{
+                    position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 300,
+                    height: 60, background: T.bgCard,
+                    borderTop: `1px solid ${T.border}`,
+                    display: "none",
+                    alignItems: "stretch",
+                    paddingBottom: "env(safe-area-inset-bottom)",
+                }}>
+                    {BOTTOM_NAV_ITEMS.map(item => {
+                        const active = item.match(pathname);
+                        return (
+                            <button key={item.id} onClick={() => router.push(item.href)} style={{
+                                flex: 1, display: "flex", flexDirection: "column",
+                                alignItems: "center", justifyContent: "center", gap: 3,
+                                background: "none", border: "none", cursor: "pointer",
+                                color: active ? T.j200 : T.textFaint,
+                                fontSize: 9, fontWeight: active ? 700 : 500,
+                                fontFamily: "inherit", padding: "6px 2px",
+                                position: "relative", transition: "color 0.15s",
+                            }}>
+                                {active && (
+                                    <span style={{
+                                        position: "absolute", top: 0, left: "25%", right: "25%",
+                                        height: 2, borderRadius: "0 0 3px 3px",
+                                        background: T.j200,
+                                    }} />
+                                )}
+                                <Icon name={item.icon} size={20} color={active ? T.j200 : T.textFaint} />
+                                <span>{item.label}</span>
+                            </button>
+                        );
+                    })}
+                </nav>
+            )}
 
             <style dangerouslySetInnerHTML={{
                 __html: `

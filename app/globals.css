@@ -418,4 +418,12 @@ select {
     height: auto !important;
     overflow: visible !important;
   }
+
+  /* Bottom navigation bar */
+  .zyro-bottom-nav {
+    display: flex !important;
+  }
+  .zyro-page-content {
+    padding-bottom: 60px !important;
+  }
 }
