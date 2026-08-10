@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton, Card } from "../Primitives";
@@ -1917,8 +1917,20 @@ export default function SettingsPage({ tabParam }) {
     const handleTabChange = (newTab) => {
         setTab(newTab);
         setManagingStore(null);
+        setNavOpen(false);
         router.push(`/settings/${newTab}`);
     };
+
+    const [navOpen, setNavOpen] = useState(false);
+    const navDropRef = useRef(null);
+    useEffect(() => {
+        if (!navOpen) return;
+        const handler = (e) => {
+            if (navDropRef.current && !navDropRef.current.contains(e.target)) setNavOpen(false);
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, [navOpen]);
 
     const handleManage = (store) => {
         setManagingStore(store);
@@ -1981,25 +1993,55 @@ export default function SettingsPage({ tabParam }) {
                 <div style={{ padding: "0 18px 14px", fontSize: 11, fontWeight: 700, color: T.textFaint, letterSpacing: "0.08em", textTransform: "uppercase" }}>Settings</div>
 
                 {/* Mobile dropdown — hidden on desktop via CSS */}
-                <select
-                    className="settings-nav-select"
-                    value={tab}
-                    onChange={e => handleTabChange(e.target.value)}
-                    style={{
-                        display: "none",
-                        width: "calc(100% - 24px)", margin: "0 12px",
-                        padding: "9px 12px", fontSize: 13, fontWeight: 600,
-                        background: T.bgElev, color: T.text,
-                        border: `1px solid ${T.borderMid}`, borderRadius: 8,
-                        cursor: "pointer", fontFamily: "inherit", outline: "none",
-                        appearance: "none", backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236EE7B7' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-                        backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center",
-                    }}
-                >
-                    {tabs.map(t => (
-                        <option key={t.id} value={t.id}>{t.label}</option>
-                    ))}
-                </select>
+                <div ref={navDropRef} className="settings-nav-select" style={{ display: "none", position: "relative", margin: "0 12px" }}>
+                    <button
+                        onClick={() => setNavOpen(o => !o)}
+                        style={{
+                            display: "flex", alignItems: "center", gap: 10,
+                            width: "100%", padding: "10px 14px",
+                            background: T.bgElev, color: T.text,
+                            border: `1px solid ${navOpen ? T.j300 : T.borderMid}`,
+                            borderRadius: navOpen ? "8px 8px 0 0" : 8,
+                            cursor: "pointer", fontFamily: "inherit",
+                            fontSize: 13, fontWeight: 600, outline: "none",
+                            transition: "border-color 0.15s",
+                        }}
+                    >
+                        <Icon name={tabs.find(t => t.id === tab)?.icon} size={14} color={T.j200} />
+                        <span style={{ flex: 1, textAlign: "left" }}>{tabs.find(t => t.id === tab)?.label}</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.j200} strokeWidth="2.5" style={{ flexShrink: 0, transform: navOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
+                    </button>
+                    {navOpen && (
+                        <div style={{
+                            position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100,
+                            background: T.bgCard, border: `1px solid ${T.j300}`,
+                            borderTop: "none", borderRadius: "0 0 8px 8px",
+                            overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+                        }}>
+                            {tabs.map(t => (
+                                <button
+                                    key={t.id}
+                                    onClick={() => handleTabChange(t.id)}
+                                    style={{
+                                        display: "flex", alignItems: "center", gap: 10,
+                                        width: "100%", padding: "11px 14px",
+                                        background: tab === t.id ? "rgba(92,168,124,0.12)" : "transparent",
+                                        color: tab === t.id ? T.j200 : T.textMuted,
+                                        border: "none", borderBottom: `1px solid ${T.border}`,
+                                        cursor: "pointer", fontFamily: "inherit",
+                                        fontSize: 13, fontWeight: tab === t.id ? 700 : 500,
+                                        textAlign: "left",
+                                    }}
+                                >
+                                    <Icon name={t.icon} size={14} color={tab === t.id ? T.j200 : T.textFaint} />
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                 {/* Desktop sidebar buttons — hidden on mobile via CSS */}
                 {tabs.map(t => (
