@@ -99,7 +99,7 @@ export default function DarazManagePage({ onBack }) {
     const [isConfigured, setIsConfigured] = useState(null);
 
     // Credentials form state
-    const [creds, setCreds] = useState({ appKey: "", appSecret: "", accessToken: "", region: "pk" });
+    const [creds, setCreds] = useState({ accessToken: "", region: "pk" });
     const [saving, setSaving] = useState(false);
     const [saveMsg, setSaveMsg] = useState(null);
     const [showManualToken, setShowManualToken] = useState(false);
@@ -145,12 +145,12 @@ export default function DarazManagePage({ onBack }) {
         setSaving(true);
         setSaveMsg(null);
         try {
-            // If user pasted an access token manually, save directly
             if (creds.accessToken.trim()) {
+                // Manual token path
                 const res = await fetch('/api/daraz/save-credentials', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
-                    body: JSON.stringify(creds),
+                    body: JSON.stringify({ accessToken: creds.accessToken, region: creds.region }),
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -163,11 +163,11 @@ export default function DarazManagePage({ onBack }) {
                 setSaving(false);
                 return;
             }
-            // Otherwise redirect to Daraz OAuth
+            // OAuth path — server uses its own App Key/Secret
             const res = await fetch('/api/daraz/initiate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
-                body: JSON.stringify(creds),
+                body: JSON.stringify({ region: creds.region }),
             });
             const data = await res.json();
             if (data.authUrl) {
@@ -190,7 +190,7 @@ export default function DarazManagePage({ onBack }) {
         });
         if (res.ok) {
             setIsConfigured(false);
-            setCreds({ appKey: "", appSecret: "", accessToken: "", region: "pk" });
+            setCreds({ accessToken: "", region: "pk" });
             setSaveMsg(null);
         }
     };
@@ -364,15 +364,6 @@ export default function DarazManagePage({ onBack }) {
                                 </div>
                             </div>
                             <form onSubmit={handleConnectOAuth} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                                {[
-                                    { key: "appKey", label: "App Key", placeholder: "e.g. 505264", type: "text" },
-                                    { key: "appSecret", label: "App Secret", placeholder: "Paste your App Secret", type: "password" },
-                                ].map(({ key, label, placeholder, type }) => (
-                                    <div key={key}>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>{label}</div>
-                                        <input type={type} value={creds[key]} onChange={e => setCreds(p => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} required style={{ width: "100%", padding: "9px 12px", fontSize: 13, background: T.bgElev, border: `1px solid ${T.borderMid}`, borderRadius: 8, color: T.text, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
-                                    </div>
-                                ))}
                                 <div>
                                     <div style={{ fontSize: 11, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Region</div>
                                     <select value={creds.region} onChange={e => setCreds(p => ({ ...p, region: e.target.value }))} style={{ width: "100%", padding: "9px 12px", fontSize: 13, background: T.bgElev, border: `1px solid ${T.borderMid}`, borderRadius: 8, color: T.text, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}>
@@ -385,22 +376,21 @@ export default function DarazManagePage({ onBack }) {
                                 </div>
                                 <div>
                                     <button type="button" onClick={() => setShowManualToken(p => !p)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 12, color: "#F57D29", fontFamily: "inherit", textDecoration: "underline" }}>
-                                        {showManualToken ? "▾ Hide" : "▸ Have an Access Token? Paste it manually"}
+                                        {showManualToken ? "▾ Hide manual token" : "▸ Have an Access Token? Paste it manually"}
                                     </button>
                                     {showManualToken && (
-                                        <input type="password" value={creds.accessToken} onChange={e => setCreds(p => ({ ...p, accessToken: e.target.value }))} placeholder="Paste Access Token from API Explorer" style={{ width: "100%", marginTop: 8, padding: "9px 12px", fontSize: 13, background: T.bgElev, border: `1px solid ${T.borderMid}`, borderRadius: 8, color: T.text, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+                                        <input type="password" value={creds.accessToken} onChange={e => setCreds(p => ({ ...p, accessToken: e.target.value }))} placeholder="Paste Access Token from Daraz API Explorer" style={{ width: "100%", marginTop: 8, padding: "9px 12px", fontSize: 13, background: T.bgElev, border: `1px solid ${T.borderMid}`, borderRadius: 8, color: T.text, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
                                     )}
                                 </div>
                                 {saveMsg && (
                                     <div style={{ padding: "10px 14px", borderRadius: 8, fontSize: 12, background: saveMsg.success ? T.greenBg : T.redBg, border: `1px solid ${saveMsg.success ? T.green : T.red}`, color: saveMsg.success ? T.green : T.red }}>{saveMsg.text}</div>
                                 )}
                                 <button type="submit" disabled={saving} style={{ padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, background: saving ? T.bgHigh : "linear-gradient(135deg,#F57D29,#E85D04)", color: saving ? T.textMuted : "#fff", border: "none", cursor: saving ? "not-allowed" : "pointer", fontFamily: "inherit" }}>
-                                    {saving ? (creds.accessToken.trim() ? "Connecting…" : "Redirecting to Daraz…") : (creds.accessToken.trim() ? "✓ Save & Connect" : "🔗 Connect with Daraz OAuth")}
+                                    {saving ? (creds.accessToken.trim() ? "Connecting…" : "Redirecting to Daraz…") : (creds.accessToken.trim() ? "✓ Save & Connect" : "🔗 Connect with Daraz")}
                                 </button>
                             </form>
                             <div style={{ marginTop: 18, padding: "12px 14px", background: "rgba(245,125,41,0.06)", borderRadius: 8, fontSize: 11, color: "#F57D29", lineHeight: 1.7 }}>
-                                <strong>Option A — OAuth:</strong> Enter App Key + App Secret → click Connect → authorize on Daraz<br />
-                                <strong>Option B — Manual token:</strong> Go to open.daraz.com → your app → API Explorer → paste Access Token above
+                                Select your region and click <strong>Connect with Daraz</strong> — you'll be redirected to log in with your Daraz seller account and authorize access.
                             </div>
                         </div>
                     </div>
