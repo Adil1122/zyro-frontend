@@ -232,7 +232,7 @@ export default function DarazManagePage({ onBack }) {
                 <div style={{ position: "absolute", top: -50, right: -50, width: 220, height: 220, borderRadius: "50%", background: "rgba(255,255,255,0.06)", pointerEvents: "none" }} />
                 <div style={{ position: "absolute", bottom: 10, right: 120, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.03)", pointerEvents: "none" }} />
 
-                {/* Row 1: back + actions */}
+                {/* Row 1: back + platform pill */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, position: "relative" }}>
                     <button onClick={onBack} style={{
                         display: "inline-flex", alignItems: "center", gap: 6,
@@ -243,23 +243,13 @@ export default function DarazManagePage({ onBack }) {
                         <Icon name="arrow-left" size={13} color="#fff" />
                         Back to Settings
                     </button>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        {isConfigured && (
-                            <button onClick={handleDisconnect} style={{
-                                padding: "5px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
-                                background: "rgba(255,255,255,0.12)", color: "#fff",
-                                border: "1px solid rgba(255,255,255,0.2)",
-                                cursor: "pointer", fontFamily: "inherit",
-                            }}>Disconnect</button>
-                        )}
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "4px 12px" }}>
-                            <div style={{ width: 6, height: 6, borderRadius: "50%", background: isConfigured ? "#4ade80" : "rgba(255,255,255,0.3)", boxShadow: isConfigured ? "0 0 8px #4ade80" : "none" }} />
-                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Open Platform · PK</span>
-                        </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "4px 12px" }}>
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: isConfigured ? "#4ade80" : "rgba(255,255,255,0.3)", boxShadow: isConfigured ? "0 0 8px #4ade80" : "none" }} />
+                        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Open Platform · PK</span>
                     </div>
                 </div>
 
-                {/* Row 2: brand */}
+                {/* Row 2: brand + disconnect */}
                 <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20, position: "relative" }}>
                     <div style={{
                         width: 46, height: 46, borderRadius: 12,
@@ -272,6 +262,15 @@ export default function DarazManagePage({ onBack }) {
                             {loading ? "Loading…" : `${(pagination.totalOrders || 0).toLocaleString()} total orders`}
                         </div>
                     </div>
+                    {isConfigured && (
+                        <button onClick={handleDisconnect} style={{
+                            marginLeft: "auto", padding: "6px 14px", borderRadius: T.r8,
+                            fontSize: 12, fontWeight: 600,
+                            background: "rgba(255,255,255,0.12)", color: "#fff",
+                            border: "1px solid rgba(255,255,255,0.2)",
+                            cursor: "pointer", fontFamily: "inherit",
+                        }}>Disconnect</button>
+                    )}
                 </div>
 
                 {/* Row 3: search + status chips — only when connected */}
