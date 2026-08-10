@@ -182,6 +182,19 @@ export default function DarazManagePage({ onBack }) {
         }
     };
 
+    const handleDisconnect = async () => {
+        if (!confirm("Disconnect Daraz? Your stored credentials will be removed.")) return;
+        const res = await fetch("/api/daraz/save-credentials", {
+            method: "DELETE",
+            headers: { "x-user-id": userId },
+        });
+        if (res.ok) {
+            setIsConfigured(false);
+            setCreds({ appKey: "", appSecret: "", accessToken: "", region: "pk" });
+            setSaveMsg(null);
+        }
+    };
+
     useEffect(() => { fetchOrders(1); }, [search, statusFilter]);
 
     const handleSearch = (e) => {
@@ -219,7 +232,7 @@ export default function DarazManagePage({ onBack }) {
                 <div style={{ position: "absolute", top: -50, right: -50, width: 220, height: 220, borderRadius: "50%", background: "rgba(255,255,255,0.06)", pointerEvents: "none" }} />
                 <div style={{ position: "absolute", bottom: 10, right: 120, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,0.03)", pointerEvents: "none" }} />
 
-                {/* Row 1: back + status pill */}
+                {/* Row 1: back + actions */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, position: "relative" }}>
                     <button onClick={onBack} style={{
                         display: "inline-flex", alignItems: "center", gap: 6,
@@ -230,9 +243,19 @@ export default function DarazManagePage({ onBack }) {
                         <Icon name="arrow-left" size={13} color="#fff" />
                         Back to Settings
                     </button>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "4px 12px" }}>
-                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />
-                        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Open Platform · PK</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {isConfigured && (
+                            <button onClick={handleDisconnect} style={{
+                                padding: "5px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
+                                background: "rgba(248,113,113,0.15)", color: "#fca5a5",
+                                border: "1px solid rgba(248,113,113,0.3)",
+                                cursor: "pointer", fontFamily: "inherit",
+                            }}>Disconnect</button>
+                        )}
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.2)", borderRadius: 20, padding: "4px 12px" }}>
+                            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />
+                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 600 }}>Open Platform · PK</span>
+                        </div>
                     </div>
                 </div>
 
