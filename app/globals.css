@@ -360,6 +360,11 @@ select {
     grid-template-columns: 1fr !important;
   }
 
+  /* Reports grid → 1 column */
+  .reports-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   /* Marketing MetricGrid → 2 columns */
   .metric-grid {
     grid-template-columns: repeat(2, 1fr) !important;

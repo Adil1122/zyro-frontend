@@ -103,7 +103,7 @@ export default function ReportsPage() {
     };
 
     return (
-        <div style={{ padding: "32px 28px", maxWidth: 900 }}>
+        <div className="page-outer" style={{ padding: "32px 28px", maxWidth: 900 }}>
             <div style={{ marginBottom: 28 }}>
                 <h1 style={{ fontSize: 26, fontWeight: 800, color: "#e8f4ee", margin: "0 0 6px", letterSpacing: "-0.5px" }}>Reports</h1>
                 <p style={{ fontSize: 13, color: "#7a9e88", margin: 0 }}>Download CSV reports for any time range — right from your live data.</p>
@@ -114,7 +114,7 @@ export default function ReportsPage() {
                 <RangeSelector value={range} onChange={setRange} />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))", gap: 14 }}>
+            <div className="reports-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))", gap: 14 }}>
                 {REPORTS.map(r => (
                     <div key={r.id} style={{
                         background: "rgba(255,255,255,0.03)", border: "1px solid #1e3028",
