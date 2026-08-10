@@ -392,7 +392,7 @@ select {
     gap: 8px !important;
   }
 
-  /* Settings: nav sidebar → horizontal scrollable tab strip */
+  /* Settings: nav sidebar → compact dropdown on mobile */
   .settings-layout {
     flex-direction: column !important;
     height: auto !important;
@@ -402,22 +402,16 @@ select {
     width: 100% !important;
     border-right: none !important;
     border-bottom: 1px solid var(--border-default) !important;
-    padding: 6px 0 !important;
-    display: flex !important;
-    flex-direction: row !important;
-    overflow-x: auto !important;
+    padding: 10px 0 !important;
+    display: block !important;
+    overflow: visible !important;
     flex-shrink: 0 !important;
-    scrollbar-width: none;
   }
-  .settings-nav::-webkit-scrollbar {
-    display: none;
+  .settings-nav-select {
+    display: block !important;
   }
-  .settings-nav button {
-    white-space: nowrap !important;
-    border-left: none !important;
-    border-bottom: 3px solid transparent !important;
-    padding: 8px 14px !important;
-    flex-shrink: 0 !important;
+  .settings-nav-btn {
+    display: none !important;
   }
   .settings-content {
     padding: 20px 16px !important;

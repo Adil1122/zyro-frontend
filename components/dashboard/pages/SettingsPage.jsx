@@ -1979,8 +1979,31 @@ export default function SettingsPage({ tabParam }) {
             {/* LEFT SIDEBAR */}
             <div className="settings-nav" style={{ width: 220, borderRight: `1px solid ${T.border}`, padding: "24px 0", background: T.bgCard, flexShrink: 0 }}>
                 <div style={{ padding: "0 18px 14px", fontSize: 11, fontWeight: 700, color: T.textFaint, letterSpacing: "0.08em", textTransform: "uppercase" }}>Settings</div>
+
+                {/* Mobile dropdown — hidden on desktop via CSS */}
+                <select
+                    className="settings-nav-select"
+                    value={tab}
+                    onChange={e => handleTabChange(e.target.value)}
+                    style={{
+                        display: "none",
+                        width: "calc(100% - 24px)", margin: "0 12px",
+                        padding: "9px 12px", fontSize: 13, fontWeight: 600,
+                        background: T.bgElev, color: T.text,
+                        border: `1px solid ${T.borderMid}`, borderRadius: 8,
+                        cursor: "pointer", fontFamily: "inherit", outline: "none",
+                        appearance: "none", backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236EE7B7' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                        backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center",
+                    }}
+                >
+                    {tabs.map(t => (
+                        <option key={t.id} value={t.id}>{t.label}</option>
+                    ))}
+                </select>
+
+                {/* Desktop sidebar buttons — hidden on mobile via CSS */}
                 {tabs.map(t => (
-                    <button key={t.id} onClick={() => handleTabChange(t.id)} style={{
+                    <button key={t.id} className="settings-nav-btn" onClick={() => handleTabChange(t.id)} style={{
                         display: "flex", alignItems: "center", gap: 10,
                         width: "100%", textAlign: "left",
                         padding: "10px 18px", fontSize: 13, fontWeight: 500,
