@@ -491,7 +491,7 @@ export default function PrivacyPolicy() {
               <div className="pp-contact-row">
                 <span className="pp-contact-label">Email</span>
                 <span className="pp-contact-value">
-                  <a href="mailto:ahmadfarooq5581@gmail.com">ahmadfarooq5581@gmail.com</a>
+                  <a href="mailto:info@zyroocloude.com">info@zyroocloude.com</a>
                 </span>
               </div>
               <div className="pp-contact-row">
