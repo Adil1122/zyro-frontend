@@ -36,6 +36,7 @@ export default function DashboardLayout({ children }) {
     const isPlansPage = pathname === "/plans";
     const isOnboardingPage = pathname === "/onboarding";
     const isForgotPasswordPage = pathname === "/forgot-password" || pathname === "/reset-password";
+    const isPrivacyPage = pathname === "/privacy";
     const isPublicPage = isLoginPage || isSignupPage || isOnboardingPage || isForgotPasswordPage;
 
     const router = useRouter();
@@ -73,7 +74,7 @@ export default function DashboardLayout({ children }) {
             const currentUser = storedUser ? JSON.parse(storedUser) : null;
             
             if (!currentUser) {
-                if (!isPublicPage && !isPlansPage) {
+                if (!isPublicPage && !isPlansPage && !isPrivacyPage) {
                     router.push("/login");
                 }
                 setLoadingAuth(false);
@@ -161,6 +162,8 @@ export default function DashboardLayout({ children }) {
             window.removeEventListener('authChange', checkAuth);
         };
     }, [pathname, isLoginPage, isSignupPage, isPlansPage, router]);
+
+    if (isPrivacyPage) return <>{children}</>;
 
     if (!mounted || loadingAuth) return null;
 
