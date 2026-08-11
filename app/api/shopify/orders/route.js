@@ -24,11 +24,12 @@ export async function GET(request) {
 
         const { searchParams } = new URL(request.url);
         const page = parseInt(searchParams.get('page') || '1', 10);
-        const perPage = Math.min(parseInt(searchParams.get('perPage') || '10', 10), 250);
+        const perPage = Math.min(parseInt(searchParams.get('perPage') || '50', 10), 250);
         const search = searchParams.get('search') || '';
         const status = searchParams.get('status') || 'all';
+        const pageInfo = searchParams.get('pageInfo') || null;
 
-        const data = await getShopifyOrders({ page, perPage, search, status, creds });
+        const data = await getShopifyOrders({ page, perPage, search, status, creds, pageInfo });
         return NextResponse.json({ configured: true, ...data });
     } catch (error) {
         console.error('[Shopify Orders Error]', error.message);

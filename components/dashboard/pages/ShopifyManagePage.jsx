@@ -89,7 +89,8 @@ function paginBtnStyle(disabled) {
 
 export default function ShopifyManagePage({ onBack }) {
     const [orders, setOrders] = useState([]);
-    const [pagination, setPagination] = useState({ page: 1, perPage: 10, totalOrders: 0, totalPages: 1 });
+    const [pagination, setPagination] = useState({ page: 1, perPage: 50, totalOrders: 0, totalPages: 1 });
+    const [cursors, setCursors] = useState({ next: null, prev: null, history: { 1: null } });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [search, setSearch] = useState("");
@@ -141,32 +142,34 @@ export default function ShopifyManagePage({ onBack }) {
         }
     };
 
-    const fetchOrders = useCallback(async (page = 1) => {
+    const fetchOrders = useCallback(async (page = 1, pageInfo = null, perPageOverride = null) => {
         setLoading(true);
         setError(null);
         try {
             const userId = getCurrentUserId();
+            const perPage = perPageOverride ?? pagination.perPage;
             const params = new URLSearchParams({
                 page: page.toString(),
-                perPage: pagination.perPage.toString(),
+                perPage: perPage.toString(),
                 status: statusFilter,
                 ...(search ? { search } : {}),
+                ...(pageInfo ? { pageInfo } : {}),
             });
             const res = await fetch(`/api/shopify/orders?${params}`, {
                 headers: { 'x-user-id': userId },
             });
             const data = await res.json();
 
-            if (!data.configured) {
-                setError("not_configured");
-                return;
-            }
-            if (data.error) {
-                setError(data.error);
-                return;
-            }
+            if (!data.configured) { setError("not_configured"); return; }
+            if (data.error) { setError(data.error); return; }
+
             setOrders(data.orders || []);
-            setPagination(data.pagination || { page: 1, perPage: 10, totalOrders: 0, totalPages: 1 });
+            setPagination(prev => ({ ...(data.pagination || prev), perPage }));
+            setCursors(prev => ({
+                next: data.nextPageInfo || null,
+                prev: data.prevPageInfo || null,
+                history: { ...prev.history, [page + 1]: data.nextPageInfo, [page - 1]: prev.history[page - 1] },
+            }));
         } catch (e) {
             setError("Failed to fetch orders: " + e.message);
         } finally {
@@ -184,7 +187,8 @@ export default function ShopifyManagePage({ onBack }) {
 
     const goToPage = (p) => {
         if (p < 1 || p > pagination.totalPages) return;
-        fetchOrders(p);
+        const cursor = cursors.history[p] ?? null;
+        fetchOrders(p, cursor);
     };
 
     const thStyle = {
@@ -399,7 +403,7 @@ export default function ShopifyManagePage({ onBack }) {
                                     <th style={thStyle}>Customer</th>
                                     <th style={thStyle}>City</th>
                                     <th style={thStyle}>Date</th>
-                                    <th style={thStyle}>Items</th>
+                                    <th style={thStyle}>Product</th>
                                     <th style={thStyle}>Total</th>
                                     <th style={thStyle}>Status</th>
                                     <th style={thStyle}>Payment</th>
@@ -427,8 +431,9 @@ export default function ShopifyManagePage({ onBack }) {
                                                     </td>
                                                     <td style={{ ...tdStyle, color: T.textMuted }}>{order.city || "—"}</td>
                                                     <td style={{ ...tdStyle, fontSize: 12, color: T.textMuted, whiteSpace: "nowrap" }}>{formatDate(order.date)}</td>
-                                                    <td style={{ ...tdStyle, textAlign: "center" }}>
-                                                        <span style={{ display: "inline-block", minWidth: 24, textAlign: "center", background: T.bgHigh, borderRadius: T.r4, padding: "2px 7px", fontSize: 12, fontWeight: 700, color: T.textMuted }}>{order.itemCount}</span>
+                                                    <td style={{ ...tdStyle, maxWidth: 200 }}>
+                                                        <div style={{ fontSize: 12, fontWeight: 500, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{order.primaryProduct || "—"}</div>
+                                                        <div style={{ fontSize: 10, color: T.textFaint, marginTop: 2 }}>{order.itemCount} item{order.itemCount !== 1 ? "s" : ""}</div>
                                                     </td>
                                                     <td style={{ ...tdStyle, fontWeight: 700, color: SHOPIFY_GREEN, whiteSpace: "nowrap" }}>{formatCurrency(order.total, order.currency)}</td>
                                                     <td style={tdStyle}><StatusBadge status={order.status} /></td>
@@ -477,22 +482,38 @@ export default function ShopifyManagePage({ onBack }) {
             )}
 
             {/* ── PAGINATION ── */}
-            {!isConfiguring && !error && !loading && pagination.totalPages > 1 && (
+            {!isConfiguring && !error && !loading && pagination.totalOrders > 0 && (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 24px", borderTop: `1px solid ${T.border}`, background: T.bgCard, flexShrink: 0, flexWrap: "wrap", gap: 10 }}>
-                    <div style={{ fontSize: 12, color: T.textMuted }}>
-                        Showing {((pagination.page - 1) * pagination.perPage) + 1}–{Math.min(pagination.page * pagination.perPage, pagination.totalOrders)} of <strong style={{ color: T.text }}>{pagination.totalOrders.toLocaleString()}</strong> orders
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 12, color: T.textMuted }}>
+                            Showing {((pagination.page - 1) * pagination.perPage) + 1}–{Math.min(pagination.page * pagination.perPage, pagination.totalOrders)} of <strong style={{ color: T.text }}>{pagination.totalOrders.toLocaleString()}</strong> orders
+                        </span>
+                        <select
+                            value={pagination.perPage}
+                            onChange={e => {
+                                const newPerPage = parseInt(e.target.value, 10);
+                                setPagination(p => ({ ...p, perPage: newPerPage, page: 1 }));
+                                setCursors({ next: null, prev: null, history: { 1: null } });
+                                fetchOrders(1, null, newPerPage);
+                            }}
+                            style={{ fontSize: 12, padding: "3px 6px", background: T.bgElev, border: `1px solid ${T.borderMid}`, borderRadius: T.r6, color: T.textMuted, fontFamily: "inherit", cursor: "pointer" }}
+                        >
+                            {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n} / page</option>)}
+                        </select>
                     </div>
-                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                        <button onClick={() => goToPage(1)} disabled={pagination.page === 1} style={paginBtnStyle(pagination.page === 1)}>«</button>
-                        <button onClick={() => goToPage(pagination.page - 1)} disabled={pagination.page === 1} style={paginBtnStyle(pagination.page === 1)}>‹</button>
-                        {getPageRange(pagination.page, pagination.totalPages).map((p, i) =>
-                            p === "..." ? <span key={`e${i}`} style={{ padding: "0 8px", color: T.textFaint, fontSize: 13 }}>…</span> : (
-                                <button key={p} onClick={() => goToPage(p)} style={{ ...paginBtnStyle(false), background: p === pagination.page ? SHOPIFY_GRAD : T.bgElev, color: p === pagination.page ? "#fff" : T.textMuted, fontWeight: p === pagination.page ? 700 : 500, border: `1px solid ${p === pagination.page ? "transparent" : T.borderMid}` }}>{p}</button>
-                            )
-                        )}
-                        <button onClick={() => goToPage(pagination.page + 1)} disabled={pagination.page === pagination.totalPages} style={paginBtnStyle(pagination.page === pagination.totalPages)}>›</button>
-                        <button onClick={() => goToPage(pagination.totalPages)} disabled={pagination.page === pagination.totalPages} style={paginBtnStyle(pagination.page === pagination.totalPages)}>»</button>
-                    </div>
+                    {pagination.totalPages > 1 && (
+                        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                            <button onClick={() => goToPage(1)} disabled={pagination.page === 1} style={paginBtnStyle(pagination.page === 1)}>«</button>
+                            <button onClick={() => goToPage(pagination.page - 1)} disabled={!cursors.prev && pagination.page === 1} style={paginBtnStyle(!cursors.prev && pagination.page === 1)}>‹</button>
+                            {getPageRange(pagination.page, pagination.totalPages).map((p, i) =>
+                                p === "..." ? <span key={`e${i}`} style={{ padding: "0 8px", color: T.textFaint, fontSize: 13 }}>…</span> : (
+                                    <button key={p} onClick={() => goToPage(p)} style={{ ...paginBtnStyle(false), background: p === pagination.page ? SHOPIFY_GRAD : T.bgElev, color: p === pagination.page ? "#fff" : T.textMuted, fontWeight: p === pagination.page ? 700 : 500, border: `1px solid ${p === pagination.page ? "transparent" : T.borderMid}` }}>{p}</button>
+                                )
+                            )}
+                            <button onClick={() => { if (cursors.next) fetchOrders(pagination.page + 1, cursors.next); }} disabled={!cursors.next} style={paginBtnStyle(!cursors.next)}>›</button>
+                            <button onClick={() => goToPage(pagination.totalPages)} disabled={pagination.page === pagination.totalPages} style={paginBtnStyle(pagination.page === pagination.totalPages)}>»</button>
+                        </div>
+                    )}
                 </div>
             )}
 
