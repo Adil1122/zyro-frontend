@@ -53,5 +53,6 @@ export async function GET(request) {
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('state', state);
 
+    console.log('[Shopify Install] redirectUri:', redirectUri, '| authUrl:', authUrl.toString());
     return NextResponse.redirect(authUrl.toString());
 }
