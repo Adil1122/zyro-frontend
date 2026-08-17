@@ -1,0 +1,20 @@
+name = "Zyro Cloud"
+client_id = "34389e2484878a975d739d84ac37156d"
+application_url = "https://www.zyroocloud.com"
+embedded = false
+
+[access_scopes]
+scopes = "read_all_orders,read_analytics,read_customers,write_customers,read_price_rules,write_price_rules,write_draft_orders,read_draft_orders,read_fulfillments,write_fulfillments,write_inventory,read_inventory,read_orders,write_orders,read_products,write_products,read_reports,read_shipping"
+
+[auth]
+redirect_urls = ["https://www.zyroocloud.com/api/shopify/callback"]
+
+[webhooks]
+api_version = "2026-07"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+  uri = "https://www.zyroocloud.com/api/shopify/webhooks"
+
+[pos]
+embedded = false
