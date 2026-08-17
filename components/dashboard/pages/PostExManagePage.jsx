@@ -80,20 +80,20 @@ export default function PostExManagePage({ onBack }) {
     const [expandedRow, setExpandedRow] = useState(null);
     const [isConfiguring, setIsConfiguring] = useState(false);
     const [apiKeyInput, setApiKeyInput] = useState("");
+    const [pickupCodeInput, setPickupCodeInput] = useState("");
     const [isSaving, setIsSaving] = useState(false);
 
     const fetchConfig = async () => {
         try {
             const userId = getCurrentUserId();
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('users')
-                .select('postex_api_key')
+                .select('postex_api_key, postex_pickup_address_code')
                 .eq('id', userId)
                 .single();
-            
-            if (data?.postex_api_key) {
-                setApiKeyInput(data.postex_api_key);
-            }
+
+            if (data?.postex_api_key) setApiKeyInput(data.postex_api_key);
+            if (data?.postex_pickup_address_code) setPickupCodeInput(data.postex_pickup_address_code);
         } catch (e) {
             console.error("Failed to fetch PostEx config:", e);
         }
@@ -171,7 +171,7 @@ export default function PostExManagePage({ onBack }) {
             const userId = getCurrentUserId();
             const { error } = await supabase
                 .from('users')
-                .update({ postex_api_key: apiKeyInput })
+                .update({ postex_api_key: apiKeyInput, postex_pickup_address_code: pickupCodeInput.trim() || null })
                 .eq('id', userId);
 
             if (error) throw error;
@@ -310,9 +310,9 @@ export default function PostExManagePage({ onBack }) {
                         
                         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
                             <label style={{ fontSize: 13, fontWeight: 700, color: T.textSub }}>API Key / Client Secret</label>
-                            <input 
-                                type="password" 
-                                value={apiKeyInput} 
+                            <input
+                                type="password"
+                                value={apiKeyInput}
                                 onChange={e => setApiKeyInput(e.target.value)}
                                 placeholder="Paste your PostEx API Key here..."
                                 style={{
@@ -321,6 +321,24 @@ export default function PostExManagePage({ onBack }) {
                                     fontFamily: "monospace", outline: "none"
                                 }}
                             />
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+                            <label style={{ fontSize: 13, fontWeight: 700, color: T.textSub }}>Pickup Address Code</label>
+                            <input
+                                type="text"
+                                value={pickupCodeInput}
+                                onChange={e => setPickupCodeInput(e.target.value.toUpperCase())}
+                                placeholder="e.g. KHI-001"
+                                style={{
+                                    padding: "10px 14px", borderRadius: T.r8, background: T.bgElev,
+                                    border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 14,
+                                    fontFamily: "monospace", outline: "none"
+                                }}
+                            />
+                            <div style={{ fontSize: 12, color: T.textFaint }}>
+                                Find this in your PostEx portal under Settings → Pickup Addresses. Required to book shipments.
+                            </div>
                         </div>
 
                         <div style={{ display: "flex", gap: 12 }}>

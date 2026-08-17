@@ -22,7 +22,7 @@ export async function POST(request) {
         // 1. Get user's PostEx API key
         const { data: user, error: userError } = await supabase
             .from('users')
-            .select('postex_api_key, currency')
+            .select('postex_api_key, postex_pickup_address_code, currency')
             .eq('id', userId)
             .single();
 
@@ -64,7 +64,7 @@ export async function POST(request) {
             cityName,
             invoicePayment,
             orderDetail: orderDetail || '',
-            pickupAddressCode: pickupAddressCode || 'OFC',
+            pickupAddressCode: pickupAddressCode || user.postex_pickup_address_code || 'OFC',
             items: items || 1,
         });
 
