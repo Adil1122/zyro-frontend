@@ -154,7 +154,16 @@ export default function PlansPage() {
     } catch {}
     fetch("/api/plans")
       .then(r => r.json())
-      .then(d => { if (d.plans) setPlans(d.plans); })
+      .then(d => {
+        if (d.plans) {
+          // Deduplicate by name — keep first occurrence (lowest price wins after ORDER BY price ASC)
+          const seen = new Set();
+          const unique = d.plans
+            .filter(p => !seen.has(p.name) && seen.add(p.name))
+            .map(p => ({ ...p, name: p.name === 'Pro' ? 'Professional' : p.name }));
+          setPlans(unique);
+        }
+      })
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, []);
