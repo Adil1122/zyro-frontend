@@ -25,20 +25,45 @@ export async function POST(request) {
     }
 }
 
+// Columns in the users table that indicate a courier is configured
+const USER_COURIER_COLUMNS = {
+    tcs:      ['tcs_api_key'],
+    leopards: ['leopards_api_key'],
+    mnp:      ['mp_username'],
+    postex:   ['postex_api_key'],
+    trax:     ['trax_api_key'],
+    dhl:      ['dhl_api_key'],
+};
+
 export async function GET(request) {
     const userId = request.headers.get('x-user-id') || new URL(request.url).searchParams.get('userId');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { data, error } = await supabase
+        // Check courier_credentials table (callc, rider, swyft store here)
+        const { data: credRows, error: credError } = await supabase
             .from('courier_credentials')
-            .select('courier_key, updated_at')
+            .select('courier_key')
             .eq('user_id', userId);
+        if (credError) throw credError;
 
-        if (error) throw error;
-        // Return only which couriers are connected — never return raw keys/secrets to the client
-        const connected = (data || []).map(r => r.courier_key);
-        return NextResponse.json({ connected });
+        const connected = new Set((credRows || []).map(r => r.courier_key));
+
+        // Check users table columns for couriers that store there
+        const cols = Object.values(USER_COURIER_COLUMNS).flat().join(', ');
+        const { data: user } = await supabase
+            .from('users')
+            .select(cols)
+            .eq('id', userId)
+            .single();
+
+        if (user) {
+            for (const [key, fields] of Object.entries(USER_COURIER_COLUMNS)) {
+                if (fields.some(f => user[f])) connected.add(key);
+            }
+        }
+
+        return NextResponse.json({ connected: [...connected] });
     } catch (err) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
