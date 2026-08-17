@@ -40,16 +40,16 @@ export async function GET(request) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        // Check courier_credentials table (callc, rider, swyft store here)
-        const { data: credRows, error: credError } = await supabase
+        const connected = new Set();
+
+        // Check courier_credentials table — ignore error if table doesn't exist yet
+        const { data: credRows } = await supabase
             .from('courier_credentials')
             .select('courier_key')
             .eq('user_id', userId);
-        if (credError) throw credError;
+        for (const r of credRows || []) connected.add(r.courier_key);
 
-        const connected = new Set((credRows || []).map(r => r.courier_key));
-
-        // Check users table columns for couriers that store there
+        // Check users table columns for couriers that store credentials there
         const cols = Object.values(USER_COURIER_COLUMNS).flat().join(', ');
         const { data: user } = await supabase
             .from('users')
