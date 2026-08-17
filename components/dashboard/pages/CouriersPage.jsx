@@ -441,21 +441,40 @@ function BookView({ couriers, onBack, onToast }) {
                             </div>
                         ))}
                     </div>
-                    <div style={{ display: "flex", gap: 10 }}>
-                        <GradientButton variant="primary" full disabled={booking} onClick={handleBook}>
-                            {pick.risky && !confirmed ? "Send WhatsApp confirmation first" : `Accept ${pick.courier}`}
-                        </GradientButton>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {pick.risky && !confirmed ? (
+                            <button
+                                disabled={booking}
+                                onClick={handleBook}
+                                style={{
+                                    width: "100%", height: 46, borderRadius: 12, border: "none",
+                                    background: "#075e54", color: "#fff",
+                                    fontSize: 14, fontWeight: 700, cursor: booking ? "not-allowed" : "pointer",
+                                    fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                                }}
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.858L0 24l6.335-1.507A11.953 11.953 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.651-.502-5.176-1.379l-.371-.22-3.762.895.952-3.671-.242-.379A9.959 9.959 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                                Send WhatsApp confirmation
+                            </button>
+                        ) : (
+                            <GradientButton variant="primary" full disabled={booking} onClick={handleBook}>
+                                {`Accept ${pick.courier}`}
+                            </GradientButton>
+                        )}
                         <GradientButton variant="secondary" full onClick={() => setShowPicker(p => !p)}>Choose manually</GradientButton>
                     </div>
                     {showPicker && (
                         <div>
                             <div style={{ fontSize: 12, color: T.textFaint, marginBottom: 8 }}>All connected couriers for comparison:</div>
                             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 260, overflowY: "auto" }}>
-                                {Object.values(couriers).filter(c => c.connected).map(c => (
+                                {Object.values(couriers).map(c => (
                                     <div key={c.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", border: `1px solid ${T.borderMid}`, borderRadius: T.r8, background: T.bgHigh }}>
                                         <div>
-                                            <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{c.name}</div>
-                                            <div style={{ fontSize: 12, color: T.textFaint }}>{c.score ? `${c.score}% · ${c.avgDays} · ${c.cost}` : "Building history"}</div>
+                                            <div style={{ fontSize: 13, fontWeight: 600, color: T.text, display: "flex", alignItems: "center", gap: 6 }}>
+                                                {c.name}
+                                                {!c.connected && <span style={{ fontSize: 10, color: T.textFaint, fontWeight: 500, background: T.bgCard, border: `1px solid ${T.border}`, padding: "1px 6px", borderRadius: 10 }}>not connected</span>}
+                                            </div>
+                                            <div style={{ fontSize: 12, color: T.textFaint }}>{c.score ? `${c.score}% · ${c.avgDays} · ${c.cost}` : c.connected ? "Building history" : `${c.avgDays} · ${c.cost}`}</div>
                                         </div>
                                         <button onClick={() => { setManualPick(c.name); setShowPicker(false); }} style={{ background: T.bgCard, border: `1px solid ${T.borderMid}`, color: T.text, fontSize: 12, fontWeight: 600, padding: "5px 12px", borderRadius: T.r6, cursor: "pointer", fontFamily: "inherit" }}>Select</button>
                                     </div>
