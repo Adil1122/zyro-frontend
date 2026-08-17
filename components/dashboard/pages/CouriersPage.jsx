@@ -241,6 +241,12 @@ function ConnectModal({ courierKey, courierName, onSave, onClose }) {
 
 // ── Book Shipment View ────────────────────────────────────────────────────────
 
+const KNOWN_CITIES = ['Karachi','Lahore','Islamabad','Rawalpindi','Faisalabad','Multan','Sialkot','Peshawar','Quetta','Hyderabad','Gujranwala','Sargodha','Bahawalpur','Sukkur','Abbottabad','Mardan'];
+function extractCity(address) {
+    const a = address || '';
+    return KNOWN_CITIES.find(c => a.toLowerCase().includes(c.toLowerCase())) || '';
+}
+
 function BookView({ couriers, onBack, onToast }) {
     const [form, setForm] = useState({ name: "", phone: "", address: "", category: "general", weight: "1.2", l: "20", w: "15", h: "10", value: "", payment: "cod", buyer: "first" });
     const [errs, setErrs] = useState({});
@@ -249,6 +255,7 @@ function BookView({ couriers, onBack, onToast }) {
     const [showPicker, setShowPicker] = useState(false);
     const [booking, setBooking] = useState(false);
     const [booked, setBooked] = useState(null);
+    const [bookErr, setBookErr] = useState(null);
     const [recentBookings, setRecentBookings] = useState([]);
     const [confirmed, setConfirmed] = useState(false);
 
@@ -309,19 +316,55 @@ function BookView({ couriers, onBack, onToast }) {
     };
 
     const handleBook = async () => {
+        if (booked) return;  // already booked — block duplicate
         if (!validate()) { onToast("Fill in the required fields to book"); return; }
         setBooking(true);
-        if (pick.risky && !confirmed) {
-            onToast("WhatsApp confirmation sent to " + form.phone);
-            await new Promise(r => setTimeout(r, 1400));
-            setConfirmed(true);
-            onToast("Customer confirmed via WhatsApp — booking courier automatically");
+        setBookErr(null);
+
+        try {
+            if (pick.risky && !confirmed) {
+                onToast("WhatsApp confirmation sent to " + form.phone);
+                await new Promise(r => setTimeout(r, 1400));
+                setConfirmed(true);
+                onToast("Customer confirmed via WhatsApp — booking courier automatically");
+            }
+
+            if (pick.courier === "PostEx") {
+                const userId = getCurrentUserId();
+                const orderRef = `ZY-${Date.now().toString(36).toUpperCase().slice(-8)}`;
+                const city = extractCity(form.address);
+                const res = await fetch('/api/postex/create-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                    body: JSON.stringify({
+                        orderRefNumber: orderRef,
+                        customerName: form.name,
+                        customerPhone: form.phone,
+                        deliveryAddress: form.address,
+                        cityName: city || 'Karachi',
+                        invoicePayment: form.value || '0',
+                        orderDetail: form.category,
+                        items: 1,
+                    }),
+                });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || 'PostEx booking failed');
+                const trackNo = result.trackingNumber || orderRef;
+                setBooked({ trackNo, courier: 'PostEx', name: form.name, cod: form.payment === 'cod' ? `Rs ${Number(form.value || 0).toLocaleString()}` : 'Prepaid' });
+                setRecentBookings(prev => [{ trackNo, name: form.name, courier: 'PostEx' }, ...prev]);
+                onToast(`Booked with PostEx — tracking: ${trackNo}`);
+            } else {
+                const trackNo = `ZY-${Date.now().toString(36).toUpperCase().slice(-7)}`;
+                setBooked({ trackNo, courier: pick.courier, name: form.name, cod: form.payment === "cod" ? `Rs ${Number(form.value || 0).toLocaleString()}` : "Prepaid" });
+                setRecentBookings(prev => [{ trackNo, name: form.name, courier: pick.courier }, ...prev]);
+                onToast(`Booked with ${pick.courier} — receipt sent to your WhatsApp`);
+            }
+        } catch (e) {
+            setBookErr(e.message);
+            onToast(`Booking failed: ${e.message}`);
+        } finally {
+            setBooking(false);
         }
-        const trackNo = `ZY-${Date.now().toString(36).toUpperCase().slice(-7)}`;
-        setBooked({ trackNo, courier: pick.courier, name: form.name, cod: form.payment === "cod" ? `Rs ${Number(form.value || 0).toLocaleString()}` : "Prepaid" });
-        setRecentBookings(prev => [{ trackNo, name: form.name, courier: pick.courier }, ...prev]);
-        onToast(`Booked with ${pick.courier} — receipt sent to your WhatsApp`);
-        setBooking(false);
     };
 
     const zoneNames = { metro: "Metro Cities", urban: "Urban Areas", rural: "Rural / Remote" };
@@ -441,28 +484,40 @@ function BookView({ couriers, onBack, onToast }) {
                             </div>
                         ))}
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {pick.risky && !confirmed ? (
-                            <button
-                                disabled={booking}
-                                onClick={handleBook}
-                                style={{
-                                    width: "100%", height: 46, borderRadius: 12, border: "none",
-                                    background: "#075e54", color: "#fff",
-                                    fontSize: 14, fontWeight: 700, cursor: booking ? "not-allowed" : "pointer",
-                                    fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                                }}
-                            >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.858L0 24l6.335-1.507A11.953 11.953 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.651-.502-5.176-1.379l-.371-.22-3.762.895.952-3.671-.242-.379A9.959 9.959 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-                                Send WhatsApp confirmation
-                            </button>
-                        ) : (
-                            <GradientButton variant="primary" full disabled={booking} onClick={handleBook}>
-                                {`Accept ${pick.courier}`}
-                            </GradientButton>
-                        )}
-                        <GradientButton variant="secondary" full onClick={() => setShowPicker(p => !p)}>Choose manually</GradientButton>
-                    </div>
+                    {bookErr && (
+                        <div style={{ fontSize: 12, color: T.red, padding: "10px 12px", background: T.redBg, borderRadius: T.r8 }}>
+                            {bookErr}
+                        </div>
+                    )}
+                    {booked ? (
+                        <div style={{ padding: "14px 16px", borderRadius: T.r12, background: `${T.green}14`, border: `1px solid ${T.green}44`, textAlign: "center" }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: T.j200, marginBottom: 4 }}>✓ Shipment booked</div>
+                            <div style={{ fontSize: 12, color: T.textMuted, fontFamily: "monospace" }}>{booked.trackNo}</div>
+                        </div>
+                    ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {pick.risky && !confirmed ? (
+                                <button
+                                    disabled={booking}
+                                    onClick={handleBook}
+                                    style={{
+                                        width: "100%", height: 46, borderRadius: 12, border: "none",
+                                        background: "#075e54", color: "#fff",
+                                        fontSize: 14, fontWeight: 700, cursor: booking ? "not-allowed" : "pointer",
+                                        fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                                    }}
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.858L0 24l6.335-1.507A11.953 11.953 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.651-.502-5.176-1.379l-.371-.22-3.762.895.952-3.671-.242-.379A9.959 9.959 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                                    Send WhatsApp confirmation
+                                </button>
+                            ) : (
+                                <GradientButton variant="primary" full disabled={booking} onClick={handleBook}>
+                                    {booking ? "Booking…" : `Accept ${pick.courier}`}
+                                </GradientButton>
+                            )}
+                            <GradientButton variant="secondary" full onClick={() => setShowPicker(p => !p)}>Choose manually</GradientButton>
+                        </div>
+                    )}
                     {showPicker && (
                         <div>
                             <div style={{ fontSize: 12, color: T.textFaint, marginBottom: 8 }}>All connected couriers for comparison:</div>
