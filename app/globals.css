@@ -101,6 +101,7 @@ body {
   font-family: 'Plus Jakarta Sans', 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 14px;
   line-height: 1.5;
+  cursor: default;
 }
 
 #__next,
@@ -134,6 +135,7 @@ input,
 textarea,
 select {
   font-family: inherit;
+  cursor: text;
 }
 
 ::selection {
