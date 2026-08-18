@@ -258,6 +258,8 @@ function BookView({ couriers, onBack, onToast, rules }) {
     const [bookErr, setBookErr] = useState(null);
     const [recentBookings, setRecentBookings] = useState([]);
     const [confirmed, setConfirmed] = useState(false);
+    const [waStatus, setWaStatus] = useState({ customer: null, merchant: null });
+    const [merchantPhone, setMerchantPhone] = useState('');
 
     const setF = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -306,6 +308,24 @@ function BookView({ couriers, onBack, onToast, rules }) {
         const base = c && c.cost !== "—" ? parseInt(c.cost.replace("Rs ", "")) : 210;
         return { total: Math.round(base + Math.max(0, charged - 1) * 30), charged: charged.toFixed(2), isVol };
     })();
+
+    const sendWA = async (phone, message, role) => {
+        setWaStatus(p => ({ ...p, [role]: 'sending' }));
+        try {
+            const userId = getCurrentUserId();
+            const res = await fetch('/api/whatsapp/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+                body: JSON.stringify({ phone, message }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to send');
+            setWaStatus(p => ({ ...p, [role]: 'sent' }));
+            onToast(`WhatsApp sent to ${phone}`);
+        } catch (e) {
+            setWaStatus(p => ({ ...p, [role]: e.message }));
+        }
+    };
 
     const validate = () => {
         const e = {};
@@ -358,7 +378,7 @@ function BookView({ couriers, onBack, onToast, rules }) {
                 const trackNo = `ZY-${Date.now().toString(36).toUpperCase().slice(-7)}`;
                 setBooked({ trackNo, courier: pick.courier, name: form.name, cod: form.payment === "cod" ? `Rs ${Number(form.value || 0).toLocaleString()}` : "Prepaid" });
                 setRecentBookings(prev => [{ trackNo, name: form.name, courier: pick.courier }, ...prev]);
-                onToast(`Booked with ${pick.courier} — receipt sent to your WhatsApp`);
+                onToast(`Booked with ${pick.courier} — tracking: ${trackNo}`);
             }
         } catch (e) {
             setBookErr(e.message);
@@ -393,19 +413,63 @@ function BookView({ couriers, onBack, onToast, rules }) {
             )}
 
             {booked && (
-                <div style={{ marginBottom: 22, maxWidth: 340 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: T.textFaint, marginBottom: 10, fontWeight: 600 }}>
-                        <Icon name="whatsapp" size={14} color="#25D366" />Courier receipt sent to your WhatsApp
+                <div style={{ marginBottom: 22, maxWidth: 460, background: T.bgCard, border: `1px solid ${T.borderMid}`, borderRadius: T.r14, padding: "18px 20px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 16 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.858L0 24l6.335-1.507A11.953 11.953 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.651-.502-5.176-1.379l-.371-.22-3.762.895.952-3.671-.242-.379A9.959 9.959 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                        Send WhatsApp notifications
                     </div>
-                    <div style={{ background: "#0b3d2e", border: "1px solid rgba(37,211,102,0.25)", borderRadius: "12px 12px 12px 2px", padding: "14px 16px", boxShadow: T.shadowLg }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "#e9fff2", marginBottom: 10 }}>📦 Courier Slip Generated</div>
-                        {[["Tracking", booked.trackNo], ["Courier", booked.courier], ["Customer", booked.name], ["COD to collect", booked.cod], ["Pickup", "Tomorrow, before 2 PM"]].map(([l, v]) => (
-                            <div key={l} style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: 12, color: "#b9d6c8", padding: "3px 0" }}>
-                                <span>{l}</span><b style={{ color: "#f2fff8", fontWeight: 600 }}>{v}</b>
-                            </div>
-                        ))}
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 5, fontSize: 10, color: "#8fb5a4", marginTop: 8 }}>Sent just now ✓✓</div>
+
+                    {/* Message customer */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 14px", background: T.bgElev, border: `1px solid ${T.border}`, borderRadius: T.r8, marginBottom: 10 }}>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{booked.name || "Customer"}</div>
+                            <div style={{ fontSize: 12, color: T.textMuted }}>{form.phone} · customer</div>
+                        </div>
+                        {waStatus.customer === 'sent' ? (
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "#25D366", whiteSpace: "nowrap" }}>✓ Sent</span>
+                        ) : (
+                            <button
+                                disabled={waStatus.customer === 'sending'}
+                                onClick={() => sendWA(form.phone,
+                                    `Hi ${form.name}! 📦 Your shipment has been booked.\n\nCourier: ${booked.courier}\nTracking no: ${booked.trackNo}\nCOD to keep ready: ${booked.cod}\n\nExpected delivery in 2–4 working days. We'll update you once it's picked up!`,
+                                    'customer'
+                                )}
+                                style={{ background: "#075e54", color: "#fff", border: "none", borderRadius: T.r8, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: waStatus.customer === 'sending' ? "not-allowed" : "pointer", fontFamily: "inherit", whiteSpace: "nowrap", opacity: waStatus.customer === 'sending' ? 0.6 : 1 }}
+                            >
+                                {waStatus.customer === 'sending' ? 'Sending…' : 'Message customer'}
+                            </button>
+                        )}
                     </div>
+                    {waStatus.customer && waStatus.customer !== 'sent' && waStatus.customer !== 'sending' && (
+                        <div style={{ fontSize: 11, color: T.red, marginBottom: 10, paddingLeft: 4 }}>{waStatus.customer}</div>
+                    )}
+
+                    {/* Notify me / merchant */}
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <input
+                            value={merchantPhone}
+                            onChange={e => setMerchantPhone(e.target.value)}
+                            placeholder="Your phone to notify (03xxxxxxxxx)"
+                            style={{ ...bInputStyle, height: 38, flex: 1, fontSize: 12 }}
+                        />
+                        {waStatus.merchant === 'sent' ? (
+                            <span style={{ fontSize: 12, fontWeight: 700, color: "#25D366", whiteSpace: "nowrap", padding: "0 4px" }}>✓ Sent</span>
+                        ) : (
+                            <button
+                                disabled={waStatus.merchant === 'sending' || !merchantPhone.trim()}
+                                onClick={() => sendWA(merchantPhone.trim(),
+                                    `📦 New shipment booked on Zyro!\n\nCustomer: ${form.name}\nPhone: ${form.phone}\nCourier: ${booked.courier}\nTracking: ${booked.trackNo}\nCOD: ${booked.cod}\nAddress: ${form.address}`,
+                                    'merchant'
+                                )}
+                                style={{ background: T.bgElev, color: T.j200, border: `1px solid rgba(92,168,124,0.4)`, borderRadius: T.r8, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: (waStatus.merchant === 'sending' || !merchantPhone.trim()) ? "not-allowed" : "pointer", fontFamily: "inherit", whiteSpace: "nowrap", opacity: (waStatus.merchant === 'sending' || !merchantPhone.trim()) ? 0.5 : 1 }}
+                            >
+                                {waStatus.merchant === 'sending' ? '…' : 'Notify me'}
+                            </button>
+                        )}
+                    </div>
+                    {waStatus.merchant && waStatus.merchant !== 'sent' && waStatus.merchant !== 'sending' && (
+                        <div style={{ fontSize: 11, color: T.red, marginTop: 6, paddingLeft: 4 }}>{waStatus.merchant}</div>
+                    )}
                 </div>
             )}
 
