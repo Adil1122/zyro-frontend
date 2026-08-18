@@ -247,7 +247,7 @@ function extractCity(address) {
     return KNOWN_CITIES.find(c => a.toLowerCase().includes(c.toLowerCase())) || '';
 }
 
-function BookView({ couriers, onBack, onToast }) {
+function BookView({ couriers, onBack, onToast, rules }) {
     const [form, setForm] = useState({ name: "", phone: "", address: "", category: "general", weight: "1.2", l: "20", w: "15", h: "10", value: "", payment: "cod", buyer: "first" });
     const [errs, setErrs] = useState({});
     const [zone, setZone] = useState("metro");
@@ -274,6 +274,8 @@ function BookView({ couriers, onBack, onToast }) {
         const firstTime = form.buyer === "first";
         const highRisk = cod && firstTime;
         const zoneData = ZONES[zone];
+        // Use the user-configured primary courier for this zone, fall back to hardcoded default
+        const primaryCourier = (rules && rules[zone]) ? rules[zone] : zoneData.base.courier;
 
         if (cat === "electronics") return { courier: "TCS", score: realScore("TCS"), days: "2 days", why: "Electronics category — hard rule always ships via TCS", risky: false, trace: ["Package category: Electronics", "Hard rule → always TCS, regardless of zone or risk"] };
         if (wt < 0.5) {
@@ -282,10 +284,9 @@ function BookView({ couriers, onBack, onToast }) {
         }
         if (highRisk) {
             const r = zoneData.risk;
-            return { courier: r.courier, score: realScore(r.courier), days: r.days, why: "Best COD success rate for this zone right now", risky: true, trace: [`Zone rule: ${zoneData.label} → ${zoneData.base.courier} suggested`, "COD + first-time buyer → high RTO risk flagged", `Switched to ${r.courier} — better COD success here`] };
+            return { courier: r.courier, score: realScore(r.courier), days: r.days, why: "Best COD success rate for this zone right now", risky: true, trace: [`Zone rule: ${zoneData.label} → ${primaryCourier} suggested`, "COD + first-time buyer → high RTO risk flagged", `Switched to ${r.courier} — better COD success here`] };
         }
-        const b = zoneData.base;
-        return { courier: b.courier, score: realScore(b.courier), days: b.days, why: "Zone rule default — no override needed", risky: false, trace: [`Zone rule: ${zoneData.label} → ${b.courier} suggested`, !cod ? "Prepaid — no RTO exposure" : "COD, repeat buyer — risk low enough", "Rule confirmed — no risk override triggered"] };
+        return { courier: primaryCourier, score: realScore(primaryCourier), days: zoneData.base.days, why: "Zone rule default — no override needed", risky: false, trace: [`Zone rule: ${zoneData.label} → ${primaryCourier} suggested`, !cod ? "Prepaid — no RTO exposure" : "COD, repeat buyer — risk low enough", "Rule confirmed — no risk override triggered"] };
     };
 
     const pick = manualPick ? {
@@ -726,7 +727,7 @@ export default function CouriersPage() {
         showToast(`${couriers[key].name} connected`);
     };
 
-    if (view === "book") return <BookView couriers={couriers} onBack={() => setView("main")} onToast={showToast} />;
+    if (view === "book") return <BookView couriers={couriers} onBack={() => setView("main")} onToast={showToast} rules={rules} />;
 
     const ruleZoneData = {
         metro: { label: "Metro Cities", cities: "Karachi, Lahore, Islamabad +10", primary: rules.metro, fallback: "Leopards" },
