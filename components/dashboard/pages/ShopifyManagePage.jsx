@@ -377,6 +377,31 @@ export default function ShopifyManagePage({ onBack }) {
                         <div style={{ marginTop: 18, padding: "12px 14px", background: "rgba(150,191,72,0.06)", borderRadius: 8, fontSize: 11, color: SHOPIFY_GREEN, lineHeight: 1.7 }}>
                             You'll be redirected to your Shopify store to approve access. No app creation or token copying needed.
                         </div>
+
+                        <div style={{ marginTop: 18, padding: "16px 18px", background: "rgba(37,211,102,0.05)", borderRadius: T.r10, border: "1px solid rgba(37,211,102,0.2)" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 700, color: "#25D366", marginBottom: 8 }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.858L0 24l6.335-1.507A11.953 11.953 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.651-.502-5.176-1.379l-.371-.22-3.762.895.952-3.671-.242-.379A9.959 9.959 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                                Auto WhatsApp Notifications
+                            </div>
+                            <div style={{ fontSize: 12, color: T.textMuted, lineHeight: 1.7 }}>
+                                WhatsApp notifications are <strong style={{ color: T.text }}>automatically active</strong> for Shopify. When you connect your store, Zyro registers webhooks that fire for every order event:
+                            </div>
+                            <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 5 }}>
+                                {[
+                                    "New order → customer gets order confirmation + COD YES/NO prompt",
+                                    "Order paid → customer gets payment received notification",
+                                    "Order fulfilled → customer gets shipping confirmation",
+                                    "Order cancelled → customer gets cancellation notice",
+                                    "Every new order → you get a merchant alert on your WhatsApp",
+                                ].map((t, i) => (
+                                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7, fontSize: 11, color: T.textMuted }}>
+                                        <span style={{ color: "#25D366", flexShrink: 0, marginTop: 1 }}>✓</span>
+                                        {t}
+                                    </div>
+                                ))}
+                            </div>
+                            <div style={{ marginTop: 10, fontSize: 11, color: T.textFaint }}>Requires WhatsApp to be configured in Settings → WhatsApp.</div>
+                        </div>
                     </div>
                 </div>
             ) : (
@@ -464,9 +489,26 @@ export default function ShopifyManagePage({ onBack }) {
                                                                         </div>
                                                                     </div>
                                                                 ))}
-                                                                <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 16px", borderTop: "1px solid rgba(150,191,72,0.2)", background: "rgba(0,0,0,0.04)", gap: 24, alignItems: "center" }}>
-                                                                    <span style={{ fontSize: 12, fontWeight: 600, color: T.textMuted }}>Order Total</span>
-                                                                    <span style={{ fontSize: 16, fontWeight: 800, color: SHOPIFY_GREEN }}>{formatCurrency(order.total, order.currency)}</span>
+                                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: "1px solid rgba(150,191,72,0.2)", background: "rgba(0,0,0,0.04)", gap: 16, flexWrap: "wrap" }}>
+                                                                    <div style={{ display: "flex", gap: 8 }}>
+                                                                        {order.customerPhone ? (
+                                                                            <a
+                                                                                href={`https://wa.me/${order.customerPhone.replace(/\D/g, '').replace(/^0/, '92')}`}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: T.r8, background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.3)", color: "#25D366", fontSize: 12, fontWeight: 600, textDecoration: "none" }}
+                                                                            >
+                                                                                <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.533 5.858L0 24l6.335-1.507A11.953 11.953 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.651-.502-5.176-1.379l-.371-.22-3.762.895.952-3.671-.242-.379A9.959 9.959 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                                                                                Contact Customer
+                                                                            </a>
+                                                                        ) : (
+                                                                            <span style={{ fontSize: 11, color: T.textFaint }}>No phone on file</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+                                                                        <span style={{ fontSize: 12, fontWeight: 600, color: T.textMuted }}>Order Total</span>
+                                                                        <span style={{ fontSize: 16, fontWeight: 800, color: SHOPIFY_GREEN }}>{formatCurrency(order.total, order.currency)}</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </td>
