@@ -218,7 +218,9 @@ export default function PlansPage() {
         background: "rgba(7,12,10,0.85)", backdropFilter: "blur(12px)",
         borderBottom: `1px solid ${BORDER}`,
       }}>
-        <ZyroLogo size={32} />
+        <div onClick={() => router.push("/dashboard")} style={{ cursor: "pointer" }}>
+          <ZyroLogo size={32} />
+        </div>
         <button
           onClick={() => router.push("/dashboard")}
           style={{
