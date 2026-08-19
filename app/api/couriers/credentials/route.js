@@ -25,30 +25,32 @@ export async function POST(request) {
     }
 }
 
-// Columns in the users table that indicate a courier is configured
+// Columns in the users table that indicate a courier is configured.
+// Only include columns that are confirmed to exist in the DB schema.
 const USER_COURIER_COLUMNS = {
     tcs:      ['tcs_api_key'],
     leopards: ['leopards_api_key'],
     mnp:      ['mp_username'],
     postex:   ['postex_api_key'],
     trax:     ['trax_api_key'],
-    dhl:      ['dhl_api_key'],
 };
 
 export async function GET(request) {
     const userId = request.headers.get('x-user-id') || new URL(request.url).searchParams.get('userId');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    try {
-        const connected = new Set();
+    const connected = new Set();
 
+    try {
         // Check courier_credentials table — ignore error if table doesn't exist yet
         const { data: credRows } = await supabase
             .from('courier_credentials')
             .select('courier_key')
             .eq('user_id', userId);
         for (const r of credRows || []) connected.add(r.courier_key);
+    } catch { /* table may not exist yet */ }
 
+    try {
         // Check users table columns for couriers that store credentials there
         const cols = Object.values(USER_COURIER_COLUMNS).flat().join(', ');
         const { data: user } = await supabase
@@ -62,9 +64,7 @@ export async function GET(request) {
                 if (fields.some(f => user[f])) connected.add(key);
             }
         }
+    } catch { /* non-fatal — some columns may not exist yet */ }
 
-        return NextResponse.json({ connected: [...connected] });
-    } catch (err) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
-    }
+    return NextResponse.json({ connected: [...connected] });
 }

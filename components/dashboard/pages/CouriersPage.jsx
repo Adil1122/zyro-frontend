@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton, Card, PageHeader } from "../Primitives";
@@ -664,7 +665,17 @@ function relTime(dateStr) {
     return `${Math.floor(h / 24)} days ago`;
 }
 
+// Maps courier key → the "manage" param used in /settings/stores
+const COURIER_MANAGE_KEY = {
+    tcs:      "tcs",
+    leopards: "leopards",
+    mnp:      "mp",
+    postex:   "postex",
+    trax:     "trax",
+};
+
 export default function CouriersPage() {
+    const router = useRouter();
     const [view, setView] = useState("main");
     const [couriers, setCouriers] = useState(INIT_COURIERS);
     const [rules, setRules] = useState({ metro: "TCS", urban: "Leopards", rural: "Trax" });
@@ -939,28 +950,38 @@ export default function CouriersPage() {
                             <tbody>
                                 {Object.entries(couriers).map(([key, c], i, arr) => {
                                     const last = i === arr.length - 1;
+                                    const manageKey = COURIER_MANAGE_KEY[key];
+                                    const openDashboard = () => manageKey
+                                        ? router.push(`/settings/stores?manage=${manageKey}`)
+                                        : setConnectKey(key);
+                                    const rowHover = { onMouseEnter: e => e.currentTarget.style.background = "rgba(92,168,124,0.04)", onMouseLeave: e => e.currentTarget.style.background = "transparent" };
+
                                     if (!c.connected) return (
-                                        <tr key={key} style={{ borderBottom: last ? "none" : `1px solid ${T.border}` }}>
+                                        <tr key={key} onClick={openDashboard} {...rowHover}
+                                            style={{ borderBottom: last ? "none" : `1px solid ${T.border}`, cursor: "pointer" }}>
                                             <td style={{ padding: "14px 16px" }}><CourierName c={c} /></td>
                                             <td colSpan={6} style={{ padding: "14px 16px", color: T.textFaint, fontSize: 13, textAlign: "right" }}>
                                                 Not connected ·{" "}
-                                                <button onClick={() => setConnectKey(key)} style={{ background: "none", border: "none", color: T.j200, cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 600 }}>connect to enable scoring</button>
+                                                <span style={{ color: T.j200, fontSize: 12, fontWeight: 600 }}>
+                                                    {manageKey ? "open dashboard →" : "connect to enable scoring"}
+                                                </span>
                                             </td>
                                             <td style={{ padding: "14px 16px" }} />
                                         </tr>
                                     );
                                     if (c.score === 0) return (
-                                        <tr key={key} style={{ borderBottom: last ? "none" : `1px solid ${T.border}` }}>
+                                        <tr key={key} onClick={openDashboard} {...rowHover}
+                                            style={{ borderBottom: last ? "none" : `1px solid ${T.border}`, cursor: "pointer" }}>
                                             <td style={{ padding: "14px 16px" }}><CourierName c={c} /></td>
-                                            <td colSpan={7} style={{ padding: "14px 16px", color: T.textFaint, fontSize: 13 }}>Connected — building history (0 of 20 shipments)</td>
+                                            <td colSpan={6} style={{ padding: "14px 16px", color: T.textFaint, fontSize: 13 }}>Connected — building history (0 of 20 shipments)</td>
+                                            <td style={{ padding: "14px 16px", fontSize: 12, color: T.j200, fontWeight: 600, whiteSpace: "nowrap" }}>Open dashboard →</td>
                                         </tr>
                                     );
                                     const cls = scoreClass(c.score);
                                     const col = scoreColor(c.score);
                                     return (
-                                        <tr key={key} style={{ borderBottom: last ? "none" : `1px solid ${T.border}` }}
-                                            onMouseEnter={e => e.currentTarget.style.background = "rgba(92,168,124,0.04)"}
-                                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                                        <tr key={key} onClick={openDashboard} {...rowHover}
+                                            style={{ borderBottom: last ? "none" : `1px solid ${T.border}`, cursor: "pointer" }}>
                                             <td style={{ padding: "14px 16px" }}><CourierName c={c} /></td>
                                             <td style={{ padding: "14px 16px" }}>
                                                 <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 13, color: col }}>
