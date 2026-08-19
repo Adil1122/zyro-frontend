@@ -25,14 +25,14 @@ export async function POST(request) {
     }
 }
 
-// Columns in the users table that indicate a courier is configured.
-// Only include columns that are confirmed to exist in the DB schema.
+// Maps courier key → the users-table column that holds its API key.
+// Checked one-at-a-time so a missing column never blocks the others.
 const USER_COURIER_COLUMNS = {
-    tcs:      ['tcs_api_key'],
-    leopards: ['leopards_api_key'],
-    mnp:      ['mp_username'],
-    postex:   ['postex_api_key'],
-    trax:     ['trax_api_key'],
+    postex:   'postex_api_key',
+    trax:     'trax_api_key',
+    tcs:      'tcs_api_key',
+    leopards: 'leopards_api_key',
+    mnp:      'mp_username',
 };
 
 export async function GET(request) {
@@ -41,30 +41,27 @@ export async function GET(request) {
 
     const connected = new Set();
 
+    // 1. courier_credentials table (set via connect modal)
     try {
-        // Check courier_credentials table — ignore error if table doesn't exist yet
         const { data: credRows } = await supabase
             .from('courier_credentials')
             .select('courier_key')
             .eq('user_id', userId);
         for (const r of credRows || []) connected.add(r.courier_key);
-    } catch { /* table may not exist yet */ }
+    } catch { /* table may not exist */ }
 
-    try {
-        // Check users table columns for couriers that store credentials there
-        const cols = Object.values(USER_COURIER_COLUMNS).flat().join(', ');
-        const { data: user } = await supabase
-            .from('users')
-            .select(cols)
-            .eq('id', userId)
-            .single();
-
-        if (user) {
-            for (const [key, fields] of Object.entries(USER_COURIER_COLUMNS)) {
-                if (fields.some(f => user[f])) connected.add(key);
-            }
-        }
-    } catch { /* non-fatal — some columns may not exist yet */ }
+    // 2. users table — query each column separately so a missing column
+    //    (not yet migrated) never causes the others to be skipped
+    for (const [courierKey, col] of Object.entries(USER_COURIER_COLUMNS)) {
+        try {
+            const { data } = await supabase
+                .from('users')
+                .select(col)
+                .eq('id', userId)
+                .single();
+            if (data?.[col]) connected.add(courierKey);
+        } catch { /* column may not exist in this environment */ }
+    }
 
     return NextResponse.json({ connected: [...connected] });
 }
