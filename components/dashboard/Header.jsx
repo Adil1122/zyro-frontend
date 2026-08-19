@@ -111,9 +111,10 @@ export default function Header({ user, onMenuToggle }) {
     const openSearch = () => {
         setSearchOpen(true);
         setSearchQuery("");
+        setSearchLoading(false);
         setSearchResults({ pages: SEARCH_PAGES, orders: [], customers: [] });
     };
-    const closeSearch = () => { setSearchOpen(false); setSearchQuery(""); };
+    const closeSearch = () => { setSearchOpen(false); setSearchQuery(""); setSearchLoading(false); };
 
     useEffect(() => {
         const handler = (e) => {
@@ -138,6 +139,7 @@ export default function Header({ user, onMenuToggle }) {
         if (q.length < 2) return;
         const t = setTimeout(async () => {
             setSearchLoading(true);
+            const safetyTimer = setTimeout(() => setSearchLoading(false), 5000);
             try {
                 const stored = localStorage.getItem("zyro_user");
                 const userId = stored ? JSON.parse(stored)?.id : null;
@@ -147,7 +149,7 @@ export default function Header({ user, onMenuToggle }) {
                     supabase.from("customers").select("id, name, contact, city").eq("user_id", userId).or(`name.ilike.%${q}%,contact.ilike.%${q}%`).limit(5),
                 ]);
                 setSearchResults(r => ({ ...r, orders: orders || [], customers: customers || [] }));
-            } catch { /* non-fatal */ } finally { setSearchLoading(false); }
+            } catch { /* non-fatal */ } finally { clearTimeout(safetyTimer); setSearchLoading(false); }
         }, 280);
         return () => clearTimeout(t);
     }, [searchQuery]);
