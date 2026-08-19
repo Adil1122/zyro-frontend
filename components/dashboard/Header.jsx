@@ -21,6 +21,20 @@ function saveSeenIds(ids) {
     try { localStorage.setItem("zyro_notif_seen", JSON.stringify([...ids])); } catch {}
 }
 
+const SEARCH_PAGES = [
+    { id: "dashboard",  label: "Dashboard",   href: "/dashboard",  desc: "Overview & live stats" },
+    { id: "orders",     label: "Orders",      href: "/orders",     desc: "Manage all orders" },
+    { id: "whatsapp",   label: "WhatsApp AI", href: "/whatsapp",   desc: "AI chatbot & conversations" },
+    { id: "couriers",   label: "Couriers",    href: "/couriers",   desc: "Book shipments & routing rules" },
+    { id: "inventory",  label: "Inventory",   href: "/inventory",  desc: "Products & stock levels" },
+    { id: "marketing",  label: "Marketing",   href: "/marketing",  desc: "Ads & campaigns" },
+    { id: "customers",  label: "Customers",   href: "/customers",  desc: "Customer database" },
+    { id: "analytics",  label: "Analytics",   href: "/analytics",  desc: "Performance metrics" },
+    { id: "reports",    label: "Reports",     href: "/reports",    desc: "Export & download reports" },
+    { id: "settings",   label: "Settings",    href: "/settings",   desc: "Account & integrations" },
+    { id: "plans",      label: "Plans",       href: "/plans",      desc: "Subscription & billing" },
+];
+
 export default function Header({ user, onMenuToggle }) {
     const router = useRouter();
 
@@ -34,6 +48,13 @@ export default function Header({ user, onMenuToggle }) {
     const [notifications, setNotifications] = useState([]);
     const [notifLoading,  setNotifLoading]  = useState(true);
     const [unreadCount,   setUnreadCount]   = useState(0);
+
+    // Search
+    const [searchOpen,    setSearchOpen]    = useState(false);
+    const [searchQuery,   setSearchQuery]   = useState("");
+    const [searchResults, setSearchResults] = useState({ pages: SEARCH_PAGES, orders: [], customers: [] });
+    const [searchLoading, setSearchLoading] = useState(false);
+    const searchInputRef = useRef(null);
 
     const supportRef = useRef(null);
     const notifRef   = useRef(null);
@@ -85,6 +106,51 @@ export default function Header({ user, onMenuToggle }) {
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, []);
+
+    // ── Search logic ─────────────────────────────────────────────────────────
+    const openSearch = () => {
+        setSearchOpen(true);
+        setSearchQuery("");
+        setSearchResults({ pages: SEARCH_PAGES, orders: [], customers: [] });
+    };
+    const closeSearch = () => { setSearchOpen(false); setSearchQuery(""); };
+
+    useEffect(() => {
+        const handler = (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); openSearch(); }
+            if (e.key === "Escape") closeSearch();
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+    }, []);
+
+    useEffect(() => {
+        if (searchOpen) setTimeout(() => searchInputRef.current?.focus(), 40);
+    }, [searchOpen]);
+
+    useEffect(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) { setSearchResults({ pages: SEARCH_PAGES, orders: [], customers: [] }); return; }
+
+        const pages = SEARCH_PAGES.filter(p => p.label.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q));
+        setSearchResults(r => ({ ...r, pages }));
+
+        if (q.length < 2) return;
+        const t = setTimeout(async () => {
+            setSearchLoading(true);
+            try {
+                const stored = localStorage.getItem("zyro_user");
+                const userId = stored ? JSON.parse(stored)?.id : null;
+                if (!userId) return;
+                const [{ data: orders }, { data: customers }] = await Promise.all([
+                    supabase.from("orders").select("order_id, status, total_amount, customers(name)").eq("user_id", userId).ilike("order_id", `%${q}%`).limit(5),
+                    supabase.from("customers").select("id, name, contact, city").eq("user_id", userId).or(`name.ilike.%${q}%,contact.ilike.%${q}%`).limit(5),
+                ]);
+                setSearchResults(r => ({ ...r, orders: orders || [], customers: customers || [] }));
+            } catch { /* non-fatal */ } finally { setSearchLoading(false); }
+        }, 280);
+        return () => clearTimeout(t);
+    }, [searchQuery]);
 
     const handleLogout = () => {
         localStorage.removeItem("zyro_user");
@@ -158,16 +224,125 @@ export default function Header({ user, onMenuToggle }) {
 
             {/* ── Left: search + plan badge ── */}
             <div className="zyro-header-left" style={{ flex: 1, display: "flex", justifyContent: "flex-start", alignItems: "center", gap: 20 }}>
-                <div className="zyro-search" style={{
+                <button onClick={openSearch} className="zyro-search" style={{
                     display: "flex", alignItems: "center", gap: 10,
                     background: T.bgElev, border: `1px solid ${T.border}`,
                     borderRadius: 24, padding: "7px 18px", width: "100%", maxWidth: 380,
-                    color: T.textMuted, cursor: "text",
+                    color: T.textMuted, cursor: "text", fontFamily: "inherit",
                 }}>
                     <Icon name="search" size={14} color={T.textFaint} />
-                    <span style={{ fontSize: 13, flex: 1 }}>Search anything...</span>
+                    <span style={{ fontSize: 13, flex: 1, textAlign: "left" }}>Search anything...</span>
                     <span style={{ fontSize: 10, color: T.textFaint, padding: "2px 6px", background: T.bgHigh, borderRadius: 4, letterSpacing: 0.5 }}>⌘K</span>
-                </div>
+                </button>
+
+                {/* ── Search Modal ── */}
+                {searchOpen && (
+                    <div onClick={closeSearch} style={{
+                        position: "fixed", inset: 0, background: "rgba(4,8,7,0.72)", backdropFilter: "blur(4px)",
+                        zIndex: 600, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 80,
+                    }}>
+                        <div onClick={e => e.stopPropagation()} style={{
+                            width: "100%", maxWidth: 580, margin: "0 16px",
+                            background: T.bgCard, border: `1px solid ${T.borderMid}`,
+                            borderRadius: T.r14, boxShadow: "0 24px 64px rgba(0,0,0,0.6)", overflow: "hidden",
+                        }}>
+                            {/* Input row */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", borderBottom: `1px solid ${T.border}` }}>
+                                <Icon name="search" size={16} color={T.j200} />
+                                <input
+                                    ref={searchInputRef}
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    placeholder="Search pages, orders, customers…"
+                                    style={{ flex: 1, background: "none", border: "none", outline: "none", color: T.text, fontSize: 15, fontFamily: "inherit" }}
+                                />
+                                {searchLoading && <span style={{ fontSize: 11, color: T.textFaint, flexShrink: 0 }}>searching…</span>}
+                                <kbd style={{ fontSize: 10, color: T.textFaint, padding: "2px 6px", background: T.bgHigh, borderRadius: 4, flexShrink: 0 }}>ESC</kbd>
+                            </div>
+
+                            {/* Results */}
+                            <div style={{ maxHeight: 420, overflowY: "auto" }}>
+                                {/* Pages */}
+                                {searchResults.pages.length > 0 && (
+                                    <div>
+                                        <div style={{ padding: "10px 18px 4px", fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.07em" }}>Pages</div>
+                                        {searchResults.pages.map(p => (
+                                            <button key={p.id} onClick={() => { router.push(p.href); closeSearch(); }}
+                                                style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+                                                onMouseEnter={e => e.currentTarget.style.background = T.bgElev}
+                                                onMouseLeave={e => e.currentTarget.style.background = "none"}
+                                            >
+                                                <span style={{ width: 28, height: 28, borderRadius: T.r6, background: `${T.j300}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                                    <Icon name="arrow-right" size={12} color={T.j200} />
+                                                </span>
+                                                <div>
+                                                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{p.label}</div>
+                                                    <div style={{ fontSize: 11, color: T.textFaint }}>{p.desc}</div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Orders */}
+                                {searchResults.orders.length > 0 && (
+                                    <div>
+                                        <div style={{ padding: "10px 18px 4px", fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.07em" }}>Orders</div>
+                                        {searchResults.orders.map(o => (
+                                            <button key={o.order_id} onClick={() => { router.push("/orders"); closeSearch(); }}
+                                                style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+                                                onMouseEnter={e => e.currentTarget.style.background = T.bgElev}
+                                                onMouseLeave={e => e.currentTarget.style.background = "none"}
+                                            >
+                                                <span style={{ width: 28, height: 28, borderRadius: T.r6, background: "rgba(59,130,246,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 12 }}>📦</span>
+                                                <div>
+                                                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>#{o.order_id}</div>
+                                                    <div style={{ fontSize: 11, color: T.textFaint }}>{o.customers?.name || "Unknown customer"} · {o.status} · Rs {Number(o.total_amount || 0).toLocaleString()}</div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Customers */}
+                                {searchResults.customers.length > 0 && (
+                                    <div>
+                                        <div style={{ padding: "10px 18px 4px", fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.07em" }}>Customers</div>
+                                        {searchResults.customers.map(c => (
+                                            <button key={c.id} onClick={() => { router.push("/customers"); closeSearch(); }}
+                                                style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+                                                onMouseEnter={e => e.currentTarget.style.background = T.bgElev}
+                                                onMouseLeave={e => e.currentTarget.style.background = "none"}
+                                            >
+                                                <span style={{ width: 28, height: 28, borderRadius: "50%", background: T.bgHigh, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 11, fontWeight: 700, color: T.j200 }}>
+                                                    {(c.name || "?")[0].toUpperCase()}
+                                                </span>
+                                                <div>
+                                                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>{c.name}</div>
+                                                    <div style={{ fontSize: 11, color: T.textFaint }}>{c.contact}{c.city ? ` · ${c.city}` : ""}</div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Empty state */}
+                                {searchQuery.trim() && !searchLoading && searchResults.pages.length === 0 && searchResults.orders.length === 0 && searchResults.customers.length === 0 && (
+                                    <div style={{ padding: "36px 18px", textAlign: "center", color: T.textFaint, fontSize: 13 }}>
+                                        No results for "<span style={{ color: T.text }}>{searchQuery}</span>"
+                                    </div>
+                                )}
+
+                                {/* Footer hint */}
+                                <div style={{ padding: "8px 18px", borderTop: `1px solid ${T.border}`, display: "flex", gap: 16, fontSize: 11, color: T.textFaint }}>
+                                    <span>↵ to select</span>
+                                    <span>↑↓ to navigate</span>
+                                    <span>ESC to close</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {user && !user.plan_id && daysLeft !== null && (
                     <div onClick={() => router.push("/plans")} style={{
