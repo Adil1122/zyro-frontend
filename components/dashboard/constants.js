@@ -43,6 +43,6 @@ export const NAV = [
     { id: "automation", label: "Automation", badge: "SOON", warn: true },
     { id: "analytics", label: "Analytics" },
     { id: "reports", label: "Reports" },
-    { id: "plans", label: "Plans" },
+    // { id: "plans", label: "Plans" }, // hidden for Shopify App Store review
     { id: "settings", label: "Settings" },
 ];
