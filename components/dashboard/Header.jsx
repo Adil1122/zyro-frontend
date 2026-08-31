@@ -32,7 +32,7 @@ const SEARCH_PAGES = [
     { id: "analytics",  label: "Analytics",   href: "/analytics",  desc: "Performance metrics" },
     { id: "reports",    label: "Reports",     href: "/reports",    desc: "Export & download reports" },
     { id: "settings",   label: "Settings",    href: "/settings",   desc: "Account & integrations" },
-    { id: "plans",      label: "Plans",       href: "/plans",      desc: "Subscription & billing" },
+    // { id: "plans", label: "Plans", href: "/plans", desc: "Subscription & billing" },
 ];
 
 export default function Header({ user, onMenuToggle }) {
@@ -346,34 +346,7 @@ export default function Header({ user, onMenuToggle }) {
                     </div>
                 )}
 
-                {user && !user.plan_id && daysLeft !== null && (
-                    <div onClick={() => router.push("/plans")} style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        padding: "6px 14px", borderRadius: 12, cursor: "pointer",
-                        background: daysLeft <= 3 ? "rgba(248,113,113,0.1)" : "rgba(92,168,124,0.1)",
-                        border: `1px solid ${daysLeft <= 3 ? "rgba(248,113,113,0.2)" : "rgba(92,168,124,0.2)"}`,
-                    }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: daysLeft <= 3 ? T.red : T.green }}>
-                            {daysLeft} Days Left in Trial
-                        </span>
-                        <span style={{ fontSize: 10, fontWeight: 600, color: T.textFaint, textDecoration: "underline" }}>Upgrade Now</span>
-                    </div>
-                )}
-
-                {user?.plan_id && (
-                    <button onClick={() => router.push("/plans")} style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        padding: "6px 14px", background: "rgba(59,130,246,0.1)",
-                        borderRadius: 12, border: "1px solid rgba(59,130,246,0.2)",
-                        cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
-                    }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(59,130,246,0.18)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.45)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(59,130,246,0.1)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.2)"; }}
-                    >
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "#3B82F6" }}>{user.plans?.name || "Active Plan"}</span>
-                        <span style={{ fontSize: 10, color: "#3B82F6", opacity: 0.65 }}>↗ Upgrade</span>
-                    </button>
-                )}
+                {/* Billing UI hidden for Shopify App Store review */}
             </div>
 
             {/* ── Right: live badge + icons + avatar ── */}
@@ -592,7 +565,7 @@ export default function Header({ user, onMenuToggle }) {
                             </div>
                             {[
                                 { label: "My Profile",    icon: "user",        href: "/profile" },
-                                { label: "Pricing Plans", icon: "credit-card", href: "/plans" },
+                                // { label: "Pricing Plans", icon: "credit-card", href: "/plans" },
                             ].map(item => (
                                 <button key={item.href} onClick={() => { setShowDropdown(false); router.push(item.href); }} style={{
                                     width: "100%", padding: "10px 16px", background: "none", border: "none",

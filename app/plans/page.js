@@ -140,6 +140,12 @@ function FaqItem({ q, a }) {
 
 export default function PlansPage() {
   const router = useRouter();
+
+  // Hidden for Shopify App Store review — redirect to dashboard
+  useEffect(() => { router.replace("/dashboard"); }, [router]);
+  return null;
+
+  // eslint-disable-next-line no-unreachable
   const [plans, setPlans] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userPlanId, setUserPlanId] = useState(null);
