@@ -44,7 +44,8 @@ export async function GET(request) {
         return NextResponse.json({ error: 'SHOPIFY_API_KEY not configured' }, { status: 500 });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.zyroocloud.com';
+    // Derive origin from the actual request URL so it matches any deployment domain
+    const appUrl = new URL(request.url).origin;
     const redirectUri = `${appUrl}/api/shopify/callback`;
 
     // Encode userId in state for retrieval after callback

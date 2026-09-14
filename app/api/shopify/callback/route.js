@@ -8,8 +8,7 @@ import { supabase } from '@/lib/supabase';
  * Exchanges the code for a permanent access token and saves it.
  */
 export async function GET(request) {
-    const { searchParams } = new URL(request.url);
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.zyroocloud.com';
+    const { searchParams, origin: appUrl } = new URL(request.url);
 
     const code = searchParams.get('code');
     const shop = searchParams.get('shop');
