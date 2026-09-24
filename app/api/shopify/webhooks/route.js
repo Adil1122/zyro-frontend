@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyShopifyWebhook } from '@/lib/shopifyWebhook';
 import { supabase } from '@/lib/supabase';
+import { SHOPIFY_CLEARED_COLUMNS } from '@/lib/shopifyToken';
 
 // Unified compliance webhook handler for all 3 mandatory GDPR topics.
 // Shopify sends all compliance webhooks to this single URI (configured in shopify.app.toml).
@@ -72,10 +73,7 @@ export async function POST(request) {
                 await supabase.from('orders').delete()
                     .eq('user_id', user.id).eq('platform', 'shopify');
                 await supabase.from('customers').delete().eq('user_id', user.id);
-                await supabase.from('users').update({
-                    shopify_store_domain: null,
-                    shopify_access_token: null,
-                }).eq('id', user.id);
+                await supabase.from('users').update(SHOPIFY_CLEARED_COLUMNS).eq('id', user.id);
             }
             await supabase.from('shopify_gdpr_requests').insert({
                 type: 'shop_redact', shop_domain,

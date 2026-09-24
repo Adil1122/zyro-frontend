@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { SHOPIFY_CLEARED_COLUMNS } from '@/lib/shopifyToken';
 import { getShopifyStats, isShopifyConfigured } from '@/lib/services/shopifyService';
 
 export async function POST(request) {
@@ -51,7 +52,7 @@ export async function DELETE(request) {
     try {
         const { error } = await supabase
             .from('users')
-            .update({ shopify_store_domain: null, shopify_access_token: null })
+            .update(SHOPIFY_CLEARED_COLUMNS)
             .eq('id', userId);
 
         if (error) throw error;

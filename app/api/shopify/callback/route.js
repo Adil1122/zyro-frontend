@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { supabase } from '@/lib/supabase';
+import { persistShopifyTokens } from '@/lib/shopifyToken';
 
 /**
  * GET /api/shopify/callback
@@ -54,6 +53,8 @@ export async function GET(request) {
                 client_id: process.env.SHOPIFY_API_KEY,
                 client_secret: process.env.SHOPIFY_API_SECRET,
                 code,
+                // Shopify refuses non-expiring tokens for public apps since 2026-04-01.
+                expiring: 1,
             }),
         });
 
@@ -63,7 +64,8 @@ export async function GET(request) {
             return NextResponse.redirect(`${appUrl}/settings/stores?shopify=error&reason=token_exchange`);
         }
 
-        const { access_token } = await tokenRes.json();
+        const tokenResponse = await tokenRes.json();
+        const { access_token } = tokenResponse;
 
         if (!access_token) {
             return NextResponse.redirect(`${appUrl}/settings/stores?shopify=error&reason=no_token`);
@@ -71,17 +73,10 @@ export async function GET(request) {
 
         // --- Save to Supabase (admin client to bypass RLS on sensitive columns) ---
         const cleanDomain = shop.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-        const db = supabaseAdmin || supabase;
-        const { error: dbError } = await db
-            .from('users')
-            .update({
-                shopify_store_domain: cleanDomain,
-                shopify_access_token: access_token,
-            })
-            .eq('id', userId);
-
-        if (dbError) {
-            console.error('[Shopify Callback] DB save error:', dbError);
+        try {
+            await persistShopifyTokens(userId, cleanDomain, tokenResponse);
+        } catch (dbErr) {
+            console.error('[Shopify Callback] DB save error:', dbErr);
             return NextResponse.redirect(`${appUrl}/settings/stores?shopify=error&reason=db_error`);
         }
 

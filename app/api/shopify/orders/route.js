@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { supabase } from '@/lib/supabase';
+import { getValidShopifyCreds } from '@/lib/shopifyToken';
 import { getShopifyOrders, isShopifyConfigured } from '@/lib/services/shopifyService';
 
 export async function GET(request) {
@@ -8,29 +7,9 @@ export async function GET(request) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const db = supabaseAdmin || supabase;
-        const { data: user, error: dbError } = await db
-            .from('users')
-            .select('shopify_store_domain, shopify_access_token')
-            .eq('id', userId)
-            .single();
+        const creds = await getValidShopifyCreds(userId);
 
-        if (dbError) {
-            console.error('[Shopify Orders] Credential lookup failed:', dbError);
-            return NextResponse.json({
-                configured: false,
-                message: supabaseAdmin
-                    ? `Could not read Shopify credentials: ${dbError.message}`
-                    : 'Server is missing SUPABASE_SERVICE_ROLE_KEY, so stored credentials cannot be read.',
-            });
-        }
-
-        const creds = {
-            domain: user?.shopify_store_domain,
-            accessToken: user?.shopify_access_token,
-        };
-
-        if (!isShopifyConfigured(creds)) {
+        if (!creds || !isShopifyConfigured(creds)) {
             return NextResponse.json({ configured: false, message: 'Shopify credentials not configured.' });
         }
 

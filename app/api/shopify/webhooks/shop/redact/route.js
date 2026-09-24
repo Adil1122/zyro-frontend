@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyShopifyWebhook } from '@/lib/shopifyWebhook';
 import { supabase } from '@/lib/supabase';
+import { SHOPIFY_CLEARED_COLUMNS } from '@/lib/shopifyToken';
 
 // Shopify GDPR: shop data erasure
 // A merchant has uninstalled the app and requested full data deletion.
@@ -43,10 +44,7 @@ export async function POST(request) {
             // Disconnect the Shopify integration (clear tokens and domain)
             await supabase
                 .from('users')
-                .update({
-                    shopify_store_domain: null,
-                    shopify_access_token: null,
-                })
+                .update(SHOPIFY_CLEARED_COLUMNS)
                 .eq('id', userId);
         }
 

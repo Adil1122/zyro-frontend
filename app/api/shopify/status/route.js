@@ -13,7 +13,7 @@ export async function GET(request) {
 
     const { data, error } = await db
         .from('users')
-        .select('shopify_store_domain, shopify_access_token')
+        .select('shopify_store_domain, shopify_access_token, shopify_refresh_token, shopify_token_expires_at, shopify_refresh_token_expires_at')
         .eq('id', userId)
         .single();
 
@@ -30,6 +30,10 @@ export async function GET(request) {
         tokenFingerprint: token ? createHash('sha256').update(token).digest('hex').slice(0, 8) : null,
         tokenLength: token ? token.length : 0,
         tokenPrefix: token ? token.split('_')[0] : null,
+        isExpiringToken: !!data?.shopify_token_expires_at,
+        hasRefreshToken: !!data?.shopify_refresh_token,
+        tokenExpiresAt: data?.shopify_token_expires_at || null,
+        refreshTokenExpiresAt: data?.shopify_refresh_token_expires_at || null,
     };
 
     if (domain && token) {
