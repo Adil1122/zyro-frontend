@@ -9,11 +9,21 @@ export async function GET(request) {
 
     try {
         const db = supabaseAdmin || supabase;
-        const { data: user } = await db
+        const { data: user, error: dbError } = await db
             .from('users')
             .select('shopify_store_domain, shopify_access_token')
             .eq('id', userId)
             .single();
+
+        if (dbError) {
+            console.error('[Shopify Orders] Credential lookup failed:', dbError);
+            return NextResponse.json({
+                configured: false,
+                message: supabaseAdmin
+                    ? `Could not read Shopify credentials: ${dbError.message}`
+                    : 'Server is missing SUPABASE_SERVICE_ROLE_KEY, so stored credentials cannot be read.',
+            });
+        }
 
         const creds = {
             domain: user?.shopify_store_domain,
