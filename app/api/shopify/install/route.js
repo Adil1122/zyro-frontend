@@ -48,16 +48,6 @@ export async function GET(request) {
     const appUrl = new URL(request.url).origin;
     const redirectUri = `${appUrl}/api/shopify/callback`;
 
-    // Debug mode: return params without redirecting (visit with ?debug=1)
-    if (searchParams.get('debug') === '1') {
-        return NextResponse.json({
-            shop,
-            redirect_uri: redirectUri,
-            client_id_prefix: apiKey.slice(0, 6) + '...',
-            scopes: SCOPES,
-        });
-    }
-
     // Encode userId in state for retrieval after callback
     const state = Buffer.from(JSON.stringify({ userId, nonce: Math.random().toString(36).slice(2) })).toString('base64url');
 
