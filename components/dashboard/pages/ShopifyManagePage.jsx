@@ -93,6 +93,7 @@ export default function ShopifyManagePage({ onBack }) {
     const [cursors, setCursors] = useState({ next: null, prev: null, history: { 1: null } });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [errorDetail, setErrorDetail] = useState(null);
     const [search, setSearch] = useState("");
     const [searchInput, setSearchInput] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
@@ -145,6 +146,7 @@ export default function ShopifyManagePage({ onBack }) {
     const fetchOrders = useCallback(async (page = 1, pageInfo = null, perPageOverride = null) => {
         setLoading(true);
         setError(null);
+        setErrorDetail(null);
         try {
             const userId = getCurrentUserId();
             const perPage = perPageOverride ?? pagination.perPage;
@@ -160,7 +162,11 @@ export default function ShopifyManagePage({ onBack }) {
             });
             const data = await res.json();
 
-            if (!data.configured) { setError("not_configured"); return; }
+            if (!data.configured) {
+                setError(data.tokenExpired ? "token_expired" : "not_configured");
+                setErrorDetail(data.message || null);
+                return;
+            }
             if (data.error) { setError(data.error); return; }
 
             setOrders(data.orders || []);
@@ -406,11 +412,24 @@ export default function ShopifyManagePage({ onBack }) {
                 </div>
             ) : (
                 <div style={{ flex: 1, overflow: "auto" }}>
-                    {error === "not_configured" ? (
+                    {error === "token_expired" ? (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 40px", textAlign: "center" }}>
+                            <div style={{ fontSize: 40, marginBottom: 16 }}>🔑</div>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 8 }}>Reconnect Required</div>
+                            <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 440, lineHeight: 1.6, marginBottom: 20 }}>
+                                {errorDetail || "Your Shopify access token is no longer valid. Reconnect to authorize a new one."}
+                            </div>
+                            <button onClick={handleConnectOAuth} disabled={!config.domain} style={{ padding: "10px 20px", borderRadius: T.r8, fontSize: 13, fontWeight: 700, background: config.domain ? SHOPIFY_GRAD : T.bgHigh, color: config.domain ? "#fff" : T.textMuted, border: "none", cursor: config.domain ? "pointer" : "not-allowed", boxShadow: "0 2px 8px rgba(150,191,72,0.35)", fontFamily: "inherit" }}>
+                                🛍 Reconnect with Shopify
+                            </button>
+                        </div>
+                    ) : error === "not_configured" ? (
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 40px", textAlign: "center" }}>
                             <div style={{ fontSize: 40, marginBottom: 16 }}>🏬</div>
                             <div style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 8 }}>Shopify Not Connected</div>
-                            <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 400, lineHeight: 1.6, marginBottom: 20 }}>Add your Shopify store domain and access token to start syncing orders.</div>
+                            <div style={{ fontSize: 13, color: T.textMuted, maxWidth: 440, lineHeight: 1.6, marginBottom: 20 }}>
+                                {errorDetail || "Add your Shopify store domain and access token to start syncing orders."}
+                            </div>
                             <button onClick={() => setIsConfiguring(true)} style={{ padding: "10px 20px", borderRadius: T.r8, fontSize: 13, fontWeight: 700, background: SHOPIFY_GRAD, color: "#fff", border: "none", cursor: "pointer", boxShadow: "0 2px 8px rgba(150,191,72,0.35)", fontFamily: "inherit" }}>Configure Now</button>
                         </div>
                     ) : error ? (
