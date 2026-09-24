@@ -33,6 +33,9 @@ export async function GET(request) {
         return NextResponse.json({ configured: true, ...data });
     } catch (error) {
         console.error('[Shopify Orders Error]', error.message);
+        if (error.message === 'SHOPIFY_TOKEN_EXPIRED') {
+            return NextResponse.json({ configured: false, tokenExpired: true, message: 'Shopify access token expired. Please reconnect your store.' });
+        }
         return NextResponse.json({ configured: true, error: error.message }, { status: 500 });
     }
 }
