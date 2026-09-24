@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { supabase } from '@/lib/supabase';
 
 /**
@@ -68,9 +69,10 @@ export async function GET(request) {
             return NextResponse.redirect(`${appUrl}/settings/stores?shopify=error&reason=no_token`);
         }
 
-        // --- Save to Supabase ---
+        // --- Save to Supabase (admin client to bypass RLS on sensitive columns) ---
         const cleanDomain = shop.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-        const { error: dbError } = await supabase
+        const db = supabaseAdmin || supabase;
+        const { error: dbError } = await db
             .from('users')
             .update({
                 shopify_store_domain: cleanDomain,

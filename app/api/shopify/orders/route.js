@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { supabase } from '@/lib/supabase';
 import { getShopifyOrders, isShopifyConfigured } from '@/lib/services/shopifyService';
 
@@ -7,7 +8,8 @@ export async function GET(request) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { data: user } = await supabase
+        const db = supabaseAdmin || supabase;
+        const { data: user } = await db
             .from('users')
             .select('shopify_store_domain, shopify_access_token')
             .eq('id', userId)
