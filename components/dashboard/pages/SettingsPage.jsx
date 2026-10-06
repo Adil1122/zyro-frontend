@@ -1504,6 +1504,7 @@ export default function SettingsPage({ tabParam }) {
     
     const initialManaging = searchParams.get("manage");
     const [managingStore, setManagingStore] = useState(initialManaging);
+    const [shopifyJustConnected, setShopifyJustConnected] = useState(false);
     const [darazOAuthError, setDarazOAuthError] = useState(null);
 
     // ─── WhatsApp Integration State ───
@@ -1895,6 +1896,7 @@ export default function SettingsPage({ tabParam }) {
         const shopifyStatus = searchParams.get("shopify");
         if (shopifyStatus === "connected") {
             setManagingStore("shopify");
+            setShopifyJustConnected(true);
             router.replace(`/settings/stores?manage=shopify`);
         }
     }, []);
@@ -1959,7 +1961,7 @@ export default function SettingsPage({ tabParam }) {
         return <DarazManagePage onBack={handleBack} />;
     }
     if (managingStore === "shopify") {
-        return <ShopifyManagePage onBack={handleBack} />;
+        return <ShopifyManagePage onBack={handleBack} justConnected={shopifyJustConnected} />;
     }
     if (managingStore === "postex") {
         return <PostExManagePage onBack={handleBack} />;

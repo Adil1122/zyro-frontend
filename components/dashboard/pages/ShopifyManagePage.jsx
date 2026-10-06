@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton } from "../Primitives";
@@ -87,7 +87,7 @@ function paginBtnStyle(disabled) {
     };
 }
 
-export default function ShopifyManagePage({ onBack }) {
+export default function ShopifyManagePage({ onBack, justConnected = false }) {
     const [orders, setOrders] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, perPage: 50, totalOrders: 0, totalPages: 1 });
     const [cursors, setCursors] = useState({ next: null, prev: null, history: { 1: null } });
@@ -104,6 +104,11 @@ export default function ShopifyManagePage({ onBack }) {
     const [saveMsg, setSaveMsg] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [config, setConfig] = useState({ domain: "" });
+
+    // ─── Dashboard sync state ─────────────────────────────────────────────────
+    const [syncing, setSyncing] = useState(false);
+    const [syncMsg, setSyncMsg] = useState(null);
+    const autoSyncDone = useRef(false);
 
     const fetchConfig = async () => {
         try {
@@ -183,8 +188,54 @@ export default function ShopifyManagePage({ onBack }) {
         }
     }, [search, statusFilter, pagination.perPage]);
 
+    // Pulls existing Shopify orders into the dashboard tables. Webhooks only cover
+    // orders placed after install, so without this a connected store shows nothing.
+    const runSync = useCallback(async () => {
+        setSyncing(true);
+        setSyncMsg("Syncing orders…");
+        const userId = getCurrentUserId();
+        let pageInfo = null;
+        let created = 0, updated = 0, failed = 0, pages = 0;
+
+        try {
+            do {
+                const res = await fetch("/api/shopify/sync", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "x-user-id": userId },
+                    body: JSON.stringify({ pageInfo, limit: 50 }),
+                });
+                const data = await res.json();
+
+                if (!data.configured) { setSyncMsg(data.message || "Shopify not connected."); return; }
+                if (data.error) { setSyncMsg(`Sync failed: ${data.error}`); return; }
+
+                created += data.created || 0;
+                updated += data.updated || 0;
+                failed += data.failed || 0;
+                pageInfo = data.nextPageInfo;
+                pages++;
+                setSyncMsg(`Synced ${created + updated} orders…`);
+            } while (pageInfo && pages < 40);
+
+            setSyncMsg(`Synced ${created} new, ${updated} updated${failed ? `, ${failed} failed` : ""}.`);
+            fetchOrders(1);
+        } catch (e) {
+            setSyncMsg(`Sync failed: ${e.message}`);
+        } finally {
+            setSyncing(false);
+        }
+    }, [fetchOrders]);
+
     useEffect(() => { fetchConfig(); fetchOrders(1); }, []);
     useEffect(() => { fetchOrders(1); }, [search, statusFilter]);
+
+    // Sync automatically right after OAuth so the merchant never has to ask for it.
+    useEffect(() => {
+        if (justConnected && !autoSyncDone.current) {
+            autoSyncDone.current = true;
+            runSync();
+        }
+    }, [justConnected, runSync]);
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -236,6 +287,18 @@ export default function ShopifyManagePage({ onBack }) {
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         {saveMsg && (
                             <span style={{ fontSize: 12, fontWeight: 600, color: saveMsg.type === "success" ? "#bbf7d0" : "#fca5a5" }}>{saveMsg.text}</span>
+                        )}
+                        {syncMsg && (
+                            <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>{syncMsg}</span>
+                        )}
+                        {config.domain && !isConfiguring && (
+                            <button onClick={runSync} disabled={syncing} style={{
+                                padding: "5px 12px", borderRadius: T.r8, fontSize: 12, fontWeight: 600,
+                                background: "rgba(255,255,255,0.15)", color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.25)",
+                                cursor: syncing ? "wait" : "pointer", opacity: syncing ? 0.6 : 1,
+                                fontFamily: "inherit",
+                            }}>{syncing ? "Syncing…" : "Sync to Dashboard"}</button>
                         )}
                         {config.domain && !isConfiguring && (
                             <button onClick={handleDisconnect} style={{
