@@ -83,7 +83,7 @@ export async function GET(request) {
         console.log(`[Shopify Callback] Connected ${cleanDomain} for user ${userId}`);
 
         // Register webhooks for this store
-        const webhookTopics = ['orders/create', 'orders/updated', 'orders/fulfilled', 'orders/cancelled'];
+        const webhookTopics = ['orders/create', 'orders/updated', 'orders/fulfilled', 'orders/cancelled', 'inventory_levels/update'];
         const webhookAddress = `${appUrl}/api/shopify/webhook`;
         for (const wTopic of webhookTopics) {
             const wRes = await fetch(`https://${cleanDomain}/admin/api/2026-07/webhooks.json`, {

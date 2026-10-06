@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getValidShopifyCreds } from '@/lib/shopifyToken';
 import { fetchShopifyOrdersPage, isShopifyConfigured } from '@/lib/services/shopifyService';
 import { upsertShopifyOrder } from '@/lib/services/shopifyOrderSync';
+import { syncProductMapping } from '@/lib/services/shopifyInventory';
 
 export const maxDuration = 60;
 
@@ -24,6 +25,16 @@ export async function POST(request) {
 
         const pageInfo = body.pageInfo || null;
         const limit = Math.min(parseInt(body.limit, 10) || 50, MAX_LIMIT);
+
+        // Link products to Shopify variants on the first page so inventory can be pushed.
+        let mapping = null;
+        if (!pageInfo) {
+            try {
+                mapping = await syncProductMapping(userId, creds);
+            } catch (e) {
+                console.error('[Shopify Sync] Product mapping failed:', e.message);
+            }
+        }
 
         const { orders, nextPageInfo } = await fetchShopifyOrdersPage({ creds, limit, pageInfo });
 
@@ -53,6 +64,7 @@ export async function POST(request) {
             updated,
             failed: failures.length,
             firstFailure: failures[0]?.error || null,
+            mapping,
             nextPageInfo: nextPageInfo || null,
             done: !nextPageInfo,
         });

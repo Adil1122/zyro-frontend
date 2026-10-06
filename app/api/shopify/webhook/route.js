@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
 import { upsertShopifyOrder, findUserByShopDomain } from '@/lib/services/shopifyOrderSync';
+import { applyInboundInventoryLevel } from '@/lib/services/shopifyInventory';
 
 const ORDER_TOPICS = ['orders/create', 'orders/updated', 'orders/fulfilled', 'orders/cancelled'];
+const INVENTORY_TOPIC = 'inventory_levels/update';
 
 export async function POST(request) {
     const topic = request.headers.get('x-shopify-topic') || '';
@@ -21,19 +23,18 @@ export async function POST(request) {
         }
     }
 
-    if (!ORDER_TOPICS.includes(topic)) {
+    const isOrderTopic = ORDER_TOPICS.includes(topic);
+    const isInventoryTopic = topic === INVENTORY_TOPIC;
+
+    if (!isOrderTopic && !isInventoryTopic) {
         return NextResponse.json({ success: true, message: `Topic ${topic} ignored` });
     }
 
-    let shopifyOrder;
+    let payload;
     try {
-        shopifyOrder = JSON.parse(rawBody);
+        payload = JSON.parse(rawBody);
     } catch {
         return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-    }
-
-    if (!shopifyOrder?.id) {
-        return NextResponse.json({ success: true, message: 'Ping received' });
     }
 
     const userId = await findUserByShopDomain(shopDomain);
@@ -42,8 +43,30 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Store not recognized' }, { status: 404 });
     }
 
+    // Stock edited in the Shopify admin — mirror it onto our product row.
+    // Our own pushes echo back here; applyInboundInventoryLevel no-ops when the
+    // numbers already agree, so the loop terminates.
+    if (isInventoryTopic) {
+        if (!payload?.inventory_item_id) {
+            return NextResponse.json({ success: true, message: 'Ping received' });
+        }
+        try {
+            const result = await applyInboundInventoryLevel(userId, payload.inventory_item_id, payload.available);
+            return NextResponse.json({ success: true, topic, result });
+        } catch (error) {
+            console.error('[Shopify Webhook] Inventory sync failed:', error.message);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+    }
+
+    if (!payload?.id) {
+        return NextResponse.json({ success: true, message: 'Ping received' });
+    }
+
     try {
-        const result = await upsertShopifyOrder(userId, shopifyOrder, { topic, notify: true });
+        // applyStock: Shopify has already decremented its own stock for this sale,
+        // so we mirror it locally and deliberately do not push back.
+        const result = await upsertShopifyOrder(userId, payload, { topic, notify: true, applyStock: true });
         console.log(`[Shopify Webhook] ${topic} | #${result.orderNumber} | ${result.status} | new=${result.isNewOrder} | user=${userId}`);
         return NextResponse.json({ success: true, ...result, topic });
     } catch (error) {

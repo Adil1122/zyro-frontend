@@ -11,6 +11,10 @@
     {
       "path": "/api/woocommerce/auto-poll",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/shopify/reconcile",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
