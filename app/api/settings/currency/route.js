@@ -36,14 +36,37 @@ export async function POST(request) {
 
     const baseCurrency = await getUserBaseCurrency(userId);
 
-    const { data: orders, error } = await db()
+    // `all` re-converts everything. The default pass can't simply trust a row
+    // that already has a base amount: a row stamped rate 1 while charged in
+    // another currency looks converted but isn't.
+    const { searchParams } = new URL(request.url);
+    const all = searchParams.get('all') === '1';
+
+    let query = db()
         .from('orders')
-        .select('id, total_amount, currency, created_at, base_currency')
+        .select('id, total_amount, total_amount_base, currency, created_at, base_currency, fx_rate')
         .eq('user_id', userId)
-        .or(`base_currency.neq.${baseCurrency},base_currency.is.null,total_amount_base.is.null`)
         .limit(500);
 
+    if (!all) {
+        query = query.or(
+            `base_currency.neq.${baseCurrency},base_currency.is.null,total_amount_base.is.null,fx_rate.is.null`,
+        );
+    }
+
+    const { data: candidates, error } = await query;
+
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const orders = (candidates || []).filter(o => {
+        if (all) return true;
+        const orderCurrency = (o.currency || baseCurrency).toUpperCase();
+        const misStamped = orderCurrency !== baseCurrency && Number(o.fx_rate) === 1;
+        return misStamped
+            || o.total_amount_base === null
+            || o.fx_rate === null
+            || (o.base_currency || '').toUpperCase() !== baseCurrency;
+    });
 
     let updated = 0;
     let unconvertible = 0;
@@ -70,10 +93,10 @@ export async function POST(request) {
     return NextResponse.json({
         success: true,
         baseCurrency,
-        examined: (orders || []).length,
+        examined: orders.length,
         updated,
         unconvertible,
-        moreRemaining: (orders || []).length === 500,
+        moreRemaining: (candidates || []).length === 500,
     });
 }
 

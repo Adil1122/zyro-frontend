@@ -15,12 +15,16 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_amount_base NUMERIC(14,2);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS fx_rate NUMERIC(18,8);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS base_currency TEXT;
 
--- Orders already in the table are PKR, recorded before any conversion existed.
+-- Only orders actually charged in PKR can be stamped as already converted.
+-- Anything in another currency is left null so the recalculation pass converts
+-- it properly; claiming rate 1 would record a USD order as the same number of
+-- rupees.
 UPDATE orders
 SET total_amount_base = total_amount,
     fx_rate = 1,
-    base_currency = COALESCE(base_currency, 'PKR')
-WHERE total_amount_base IS NULL;
+    base_currency = 'PKR'
+WHERE total_amount_base IS NULL
+  AND COALESCE(UPPER(currency), 'PKR') = 'PKR';
 
 -- Daily rates, cached so a sync never depends on the FX service being reachable
 -- and so a historical order is converted at the rate for its own date.

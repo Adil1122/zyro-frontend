@@ -26,7 +26,7 @@ export async function GET(request) {
 
     const { data: rows, error: ordersError } = await db
         .from('orders')
-        .select('platform_id, total_amount, created_at')
+        .select('platform_id, total_amount, total_amount_base, currency, fx_rate, base_currency, created_at')
         .eq('user_id', userId);
 
     const byPlatform = {};
@@ -60,8 +60,26 @@ export async function GET(request) {
         .eq('user_id', userId)
         .limit(1);
 
+    // Per-currency view: an order charged in another currency but sitting at
+    // rate 1 was wrongly stamped as already converted.
+    const byCurrency = {};
+    for (const row of rows || []) {
+        const code = (row.currency || 'PKR').toUpperCase();
+        if (!byCurrency[code]) {
+            byCurrency[code] = { orders: 0, converted: 0, awaitingConversion: 0, misStampedAtRate1: 0 };
+        }
+        const bucket = byCurrency[code];
+        bucket.orders += 1;
+        if (row.total_amount_base === null) bucket.awaitingConversion += 1;
+        else bucket.converted += 1;
+        if (code !== (row.base_currency || 'PKR').toUpperCase() && Number(row.fx_rate) === 1) {
+            bucket.misStampedAtRate1 += 1;
+        }
+    }
+
     return NextResponse.json({
         usingServiceRole: !!supabaseAdmin,
+        byCurrency,
         dashboardSelectError: dashboardSelectError ? dashboardSelectError.message : null,
         userError: userError ? userError.message : null,
         ordersError: ordersError ? ordersError.message : null,
