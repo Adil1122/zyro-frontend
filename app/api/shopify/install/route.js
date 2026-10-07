@@ -5,6 +5,7 @@ const SCOPES = [
     'read_products', 'write_products',
     'read_customers', 'write_customers',
     'read_inventory', 'write_inventory',
+    'read_locations', // GET /locations.json, needed to resolve the inventory location
     'read_fulfillments', 'write_fulfillments',
     'read_draft_orders', 'write_draft_orders',
     'read_price_rules', 'write_price_rules',
