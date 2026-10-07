@@ -12,6 +12,7 @@ import Icon from "../Icon";
 import { GradientButton, Badge, PlatformBadge, Card, KPI, ChartTip, PageHeader } from "../Primitives";
 import { getCurrentUserId } from "../../../lib/auth";
 import { formatMoney } from "../../../lib/currency";
+import { STORE_COLORS, OTHER_DISPLAY } from "../../../lib/platforms";
 import { useRouter } from "next/navigation";
 import { NewOrderModal } from "./OrdersPage";
 
@@ -171,7 +172,7 @@ export default function DashboardPage() {
                             <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2 }}>Real-time platform distribution</div>
                         </div>
                         <div style={{ display: "flex", gap: 14 }}>
-                            {[[T.j300, "Woo"], [T.j100, "Daraz"], [T.j500, "Shopify"]].map(([c, n]) => (
+                            {[[STORE_COLORS.WooCommerce, "Woo"], [STORE_COLORS.Other, OTHER_DISPLAY], [STORE_COLORS.Daraz, "Daraz"], [STORE_COLORS.Shopify, "Shopify"]].map(([c, n]) => (
                                 <div key={n} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                     <div style={{ width: 8, height: 8, borderRadius: 2, background: c }} />
                                     <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 500 }}>{n}</span>
@@ -185,9 +186,10 @@ export default function DashboardPage() {
                             <XAxis dataKey="day" tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} />
                             <Tooltip content={<ChartTip />} cursor={{ fill: "rgba(92,168,124,0.05)" }} />
-                            <Bar dataKey="woo" name="WooCommerce" stackId="a" fill={T.j300} />
-                            <Bar dataKey="daraz" name="Daraz" stackId="a" fill={T.j100} />
-                            <Bar dataKey="shopify" name="Shopify" stackId="a" fill={T.j500} radius={[3, 3, 0, 0]} />
+                            <Bar dataKey="woo" name="WooCommerce" stackId="a" fill={STORE_COLORS.WooCommerce} stroke={T.bgCard} strokeWidth={1.5} />
+                            <Bar dataKey="other" name={OTHER_DISPLAY} stackId="a" fill={STORE_COLORS.Other} stroke={T.bgCard} strokeWidth={1.5} />
+                            <Bar dataKey="daraz" name="Daraz" stackId="a" fill={STORE_COLORS.Daraz} stroke={T.bgCard} strokeWidth={1.5} />
+                            <Bar dataKey="shopify" name="Shopify" stackId="a" fill={STORE_COLORS.Shopify} stroke={T.bgCard} strokeWidth={1.5} radius={[3, 3, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </Card>

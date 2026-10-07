@@ -7,24 +7,13 @@ import {
 } from "recharts";
 import { T } from "@/components/dashboard/constants";
 import { getCurrentUserId } from "@/lib/auth";
-import { STORE_LABEL_LIST, OTHER_LABEL } from "@/lib/platforms";
+import { STORE_LABEL_LIST, OTHER_LABEL, STORE_COLORS, OTHER_DISPLAY } from "@/lib/platforms";
 import { formatMoney, currencySymbol } from "@/lib/currency";
 
-// Fixed per-source hues, validated for the dark chart surface across colour-vision
-// types. Assigned by source and never cycled, so one keeps its colour even when
-// another has no sales. Deliberately outside the green/red/yellow status palette.
-// Stack order matters: it is what the validator treats as adjacent.
-const SOURCE_COLORS = {
-    Shopify: "#3B82F6",
-    WooCommerce: "#C026D3",
-    Daraz: "#EA580C",
-    [OTHER_LABEL]: "#0891B2",
-};
 
-const OTHER_DISPLAY = "Manual & Courier";
 
 // Series whose values are money, so the shared tooltip formats them as currency.
-const MONEY_SERIES = new Set([...Object.keys(SOURCE_COLORS), OTHER_DISPLAY]);
+const MONEY_SERIES = new Set([...Object.keys(STORE_COLORS), OTHER_DISPLAY]);
 
 const RANGES = [
     { label: "Today", days: 1 },
@@ -209,7 +198,7 @@ export default function AnalyticsPage() {
                         boxShadow: T.shadow,
                     }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
-                            <span style={{ width: 8, height: 8, borderRadius: 2, background: SOURCE_COLORS[s.source], flexShrink: 0 }} />
+                            <span style={{ width: 8, height: 8, borderRadius: 2, background: STORE_COLORS[s.source], flexShrink: 0 }} />
                             <span style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.6px" }}>
                                 {s.source === OTHER_LABEL ? OTHER_DISPLAY : s.source}
                             </span>
@@ -253,7 +242,7 @@ export default function AnalyticsPage() {
                                     dataKey={source}
                                     name={source === OTHER_LABEL ? OTHER_DISPLAY : source}
                                     stackId="source"
-                                    fill={SOURCE_COLORS[source]}
+                                    fill={STORE_COLORS[source]}
                                     stroke={T.bgCard}
                                     strokeWidth={2}
                                     radius={i === sourceList.length - 1 ? [4, 4, 0, 0] : 0}
