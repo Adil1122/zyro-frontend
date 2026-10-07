@@ -7,16 +7,23 @@ import {
 } from "recharts";
 import { T } from "@/components/dashboard/constants";
 import { getCurrentUserId } from "@/lib/auth";
-import { STORE_LABEL_LIST } from "@/lib/platforms";
+import { STORE_LABEL_LIST, OTHER_LABEL } from "@/lib/platforms";
 
-// Fixed per-store hues, validated for the dark chart surface across colour-vision
-// types. Assigned by store and never cycled, so a store keeps its colour even when
+// Fixed per-source hues, validated for the dark chart surface across colour-vision
+// types. Assigned by source and never cycled, so one keeps its colour even when
 // another has no sales. Deliberately outside the green/red/yellow status palette.
-const STORE_COLORS = {
+// Stack order matters: it is what the validator treats as adjacent.
+const SOURCE_COLORS = {
     Shopify: "#3B82F6",
     WooCommerce: "#C026D3",
     Daraz: "#EA580C",
+    [OTHER_LABEL]: "#0891B2",
 };
+
+const OTHER_DISPLAY = "Manual & Courier";
+
+// Series whose values are currency, so the shared tooltip formats them as PKR.
+const MONEY_SERIES = new Set([...Object.keys(SOURCE_COLORS), OTHER_DISPLAY]);
 
 const RANGES = [
     { label: "Today", days: 1 },
@@ -54,7 +61,7 @@ const CustomTooltip = ({ active, payload, label }) => {
         }}>
             <div style={{ color: T.textMuted, marginBottom: 6, fontWeight: 700 }}>{label}</div>
             {payload.map(p => {
-                const isMoney = p.name.includes("Revenue") || p.name.includes("Collected") || p.name in STORE_COLORS;
+                const isMoney = p.name.includes("Revenue") || p.name.includes("Collected") || MONEY_SERIES.has(p.name);
                 return (
                     <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
                         <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color, flexShrink: 0 }} />
@@ -97,9 +104,11 @@ export default function AnalyticsPage() {
                 "Gross Revenue": r.grossRevenue || 0,
                 "Collected": r.collectedRevenue || 0,
             };
-            for (const store of STORE_LABEL_LIST) {
-                row[store] = r.platforms?.[store]?.revenue || 0;
-                row[`${store} orders`] = r.platforms?.[store]?.orders || 0;
+            // Copy every bucket the API reported, not just the three stores, so
+            // courier and manual orders are not dropped from the totals.
+            for (const source of Object.keys(r.platforms || {})) {
+                row[source] = r.platforms[source]?.revenue || 0;
+                row[`${source} orders`] = r.platforms[source]?.orders || 0;
             }
             return row;
         });
@@ -118,10 +127,13 @@ export default function AnalyticsPage() {
         collected: acc.collected + d["Collected"],
     }), { orders: 0, completed: 0, cancelled: 0, revenue: 0, collected: 0 });
 
-    const storeTotals = STORE_LABEL_LIST.map(store => ({
-        store,
-        revenue: chartData.reduce((s, d) => s + (d[store] || 0), 0),
-        orders: chartData.reduce((s, d) => s + (d[`${store} orders`] || 0), 0),
+    const hasOther = chartData.some(d => (d[OTHER_LABEL] || 0) > 0 || (d[`${OTHER_LABEL} orders`] || 0) > 0);
+    const sourceList = hasOther ? [...STORE_LABEL_LIST, OTHER_LABEL] : STORE_LABEL_LIST;
+
+    const sourceTotals = sourceList.map(source => ({
+        source,
+        revenue: chartData.reduce((s, d) => s + (d[source] || 0), 0),
+        orders: chartData.reduce((s, d) => s + (d[`${source} orders`] || 0), 0),
     }));
 
     const completionRate = totals.orders > 0
@@ -185,18 +197,18 @@ export default function AnalyticsPage() {
                 ))}
             </div>
 
-            {/* Per-store totals — also the direct labels for the chart below */}
-            <div className="analytics-store-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
-                {storeTotals.map(s => (
-                    <div key={s.store} style={{
+            {/* Per-source totals — also the direct labels for the chart below */}
+            <div className="analytics-store-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${sourceTotals.length}, 1fr)`, gap: 12, marginBottom: 24 }}>
+                {sourceTotals.map(s => (
+                    <div key={s.source} style={{
                         background: T.bgCard, borderRadius: T.r12,
                         border: `1px solid ${T.border}`, padding: "18px 16px",
                         boxShadow: T.shadow,
                     }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
-                            <span style={{ width: 8, height: 8, borderRadius: 2, background: STORE_COLORS[s.store], flexShrink: 0 }} />
+                            <span style={{ width: 8, height: 8, borderRadius: 2, background: SOURCE_COLORS[s.source], flexShrink: 0 }} />
                             <span style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.6px" }}>
-                                {s.store}
+                                {s.source === OTHER_LABEL ? OTHER_DISPLAY : s.source}
                             </span>
                         </div>
                         <div style={{ fontSize: 18, fontWeight: 800, color: T.text, fontVariantNumeric: "tabular-nums" }}>
@@ -214,8 +226,8 @@ export default function AnalyticsPage() {
                 background: T.bgCard, borderRadius: T.r12, border: `1px solid ${T.border}`,
                 padding: "24px 20px", marginBottom: 16, boxShadow: T.shadow,
             }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>Revenue by Store (PKR)</div>
-                <div style={{ fontSize: 12, color: T.textFaint, marginBottom: 20 }}>Every connected store, stacked to the daily total</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>Revenue by Source (PKR)</div>
+                <div style={{ fontSize: 12, color: T.textFaint, marginBottom: 20 }}>Every connected store plus manual and courier orders, stacked to the daily total</div>
                 {loading ? (
                     <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: T.textFaint, fontSize: 13 }}>
                         Loading data...
@@ -232,15 +244,16 @@ export default function AnalyticsPage() {
                             <YAxis tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} width={50} tickFormatter={pkr} />
                             <Tooltip content={<CustomTooltip />} cursor={{ fill: T.bgElev, opacity: 0.4 }} />
                             <Legend wrapperStyle={{ fontSize: 12, color: T.textMuted, paddingTop: 12 }} />
-                            {STORE_LABEL_LIST.map((store, i) => (
+                            {sourceList.map((source, i) => (
                                 <Bar
-                                    key={store}
-                                    dataKey={store}
-                                    stackId="store"
-                                    fill={STORE_COLORS[store]}
+                                    key={source}
+                                    dataKey={source}
+                                    name={source === OTHER_LABEL ? OTHER_DISPLAY : source}
+                                    stackId="source"
+                                    fill={SOURCE_COLORS[source]}
                                     stroke={T.bgCard}
                                     strokeWidth={2}
-                                    radius={i === STORE_LABEL_LIST.length - 1 ? [4, 4, 0, 0] : 0}
+                                    radius={i === sourceList.length - 1 ? [4, 4, 0, 0] : 0}
                                 />
                             ))}
                         </BarChart>
