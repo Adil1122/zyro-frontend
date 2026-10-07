@@ -38,6 +38,25 @@ export async function GET(request) {
 
     if (domain && token) {
         const clean = domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+
+        // Without registered webhooks a new order never reaches us. Registration
+        // happens at connect time and only warns on failure, so it has to be
+        // checked rather than assumed.
+        try {
+            const res = await fetch(`https://${clean}/admin/api/2026-07/webhooks.json`, {
+                headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
+            });
+            if (res.ok) {
+                const { webhooks } = await res.json();
+                result.webhooks = (webhooks || []).map(w => ({ topic: w.topic, address: w.address }));
+                result.webhookCount = result.webhooks.length;
+            } else {
+                result.webhooks = { status: res.status, body: (await res.text()).slice(0, 300) };
+            }
+        } catch (e) {
+            result.webhooks = { error: e.message };
+        }
+
         for (const endpoint of ['shop.json', 'orders/count.json?status=any']) {
             try {
                 const res = await fetch(`https://${clean}/admin/api/2026-07/${endpoint}`, {
