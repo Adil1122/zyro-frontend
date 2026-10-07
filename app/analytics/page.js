@@ -8,6 +8,7 @@ import {
 import { T } from "@/components/dashboard/constants";
 import { getCurrentUserId } from "@/lib/auth";
 import { STORE_LABEL_LIST, OTHER_LABEL } from "@/lib/platforms";
+import { formatMoney, currencySymbol } from "@/lib/currency";
 
 // Fixed per-source hues, validated for the dark chart surface across colour-vision
 // types. Assigned by source and never cycled, so one keeps its colour even when
@@ -22,7 +23,7 @@ const SOURCE_COLORS = {
 
 const OTHER_DISPLAY = "Manual & Courier";
 
-// Series whose values are currency, so the shared tooltip formats them as PKR.
+// Series whose values are money, so the shared tooltip formats them as currency.
 const MONEY_SERIES = new Set([...Object.keys(SOURCE_COLORS), OTHER_DISPLAY]);
 
 const RANGES = [
@@ -52,7 +53,7 @@ function pkr(n) {
     return String(n);
 }
 
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = ({ active, payload, label, currency = "PKR" }) => {
     if (!active || !payload?.length) return null;
     return (
         <div style={{
@@ -67,7 +68,7 @@ const CustomTooltip = ({ active, payload, label }) => {
                         <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color, flexShrink: 0 }} />
                         <span style={{ color: T.textSub }}>{p.name}</span>
                         <span style={{ color: T.text, fontWeight: 700, marginLeft: "auto", fontVariantNumeric: "tabular-nums" }}>
-                            {isMoney ? `PKR ${Number(p.value).toLocaleString()}` : p.value}
+                            {isMoney ? formatMoney(p.value, currency) : p.value}
                         </span>
                     </div>
                 );
@@ -80,6 +81,7 @@ export default function AnalyticsPage() {
     const [range, setRange] = useState(7);
     const [chartData, setChartData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [currency, setCurrency] = useState("PKR");
 
     const fetchRange = useCallback(async (days) => {
         setLoading(true);
@@ -114,6 +116,7 @@ export default function AnalyticsPage() {
         });
 
         setChartData(parsed);
+        setCurrency(results.find(Boolean)?.currency || "PKR");
         setLoading(false);
     }, []);
 
@@ -147,8 +150,8 @@ export default function AnalyticsPage() {
         { label: "Total Orders", value: loading ? "—" : totals.orders, color: T.textSub },
         { label: "Completed", value: loading ? "—" : totals.completed, color: T.green, sub: `${completionRate}% rate` },
         { label: "Cancelled", value: loading ? "—" : totals.cancelled, color: T.red, sub: `${cancelRate}% rate` },
-        { label: "Gross Revenue", value: loading ? "—" : `PKR ${totals.revenue.toLocaleString()}`, color: T.j300 },
-        { label: "Collected", value: loading ? "—" : `PKR ${totals.collected.toLocaleString()}`, color: T.green },
+        { label: "Gross Revenue", value: loading ? "—" : formatMoney(totals.revenue, currency), color: T.j300 },
+        { label: "Collected", value: loading ? "—" : formatMoney(totals.collected, currency), color: T.green },
     ];
 
     return (
@@ -212,7 +215,7 @@ export default function AnalyticsPage() {
                             </span>
                         </div>
                         <div style={{ fontSize: 18, fontWeight: 800, color: T.text, fontVariantNumeric: "tabular-nums" }}>
-                            {loading ? "—" : `PKR ${s.revenue.toLocaleString()}`}
+                            {loading ? "—" : formatMoney(s.revenue, currency)}
                         </div>
                         <div style={{ fontSize: 11, color: T.textFaint, marginTop: 3 }}>
                             {loading ? "" : s.orders === 0 ? "No orders this period" : `${s.orders} order${s.orders === 1 ? "" : "s"}`}
@@ -226,7 +229,7 @@ export default function AnalyticsPage() {
                 background: T.bgCard, borderRadius: T.r12, border: `1px solid ${T.border}`,
                 padding: "24px 20px", marginBottom: 16, boxShadow: T.shadow,
             }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>Revenue by Source (PKR)</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>Revenue by Source ({currencySymbol(currency)})</div>
                 <div style={{ fontSize: 12, color: T.textFaint, marginBottom: 20 }}>Every connected store plus manual and courier orders, stacked to the daily total</div>
                 {loading ? (
                     <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: T.textFaint, fontSize: 13 }}>
@@ -242,7 +245,7 @@ export default function AnalyticsPage() {
                             <CartesianGrid strokeDasharray="3 3" stroke={T.border} vertical={false} />
                             <XAxis dataKey="label" tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} width={50} tickFormatter={pkr} />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: T.bgElev, opacity: 0.4 }} />
+                            <Tooltip content={<CustomTooltip currency={currency} />} cursor={{ fill: T.bgElev, opacity: 0.4 }} />
                             <Legend wrapperStyle={{ fontSize: 12, color: T.textMuted, paddingTop: 12 }} />
                             {sourceList.map((source, i) => (
                                 <Bar
@@ -266,7 +269,7 @@ export default function AnalyticsPage() {
                 background: T.bgCard, borderRadius: T.r12, border: `1px solid ${T.border}`,
                 padding: "24px 20px", marginBottom: 16, boxShadow: T.shadow,
             }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 20 }}>Revenue (PKR)</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 20 }}>Revenue ({currencySymbol(currency)})</div>
                 {loading ? (
                     <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: T.textFaint, fontSize: 13 }}>
                         Loading data...
@@ -291,7 +294,7 @@ export default function AnalyticsPage() {
                             <CartesianGrid strokeDasharray="3 3" stroke={T.border} vertical={false} />
                             <XAxis dataKey="label" tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} width={50} tickFormatter={pkr} />
-                            <Tooltip content={<CustomTooltip />} />
+                            <Tooltip content={<CustomTooltip currency={currency} />} />
                             <Legend wrapperStyle={{ fontSize: 12, color: T.textMuted, paddingTop: 12 }} />
                             <Area type="monotone" dataKey="Gross Revenue" stroke={T.j300} strokeWidth={2} fill="url(#gradRevenue)" />
                             <Area type="monotone" dataKey="Collected" stroke={T.green} strokeWidth={2} fill="url(#gradCollected)" />
@@ -320,7 +323,7 @@ export default function AnalyticsPage() {
                             <CartesianGrid strokeDasharray="3 3" stroke={T.border} vertical={false} />
                             <XAxis dataKey="label" tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} width={30} allowDecimals={false} />
-                            <Tooltip content={<CustomTooltip />} />
+                            <Tooltip content={<CustomTooltip currency={currency} />} />
                             <Legend wrapperStyle={{ fontSize: 12, color: T.textMuted, paddingTop: 12 }} />
                             <Bar dataKey="Total Orders" fill={T.j600} radius={[3, 3, 0, 0]} />
                             <Bar dataKey="Completed" fill={T.green} radius={[3, 3, 0, 0]} />

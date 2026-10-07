@@ -7,6 +7,7 @@ import { GradientButton, Card } from "../Primitives";
 import WooCommerceManagePage from "./WooCommerceManagePage";
 import DarazManagePage from "./DarazManagePage";
 import ShopifyManagePage from "./ShopifyManagePage";
+import CurrencySetting from "../CurrencySetting";
 import PostExManagePage from "./PostExManagePage";
 import TCSManagePage from "./TCSManagePage";
 import LeopardsManagePage from "./LeopardsManagePage";
@@ -2073,6 +2074,8 @@ export default function SettingsPage({ tabParam }) {
                         <p style={{ fontSize: 13, color: T.textMuted, margin: "0 0 24px" }}>
                             Connect your sales channels. Orders and inventory sync automatically.
                         </p>
+
+                        <CurrencySetting />
 
                         {/* Daraz OAuth error banner */}
                         {darazOAuthError && (

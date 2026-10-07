@@ -11,6 +11,7 @@ import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton, Badge, PlatformBadge, Card, KPI, ChartTip, PageHeader } from "../Primitives";
 import { getCurrentUserId } from "../../../lib/auth";
+import { formatMoney } from "../../../lib/currency";
 import { useRouter } from "next/navigation";
 import { NewOrderModal } from "./OrdersPage";
 
@@ -156,7 +157,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="stat-grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20, opacity: refetching ? 0.6 : 1, transition: "opacity 0.2s" }}>
-                <KPI label={`Revenue · ${stats.kpis.rangeLabel}`} value={`Rs ${stats.kpis.revenueToday.toLocaleString()}`} sub={`${stats.kpis.ordersToday} orders · Live Data`} delta={stats.kpis.revenueDelta} deltaUp={stats.kpis.revenueDeltaUp} icon="dollar" highlight />
+                <KPI label={`Revenue · ${stats.kpis.rangeLabel}`} value={formatMoney(stats.kpis.revenueToday, stats.kpis.currency)} sub={`${stats.kpis.ordersToday} orders · Live Data`} delta={stats.kpis.revenueDelta} deltaUp={stats.kpis.revenueDeltaUp} icon="dollar" highlight />
                 <KPI label="Pending Action" value={stats.kpis.pendingOrders.toString()} sub="Need courier booking" delta="Urgent" icon="truck" />
                 <KPI label="WhatsApp AI Rate" value={stats.kpis.aiRate} sub="Handled without you" icon="ai" />
                 <KPI label="COD Due" value={`Rs ${stats.kpis.codDue.toLocaleString()}`} sub="Active in transit" icon="pkg" />
