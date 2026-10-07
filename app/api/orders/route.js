@@ -13,6 +13,12 @@ export async function GET(request) {
     const dateFrom = searchParams.get('dateFrom') || null;
     const dateTo = searchParams.get('dateTo') || null;
 
+    // Required: the service reads with the service-role client, so an absent userId
+    // would drop the per-tenant filter and return every account's orders.
+    if (!userId) {
+        return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+    }
+
     try {
         const data = await ordersService.getOrders(page, pageSize, search, status, userId, platform, dateFrom, dateTo);
         return NextResponse.json(data);

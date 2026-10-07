@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase as supabaseAnon } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { STORE_LABEL_LIST, storeLabel } from '@/lib/platforms';
+
+// Server-side, so the anon client has no session and RLS would return zero rows.
+// The query below is scoped by user_id, which this route requires.
+const supabase = supabaseAdmin || supabaseAnon;
 
 /**
  * GET /api/analytics/daily-pnl?userId=xxx&date=2026-07-25
