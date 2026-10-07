@@ -52,8 +52,17 @@ export async function GET(request) {
         r => now - new Date(r.created_at).getTime() <= days * 86400000
     ).length;
 
+    // Run the dashboard's exact select. A column that does not exist fails the
+    // whole query, and the dashboard discarded that error and rendered zero.
+    const { error: dashboardSelectError } = await db
+        .from('orders')
+        .select('total_amount, created_at, utm_source, payment_method, status')
+        .eq('user_id', userId)
+        .limit(1);
+
     return NextResponse.json({
         usingServiceRole: !!supabaseAdmin,
+        dashboardSelectError: dashboardSelectError ? dashboardSelectError.message : null,
         userError: userError ? userError.message : null,
         ordersError: ordersError ? ordersError.message : null,
         connectedStores: connected,
