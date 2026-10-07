@@ -7,6 +7,16 @@ import {
 } from "recharts";
 import { T } from "@/components/dashboard/constants";
 import { getCurrentUserId } from "@/lib/auth";
+import { STORE_LABEL_LIST } from "@/lib/platforms";
+
+// Fixed per-store hues, validated for the dark chart surface across colour-vision
+// types. Assigned by store and never cycled, so a store keeps its colour even when
+// another has no sales. Deliberately outside the green/red/yellow status palette.
+const STORE_COLORS = {
+    Shopify: "#3B82F6",
+    WooCommerce: "#C026D3",
+    Daraz: "#EA580C",
+};
 
 const RANGES = [
     { label: "Today", days: 1 },
@@ -43,11 +53,18 @@ const CustomTooltip = ({ active, payload, label }) => {
             borderRadius: 8, padding: "10px 14px", fontSize: 12,
         }}>
             <div style={{ color: T.textMuted, marginBottom: 6, fontWeight: 700 }}>{label}</div>
-            {payload.map(p => (
-                <div key={p.name} style={{ color: p.color, marginBottom: 2 }}>
-                    {p.name}: <span style={{ fontWeight: 700 }}>{p.name.includes("Revenue") || p.name.includes("Collected") ? `PKR ${Number(p.value).toLocaleString()}` : p.value}</span>
-                </div>
-            ))}
+            {payload.map(p => {
+                const isMoney = p.name.includes("Revenue") || p.name.includes("Collected") || p.name in STORE_COLORS;
+                return (
+                    <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color, flexShrink: 0 }} />
+                        <span style={{ color: T.textSub }}>{p.name}</span>
+                        <span style={{ color: T.text, fontWeight: 700, marginLeft: "auto", fontVariantNumeric: "tabular-nums" }}>
+                            {isMoney ? `PKR ${Number(p.value).toLocaleString()}` : p.value}
+                        </span>
+                    </div>
+                );
+            })}
         </div>
     );
 };
@@ -71,14 +88,21 @@ export default function AnalyticsPage() {
             )
         );
 
-        const parsed = results.filter(Boolean).map(r => ({
-            label: shortDate(r.date),
-            "Total Orders": r.totalOrders || 0,
-            "Completed": r.completedOrders || 0,
-            "Cancelled": r.cancelledOrders || 0,
-            "Gross Revenue": r.grossRevenue || 0,
-            "Collected": r.collectedRevenue || 0,
-        }));
+        const parsed = results.filter(Boolean).map(r => {
+            const row = {
+                label: shortDate(r.date),
+                "Total Orders": r.totalOrders || 0,
+                "Completed": r.completedOrders || 0,
+                "Cancelled": r.cancelledOrders || 0,
+                "Gross Revenue": r.grossRevenue || 0,
+                "Collected": r.collectedRevenue || 0,
+            };
+            for (const store of STORE_LABEL_LIST) {
+                row[store] = r.platforms?.[store]?.revenue || 0;
+                row[`${store} orders`] = r.platforms?.[store]?.orders || 0;
+            }
+            return row;
+        });
 
         setChartData(parsed);
         setLoading(false);
@@ -93,6 +117,12 @@ export default function AnalyticsPage() {
         revenue: acc.revenue + d["Gross Revenue"],
         collected: acc.collected + d["Collected"],
     }), { orders: 0, completed: 0, cancelled: 0, revenue: 0, collected: 0 });
+
+    const storeTotals = STORE_LABEL_LIST.map(store => ({
+        store,
+        revenue: chartData.reduce((s, d) => s + (d[store] || 0), 0),
+        orders: chartData.reduce((s, d) => s + (d[`${store} orders`] || 0), 0),
+    }));
 
     const completionRate = totals.orders > 0
         ? Math.round((totals.completed / totals.orders) * 100)
@@ -153,6 +183,69 @@ export default function AnalyticsPage() {
                         )}
                     </div>
                 ))}
+            </div>
+
+            {/* Per-store totals — also the direct labels for the chart below */}
+            <div className="analytics-store-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 24 }}>
+                {storeTotals.map(s => (
+                    <div key={s.store} style={{
+                        background: T.bgCard, borderRadius: T.r12,
+                        border: `1px solid ${T.border}`, padding: "18px 16px",
+                        boxShadow: T.shadow,
+                    }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: 2, background: STORE_COLORS[s.store], flexShrink: 0 }} />
+                            <span style={{ fontSize: 10, fontWeight: 700, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.6px" }}>
+                                {s.store}
+                            </span>
+                        </div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: T.text, fontVariantNumeric: "tabular-nums" }}>
+                            {loading ? "—" : `PKR ${s.revenue.toLocaleString()}`}
+                        </div>
+                        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 3 }}>
+                            {loading ? "" : s.orders === 0 ? "No orders this period" : `${s.orders} order${s.orders === 1 ? "" : "s"}`}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Revenue by Store */}
+            <div style={{
+                background: T.bgCard, borderRadius: T.r12, border: `1px solid ${T.border}`,
+                padding: "24px 20px", marginBottom: 16, boxShadow: T.shadow,
+            }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 4 }}>Revenue by Store (PKR)</div>
+                <div style={{ fontSize: 12, color: T.textFaint, marginBottom: 20 }}>Every connected store, stacked to the daily total</div>
+                {loading ? (
+                    <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: T.textFaint, fontSize: 13 }}>
+                        Loading data...
+                    </div>
+                ) : chartData.length === 0 ? (
+                    <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center", color: T.textFaint, fontSize: 13 }}>
+                        No data for this period
+                    </div>
+                ) : (
+                    <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={chartData} barCategoryGap="30%">
+                            <CartesianGrid strokeDasharray="3 3" stroke={T.border} vertical={false} />
+                            <XAxis dataKey="label" tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} width={50} tickFormatter={pkr} />
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: T.bgElev, opacity: 0.4 }} />
+                            <Legend wrapperStyle={{ fontSize: 12, color: T.textMuted, paddingTop: 12 }} />
+                            {STORE_LABEL_LIST.map((store, i) => (
+                                <Bar
+                                    key={store}
+                                    dataKey={store}
+                                    stackId="store"
+                                    fill={STORE_COLORS[store]}
+                                    stroke={T.bgCard}
+                                    strokeWidth={2}
+                                    radius={i === STORE_LABEL_LIST.length - 1 ? [4, 4, 0, 0] : 0}
+                                />
+                            ))}
+                        </BarChart>
+                    </ResponsiveContainer>
+                )}
             </div>
 
             {/* Revenue Area Chart */}

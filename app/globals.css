@@ -345,6 +345,7 @@ select {
 
   /* Analytics page */
   .analytics-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .analytics-store-grid { grid-template-columns: 1fr !important; }
   .analytics-kpi-val { font-size: 15px !important; word-break: break-word; }
 
   /* Couriers shipment table → hide secondary columns on narrow screens */
