@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
     BarChart, Bar, XAxis, YAxis,
     CartesianGrid, Tooltip, ResponsiveContainer,
@@ -26,59 +26,69 @@ export default function DashboardPage() {
     const [showNewOrder, setShowNewOrder] = useState(false);
     const [exporting, setExporting] = useState(false);
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            if (stats) setRefetching(true); else setLoading(true);
-            try {
-                const userId = getCurrentUserId();
-                let url = `/api/dashboard-stats?range=${encodeURIComponent(range)}`;
-                if (userId) url += `&userId=${encodeURIComponent(userId)}`;
-                const res = await fetch(url);
-                const data = await res.json();
-                setStats(data);
-            } catch (err) {
-                console.error("Failed to fetch dashboard stats:", err);
-            } finally {
-                setLoading(false);
-                setRefetching(false);
-            }
-        };
+    const AUTOSYNC_KEY = "zyro_shopify_autosync_at";
+    const AUTOSYNC_THROTTLE_MS = 3 * 60 * 1000;
 
-        // Pull in anything the webhook missed before reading the numbers. Webhooks
-        // can fail silently — a bad secret, a delivery error, a deploy mid-flight —
-        // and the dashboard should not be the last place an order appears.
-        // Throttled, and failure is non-fatal: the stats load either way.
-        const catchUp = async () => {
+    const fetchStats = useCallback(async (isRefresh = false) => {
+        if (isRefresh) setRefetching(true); else setLoading(true);
+        try {
             const userId = getCurrentUserId();
-            if (!userId) return;
+            let url = `/api/dashboard-stats?range=${encodeURIComponent(range)}`;
+            if (userId) url += `&userId=${encodeURIComponent(userId)}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            setStats(data);
+        } catch (err) {
+            console.error("Failed to fetch dashboard stats:", err);
+        } finally {
+            setLoading(false);
+            setRefetching(false);
+        }
+    }, [range]);
 
-            const KEY = "zyro_shopify_autosync_at";
-            const THROTTLE_MS = 3 * 60 * 1000;
+    // Pull in anything the webhook missed before reading the numbers. Webhooks can
+    // fail silently — a bad secret, a delivery error, a deploy mid-flight — and the
+    // dashboard should not be the last place an order appears. Failure is non-fatal:
+    // the stats load either way.
+    const catchUp = useCallback(async ({ force = false } = {}) => {
+        const userId = getCurrentUserId();
+        if (!userId) return;
+
+        if (!force) {
             try {
-                const last = Number(localStorage.getItem(KEY) || 0);
-                if (Date.now() - last < THROTTLE_MS) return;
-                localStorage.setItem(KEY, String(Date.now()));
+                const last = Number(localStorage.getItem(AUTOSYNC_KEY) || 0);
+                if (Date.now() - last < AUTOSYNC_THROTTLE_MS) return;
             } catch {
                 // Private mode or blocked storage — sync anyway rather than never.
             }
+        }
+        try { localStorage.setItem(AUTOSYNC_KEY, String(Date.now())); } catch { /* ignore */ }
 
-            try {
-                const res = await fetch("/api/shopify/sync", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "x-user-id": userId },
-                    body: JSON.stringify({ limit: 25, skipMapping: true }),
-                });
-                await res.json();
-            } catch (err) {
-                console.warn("Shopify catch-up sync skipped:", err.message);
-            }
-        };
+        try {
+            const res = await fetch("/api/shopify/sync", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "x-user-id": userId },
+                body: JSON.stringify({ limit: 25, skipMapping: true }),
+            });
+            await res.json();
+        } catch (err) {
+            console.warn("Shopify catch-up sync skipped:", err.message);
+        }
+    }, []);
 
+    // Refresh ignores the throttle: pressing it is an explicit request for current data.
+    const handleRefresh = useCallback(async () => {
+        setRefetching(true);
+        await catchUp({ force: true });
+        await fetchStats(true);
+    }, [catchUp, fetchStats]);
+
+    useEffect(() => {
         (async () => {
             await catchUp();
-            await fetchStats();
+            await fetchStats(false);
         })();
-    }, [range]);
+    }, [range, catchUp, fetchStats]);
 
     useEffect(() => {
         const storedUser = localStorage.getItem('zyro_user');
@@ -167,6 +177,7 @@ export default function DashboardPage() {
                             }}>{r}</button>
                         ))}
                     </div>
+                    <GradientButton variant="secondary" size="sm" icon="refresh" onClick={handleRefresh} disabled={refetching || loading}>{refetching ? 'Refreshing...' : 'Refresh'}</GradientButton>
                     <GradientButton variant="secondary" size="sm" icon="download" onClick={handleExport} disabled={exporting}>{exporting ? 'Exporting...' : 'Export'}</GradientButton>
                     <GradientButton variant="primary" size="sm" icon="plus" onClick={() => setShowNewOrder(true)}>Manual Order</GradientButton>
                 </>}
