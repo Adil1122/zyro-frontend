@@ -66,6 +66,23 @@ async function report(userId) {
         r => now - new Date(r.created_at).getTime() <= days * 86400000
     ).length;
 
+    // The actual columns on an orders row. The schema file in the repo does not
+    // match the live table, and a select naming a column that is not there fails
+    // outright — which is how "Rs 0" and silently dropped orders happened.
+    const { data: sampleRows } = await db
+        .from('orders')
+        .select('*')
+        .eq('user_id', userId)
+        .limit(1);
+    const orderColumns = sampleRows?.[0] ? Object.keys(sampleRows[0]).sort() : null;
+
+    // Probe the select the Orders page uses, which names courier columns.
+    const { error: ordersPageSelectError } = await db
+        .from('orders')
+        .select('*, customers(name, city), courier_name, courier_key')
+        .eq('user_id', userId)
+        .limit(1);
+
     // Run the dashboard's current select. A column that does not exist fails the
     // whole query, and the dashboard used to discard that error and render zero.
     const { error: dashboardSelectError } = await db
@@ -95,6 +112,8 @@ async function report(userId) {
         usingServiceRole: !!supabaseAdmin,
         byCurrency,
         dashboardSelectError: dashboardSelectError ? dashboardSelectError.message : null,
+        ordersPageSelectError: ordersPageSelectError ? ordersPageSelectError.message : null,
+        orderColumns,
         userError: userError ? userError.message : null,
         ordersError: ordersError ? ordersError.message : null,
         connectedStores: connected,

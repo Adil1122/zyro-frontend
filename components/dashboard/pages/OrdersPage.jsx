@@ -5,6 +5,7 @@ import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton, Badge, PlatformBadge, Card, PageHeader } from "../Primitives";
 import { getCurrentUserId } from "../../../lib/auth";
+import { formatMoney } from "../../../lib/currency";
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -937,7 +938,7 @@ export default function OrdersPage() {
                                             : <span style={{ fontSize: 12, color: T.textFaint }}>—</span>}
                                     </td>
                                     <td style={{ padding: "12px 16px" }}>
-                                        <span style={{ fontSize: 13, fontWeight: 800, color: T.text }}>Rs {(o.amount ?? 0).toLocaleString()}</span>
+                                        <span style={{ fontSize: 13, fontWeight: 800, color: T.text }}>{formatMoney(o.amount, o.currency, { decimals: 2 })}</span>
                                         <div style={{ fontSize: 10, color: T.textFaint }}>{(o.items || []).length > 0 ? `${o.items.length} item${o.items.length > 1 ? 's' : ''}` : '1 item'}</div>
                                     </td>
                                     <td style={{ padding: "12px 16px" }}><span style={{ fontSize: 11, color: T.textFaint }}>{new Date(o.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></td>
@@ -1044,7 +1045,9 @@ export default function OrdersPage() {
                         )}
 
                         {/* Order details */}
-                        {[["Amount", `Rs ${(selOrder.amount ?? 0).toLocaleString()}`],
+                        {[["Amount", selOrder.chargedCurrency && selOrder.chargedCurrency !== selOrder.currency
+                            ? `${formatMoney(selOrder.amount, selOrder.currency, { decimals: 2 })} (${formatMoney(selOrder.chargedAmount, selOrder.chargedCurrency, { decimals: 2 })})`
+                            : formatMoney(selOrder.amount, selOrder.currency, { decimals: 2 })],
                           ["Platform", selOrder.platform === 'woocommerce' ? "WooCommerce" : selOrder.platform === 'daraz' ? "Daraz" : (selOrder.platform || "Manual")],
                           ["Placed", `${new Date(selOrder.time).toLocaleDateString()}`],
                         ].map(([k, v]) => (
