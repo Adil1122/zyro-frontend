@@ -253,7 +253,14 @@ export default function DashboardPage() {
                             </div>
                             <span className="dash-hide-mobile"><PlatformBadge platform={o.platform.toLowerCase().includes('woo') ? 'woo' : o.platform.toLowerCase().includes('daraz') ? 'daraz' : 'shopify'} /></span>
                             <Badge status={o.status.toLowerCase()} />
-                            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, textAlign: "right" }}>Rs {o.amount.toLocaleString()}</div>
+                            <div style={{ textAlign: "right" }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>{formatMoney(o.amount, o.currency, { decimals: 2 })}</div>
+                                {o.chargedCurrency !== o.currency && (
+                                    <div style={{ fontSize: 10, color: T.textFaint, marginTop: 1 }}>
+                                        {formatMoney(o.chargedAmount, o.chargedCurrency, { decimals: 2 })}
+                                    </div>
+                                )}
+                            </div>
                             <div className="dash-hide-mobile" style={{ fontSize: 11, color: T.textFaint, minWidth: 36, textAlign: "right" }}>{formatTime(o.time)}</div>
                         </div>
                     ))}

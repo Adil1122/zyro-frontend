@@ -33,16 +33,18 @@ export async function GET(request) {
     for (const row of rows || []) {
         const label = storeLabel(row.platform_id);
         if (!byPlatform[label]) {
-            byPlatform[label] = { orders: 0, revenue: 0, oldest: null, newest: null };
+            byPlatform[label] = { orders: 0, revenueAsCharged: 0, revenueReported: 0, oldest: null, newest: null };
         }
         const bucket = byPlatform[label];
         bucket.orders += 1;
-        bucket.revenue += parseFloat(row.total_amount) || 0;
+        bucket.revenueAsCharged += parseFloat(row.total_amount) || 0;
+        bucket.revenueReported += parseFloat(row.total_amount_base ?? row.total_amount) || 0;
         if (!bucket.oldest || row.created_at < bucket.oldest) bucket.oldest = row.created_at;
         if (!bucket.newest || row.created_at > bucket.newest) bucket.newest = row.created_at;
     }
     for (const bucket of Object.values(byPlatform)) {
-        bucket.revenue = Math.round(bucket.revenue);
+        bucket.revenueAsCharged = Math.round(bucket.revenueAsCharged);
+        bucket.revenueReported = Math.round(bucket.revenueReported);
     }
 
     // How many fall inside the ranges the dashboard offers, so a store with only
@@ -52,11 +54,11 @@ export async function GET(request) {
         r => now - new Date(r.created_at).getTime() <= days * 86400000
     ).length;
 
-    // Run the dashboard's exact select. A column that does not exist fails the
-    // whole query, and the dashboard discarded that error and rendered zero.
+    // Run the dashboard's current select. A column that does not exist fails the
+    // whole query, and the dashboard used to discard that error and render zero.
     const { error: dashboardSelectError } = await db
         .from('orders')
-        .select('total_amount, created_at, utm_source, payment_method, status')
+        .select('total_amount, total_amount_base, created_at, platform_id, status')
         .eq('user_id', userId)
         .limit(1);
 
