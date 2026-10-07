@@ -43,7 +43,41 @@ export default function DashboardPage() {
                 setRefetching(false);
             }
         };
-        fetchStats();
+
+        // Pull in anything the webhook missed before reading the numbers. Webhooks
+        // can fail silently — a bad secret, a delivery error, a deploy mid-flight —
+        // and the dashboard should not be the last place an order appears.
+        // Throttled, and failure is non-fatal: the stats load either way.
+        const catchUp = async () => {
+            const userId = getCurrentUserId();
+            if (!userId) return;
+
+            const KEY = "zyro_shopify_autosync_at";
+            const THROTTLE_MS = 3 * 60 * 1000;
+            try {
+                const last = Number(localStorage.getItem(KEY) || 0);
+                if (Date.now() - last < THROTTLE_MS) return;
+                localStorage.setItem(KEY, String(Date.now()));
+            } catch {
+                // Private mode or blocked storage — sync anyway rather than never.
+            }
+
+            try {
+                const res = await fetch("/api/shopify/sync", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "x-user-id": userId },
+                    body: JSON.stringify({ limit: 25, skipMapping: true }),
+                });
+                await res.json();
+            } catch (err) {
+                console.warn("Shopify catch-up sync skipped:", err.message);
+            }
+        };
+
+        (async () => {
+            await catchUp();
+            await fetchStats();
+        })();
     }, [range]);
 
     useEffect(() => {

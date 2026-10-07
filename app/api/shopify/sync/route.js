@@ -27,8 +27,11 @@ export async function POST(request) {
         const limit = Math.min(parseInt(body.limit, 10) || 50, MAX_LIMIT);
 
         // Link products to Shopify variants on the first page so inventory can be pushed.
+        // skipMapping keeps the dashboard's background catch-up light: mapping walks
+        // the whole product catalogue, which is wasted work when only recent orders
+        // are being pulled in.
         let mapping = null;
-        if (!pageInfo) {
+        if (!pageInfo && !body.skipMapping) {
             try {
                 mapping = await syncProductMapping(userId, creds);
             } catch (e) {
