@@ -10,6 +10,18 @@ export async function GET(request) {
     const userId = request.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    try {
+        return await report(userId);
+    } catch (e) {
+        // Without this a throw returns a crash page, and the caller sees
+        // "Unexpected token 'A'" instead of the actual fault.
+        console.error('[Diagnostics] failed:', e);
+        return NextResponse.json({ error: e.message, stack: String(e.stack || '').slice(0, 400) }, { status: 500 });
+    }
+}
+
+async function report(userId) {
+
     const db = supabaseAdmin || supabase;
 
     const { data: user, error: userError } = await db
