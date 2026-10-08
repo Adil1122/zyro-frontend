@@ -56,6 +56,7 @@ export async function POST(request) {
                     name: item.Name || 'Unnamed Product',
                     sku: item.SKU,
                     barcode: item.Barcode || null,
+                    image_url: item.ImageUrl?.trim() || null,
                     // stock_quantity is the single source of truth; the legacy
                     // `stock` column is no longer read.
                     stock_quantity: stock,

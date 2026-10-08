@@ -1,0 +1,13 @@
+Name,SKU,Barcode,Stock,ReorderPoint,Price,Cost,Category,Supplier,LeadTimeDays,ImageUrl,PublishShopify,PublishDaraz,PublishWooCommerce
+Merino Wool Beanie,ZT3-HAT-MER-GRY,8907770000201,60,15,1890,920,Accessories,,7,https://picsum.photos/seed/zt3hat/900/900,yes,no,no
+Fleece Zip Jacket - Navy,ZT3-JKT-FLC-NVY,8907770000202,25,10,5600,3100,Apparel,,12,https://picsum.photos/seed/zt3jkt/900/900,yes,no,no
+Chino Shorts - Khaki,ZT3-SHT-CHN-KHK,8907770000203,42,12,2350,1250,Apparel,,9,https://picsum.photos/seed/zt3sht/900/900,yes,no,no
+Running Socks 3-Pack,ZT3-SCK-RUN-3P,8907770000204,120,30,1100,420,Apparel,,6,https://picsum.photos/seed/zt3sck/900/900,yes,no,no
+Insulated Lunch Box,ZT3-BOX-INS-1L,8907770000205,18,8,2900,1600,Homeware,,10,https://picsum.photos/seed/zt3box/900/900,yes,no,no
+Bamboo Cutting Board,ZT3-BRD-BMB-L,8907770000206,7,10,2200,1050,Homeware,,14,https://picsum.photos/seed/zt3brd/900/900,yes,no,no
+Desk Lamp - Matte Black,ZT3-LMP-DSK-BLK,8907770000207,0,6,4750,2700,Electronics,,21,https://picsum.photos/seed/zt3lmp/900/900,yes,no,no
+Bluetooth Speaker Mini,ZT3-SPK-BT-MIN,8907770000208,4,8,6300,4100,Electronics,,21,https://picsum.photos/seed/zt3spk/900/900,yes,no,no
+Foam Roller 45cm,ZT3-RLR-FOM-45,8907770000209,31,10,2650,1350,Fitness,,11,https://picsum.photos/seed/zt3rlr/900/900,yes,no,no
+Adjustable Dumbbell 10kg,ZT3-DMB-ADJ-10,8907770000210,12,5,8900,6200,Fitness,,18,https://picsum.photos/seed/zt3dmb/900/900,yes,no,no
+Travel Mug - Steel,ZT3-MUG-TRV-SS,8907770000211,55,20,2400,1180,Homeware,,8,https://picsum.photos/seed/zt3mug/900/900,no,no,no
+Notebook A5 Dotted,ZT3-NBK-A5-DOT,8907770000212,88,25,750,290,Stationery,,6,https://picsum.photos/seed/zt3nbk/900/900,no,no,no
