@@ -1,0 +1,13 @@
+Name,SKU,Barcode,Stock,ReorderPoint,Price,Cost,Category,Supplier,LeadTimeDays,PublishShopify,PublishDaraz,PublishWooCommerce
+Merino Wool Beanie,ZT2-HAT-MER-GRY,8907770000101,60,15,1890,920,Accessories,,7,yes,no,no
+Fleece Zip Jacket - Navy,ZT2-JKT-FLC-NVY,8907770000102,25,10,5600,3100,Apparel,,12,yes,no,no
+Chino Shorts - Khaki,ZT2-SHT-CHN-KHK,8907770000103,42,12,2350,1250,Apparel,,9,yes,no,no
+Running Socks 3-Pack,ZT2-SCK-RUN-3P,8907770000104,120,30,1100,420,Apparel,,6,yes,no,no
+Insulated Lunch Box,ZT2-BOX-INS-1L,8907770000105,18,8,2900,1600,Homeware,,10,yes,no,no
+Bamboo Cutting Board,ZT2-BRD-BMB-L,8907770000106,7,10,2200,1050,Homeware,,14,yes,no,no
+Desk Lamp - Matte Black,ZT2-LMP-DSK-BLK,8907770000107,0,6,4750,2700,Electronics,,21,yes,no,no
+Bluetooth Speaker Mini,ZT2-SPK-BT-MIN,8907770000108,4,8,6300,4100,Electronics,,21,yes,no,no
+Foam Roller 45cm,ZT2-RLR-FOM-45,8907770000109,31,10,2650,1350,Fitness,,11,yes,no,no
+Adjustable Dumbbell 10kg,ZT2-DMB-ADJ-10,8907770000110,12,5,8900,6200,Fitness,,18,yes,no,no
+Travel Mug - Steel,ZT2-MUG-TRV-SS,8907770000111,55,20,2400,1180,Homeware,,8,no,no,no
+Notebook A5 Dotted,ZT2-NBK-A5-DOT,8907770000112,88,25,750,290,Stationery,,6,no,no,no
