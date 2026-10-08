@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+export const maxDuration = 60;
+
 export async function POST(request) {
     try {
         const { type, data, userId } = await request.json();
@@ -74,13 +76,40 @@ export async function POST(request) {
                 return record;
             });
 
-            const { error: upsertErr } = await supabase
+            const { data: saved, error: upsertErr } = await supabase
                 .from('products')
-                .upsert(upsertData, { onConflict: 'id' });
-                
+                .upsert(upsertData, { onConflict: 'id' })
+                .select('id, sku, publish_shopify, publish_woocommerce');
+
             if (upsertErr) throw upsertErr;
-            
-            return NextResponse.json({ success: true, count: upsertData.length });
+
+            // Publish to the channels each row asked for. Previously only the
+            // add-product form did this, so imported products never reached a store.
+            // Sequential and capped: each product costs several channel API calls.
+            const PUBLISH_CAP = 25;
+            const toPublish = (saved || [])
+                .filter(p => p.publish_shopify || p.publish_woocommerce)
+                .slice(0, PUBLISH_CAP);
+
+            const published = [];
+            for (const p of toPublish) {
+                const channels = [];
+                if (p.publish_shopify) channels.push('shopify');
+                if (p.publish_woocommerce) channels.push('woocommerce');
+                try {
+                    const { createProductOnChannels } = await import('@/lib/services/channelSync');
+                    published.push({ sku: p.sku, ...(await createProductOnChannels(userId, p.id, { channels })) });
+                } catch (e) {
+                    published.push({ sku: p.sku, error: e.message });
+                }
+            }
+
+            return NextResponse.json({
+                success: true,
+                count: upsertData.length,
+                published,
+                publishSkipped: Math.max(0, (saved || []).filter(p => p.publish_shopify || p.publish_woocommerce).length - toPublish.length),
+            });
         }
         else if (type === 'Suppliers') {
             const insertData = data.map(item => ({
