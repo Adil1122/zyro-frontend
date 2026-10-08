@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
 import { upsertShopifyOrder, findUserByShopDomain } from '@/lib/services/shopifyOrderSync';
 import { applyInboundInventoryLevel } from '@/lib/services/shopifyInventory';
+import { pushStockToChannels } from '@/lib/services/channelSync';
 
 export const maxDuration = 60;
 
@@ -75,6 +76,14 @@ export async function POST(request) {
         // so we mirror it locally and deliberately do not push back.
         const result = await upsertShopifyOrder(userId, payload, { topic, notify: true, applyStock: true });
         console.log(`[Shopify Webhook] ${topic} | #${result.orderNumber} | ${result.status} | new=${result.isNewOrder} | user=${userId}`);
+
+        // The sale reduced stock here; the new quantity goes out to the other
+        // channels. Shopify is excluded because it decremented itself for this order.
+        const touched = (result.stockResults || []).map(r => r.product_id).filter(Boolean);
+        if (touched.length) {
+            await pushStockToChannels(userId, touched, { originChannel: 'shopify' })
+                .catch(e => console.error('[Shopify Webhook] Channel push failed:', e.message));
+        }
         return NextResponse.json({ success: true, ...result, topic });
     } catch (error) {
         console.error('[Shopify Webhook] Persist failed:', error.message, error.stack);

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { applyOrderStock } from '@/lib/services/shopifyInventory';
+import { pushStockToChannels } from '@/lib/services/channelSync';
 import { whatsappService } from '@/lib/services/whatsappService';
 
 export async function POST(request) {
@@ -230,6 +232,25 @@ export async function POST(request) {
 
             if (itemsError) {
                 console.error('[WooCommerce Webhook] Error inserting order items:', itemsError);
+            }
+
+            // A sale reduces stock once, in our database, then the new quantity goes
+            // out to the other channels. WooCommerce has already decremented itself
+            // for its own order, so it is excluded from the push — sending our number
+            // back would echo through its inbound product webhook.
+            if (isNewOrder) {
+                try {
+                    const soldItems = orderItems
+                        .filter(i => i.product_id)
+                        .map(i => ({ product_id: i.product_id, quantity: i.quantity }));
+
+                    if (soldItems.length) {
+                        await applyOrderStock(userId, soldItems, `woocommerce:order:${order.number}`, 'WooCommerce order');
+                        await pushStockToChannels(userId, soldItems.map(i => i.product_id), { originChannel: 'woocommerce' });
+                    }
+                } catch (e) {
+                    console.error('[WooCommerce Webhook] Stock sync failed:', e.message);
+                }
             }
         }
 
