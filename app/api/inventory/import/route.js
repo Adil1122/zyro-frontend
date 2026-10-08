@@ -31,6 +31,20 @@ export async function POST(request) {
 
             const parseBool = v => v && /^(true|yes|1)$/i.test(String(v).trim());
 
+            // products has no supplier_name column — only supplier_id — so names
+            // from the file are resolved against the user's suppliers and skipped
+            // when there is no match.
+            const supplierMap = {};
+            const names = [...new Set(data.map(d => (d.Supplier || '').trim()).filter(Boolean))];
+            if (names.length) {
+                const { data: sups } = await supabase
+                    .from('suppliers')
+                    .select('id, name')
+                    .eq('user_id', userId)
+                    .in('name', names);
+                (sups || []).forEach(sp => { supplierMap[sp.name] = sp.id; });
+            }
+
             const upsertData = data.map(item => {
                 const existing = existingProducts.find(p => p.sku === item.SKU);
                 const stock = parseInt(item.Stock) || 0;
@@ -48,7 +62,7 @@ export async function POST(request) {
                     cost_price: parseFloat(item.Cost) || 0,
                     category: item.Category || null,
                     status: stock > reorder ? 'In Stock' : stock > 0 ? 'Low Stock' : 'Out of Stock',
-                    supplier_name: item.Supplier || null,
+                    supplier_id: supplierMap[(item.Supplier || '').trim()] || null,
                     lead_time_days: item.LeadTimeDays ? parseInt(item.LeadTimeDays) : null,
                     publish_shopify: parseBool(item.PublishShopify),
                     publish_daraz: parseBool(item.PublishDaraz),

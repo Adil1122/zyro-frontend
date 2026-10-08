@@ -97,8 +97,7 @@ BEGIN
         END IF;
 
         UPDATE products p
-           SET stock_quantity = COALESCE(p.stock_quantity, 0) - v_qty,
-               updated_at = now()
+           SET stock_quantity = COALESCE(p.stock_quantity, 0) - v_qty
          WHERE p.id::text = v_pid
            AND p.user_id = p_user_id
         RETURNING p.stock_quantity INTO v_new_stock;
