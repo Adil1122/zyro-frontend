@@ -39,6 +39,38 @@ export async function GET(request) {
     if (domain && token) {
         const clean = domain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
 
+        // What Shopify actually granted. Creating a product needs write_products,
+        // and setting its stock needs read_locations — a scope added after the
+        // store was first connected, so it is only present after a reconnect.
+        try {
+            const res = await fetch(`https://${clean}/admin/oauth/access_scopes.json`, {
+                headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
+            });
+            if (res.ok) {
+                const { access_scopes } = await res.json();
+                const granted = (access_scopes || []).map(x => x.handle).sort();
+                result.grantedScopes = granted;
+                result.missingScopes = ['read_locations', 'write_products', 'write_inventory']
+                    .filter(x => !granted.includes(x));
+            } else {
+                result.grantedScopes = { status: res.status, body: (await res.text()).slice(0, 200) };
+            }
+        } catch (e) {
+            result.grantedScopes = { error: e.message };
+        }
+
+        // Direct test of the call that product creation makes first.
+        try {
+            const res = await fetch(`https://${clean}/admin/api/2026-07/locations.json`, {
+                headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
+            });
+            result.locationsProbe = res.ok
+                ? { status: 200, count: ((await res.json()).locations || []).length }
+                : { status: res.status, body: (await res.text()).slice(0, 200) };
+        } catch (e) {
+            result.locationsProbe = { error: e.message };
+        }
+
         // Without registered webhooks a new order never reaches us. Registration
         // happens at connect time and only warns on failure, so it has to be
         // checked rather than assumed.
