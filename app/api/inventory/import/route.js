@@ -40,7 +40,9 @@ export async function POST(request) {
                     name: item.Name || 'Unnamed Product',
                     sku: item.SKU,
                     barcode: item.Barcode || null,
-                    stock,
+                    // stock_quantity is the single source of truth; the legacy
+                    // `stock` column is no longer read.
+                    stock_quantity: stock,
                     reorder_point: reorder,
                     price: parseFloat(item.Price) || 0,
                     cost_price: parseFloat(item.Cost) || 0,

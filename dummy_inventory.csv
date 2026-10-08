@@ -1,0 +1,16 @@
+Name,SKU,Barcode,Stock,ReorderPoint,Price,Cost,Category,Supplier,LeadTimeDays,PublishShopify,PublishDaraz,PublishWooCommerce
+Cotton Crew Tee - Black,ZY-TEE-BLK-M,8901234567001,48,12,1450,780,Apparel,Lahore Textiles,7,yes,no,yes
+Cotton Crew Tee - White,ZY-TEE-WHT-M,8901234567002,36,12,1450,780,Apparel,Lahore Textiles,7,yes,no,yes
+Oversized Hoodie - Charcoal,ZY-HOOD-CHR-L,8901234567003,22,8,3900,2100,Apparel,Lahore Textiles,10,yes,yes,yes
+Linen Shirt - Sand,ZY-SHRT-SND-L,8901234567004,15,6,2750,1500,Apparel,Karachi Fabrics,12,yes,no,yes
+Denim Jeans - Indigo,ZY-JEAN-IND-32,8901234567005,27,10,4200,2400,Apparel,Karachi Fabrics,14,yes,no,no
+Leather Belt - Brown,ZY-BELT-BRN-34,8901234567006,54,15,1800,900,Accessories,Sialkot Leather,9,yes,yes,yes
+Canvas Tote Bag,ZY-BAG-TOTE-NAT,8901234567007,73,20,1200,560,Accessories,Sialkot Leather,9,no,yes,yes
+Stainless Water Bottle 750ml,ZY-BTL-SS-750,8901234567008,41,15,2100,1150,Homeware,Gujranwala Metals,6,yes,no,yes
+Ceramic Mug - Matte White,ZY-MUG-WHT,8901234567009,96,25,850,380,Homeware,Multan Ceramics,8,no,no,yes
+Scented Candle - Oud,ZY-CAND-OUD,8901234567010,8,10,1650,700,Homeware,Multan Ceramics,8,yes,yes,yes
+Wireless Earbuds,ZY-AUD-TWS-BLK,8901234567011,3,6,7900,5200,Electronics,Karachi Imports,21,yes,yes,no
+USB-C Fast Charger 30W,ZY-CHG-USBC-30,8901234567012,0,10,2450,1400,Electronics,Karachi Imports,21,yes,no,yes
+Phone Case - Clear,ZY-CASE-CLR-15,8901234567013,112,30,990,320,Electronics,Karachi Imports,18,no,yes,yes
+Yoga Mat 6mm,ZY-MAT-YOGA-6,8901234567014,19,8,3300,1800,Fitness,Faisalabad Sports,11,yes,no,yes
+Resistance Band Set,ZY-BAND-SET-3,8901234567015,34,12,1950,980,Fitness,Faisalabad Sports,11,no,no,yes
