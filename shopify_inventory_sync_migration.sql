@@ -39,74 +39,81 @@ CREATE INDEX IF NOT EXISTS products_shopify_inventory_item_idx
 
 -- ─── Idempotency ────────────────────────────────────────────────────────────────
 -- Shopify retries webhooks. Without this a retry would decrement stock twice.
--- Partial index so existing Adjustment rows (which reuse `reference` as a note)
--- are unaffected.
+-- Scoped to the references this app writes ("<channel>:order:<number>"): existing
+-- rows use the bare order number as a note and legitimately repeat it, so a
+-- broader index cannot be created.
 CREATE UNIQUE INDEX IF NOT EXISTS inventory_movements_sale_ref_uniq
     ON inventory_movements (user_id, product_id, reference)
-    WHERE movement_type = 'Sale';
+    WHERE movement_type = 'Sale' AND reference LIKE '%:order:%';
 
 -- ─── Atomic stock application ───────────────────────────────────────────────────
 -- The whole body runs in one transaction. The UPDATE takes a row lock, so two
 -- concurrent orders for the last unit serialize instead of both reading the same
 -- starting quantity.
 --
+-- Product ids are compared as text because products.id is not the same type in
+-- every deployment of this schema: a hardcoded uuid cast fails outright against an
+-- integer key. Casting the column keeps the function working for either.
+--
 -- Stock is allowed to go negative: an oversell should be visible to the merchant
 -- rather than silently clamped, and reconciliation reports it.
 CREATE OR REPLACE FUNCTION apply_order_stock(
     p_user_id   uuid,
-    p_items     jsonb,   -- [{"product_id": "<uuid>", "quantity": 2}, ...]
+    p_items     jsonb,   -- [{"product_id": "<id>", "quantity": 2}, ...]
     p_reference text,
     p_reason    text DEFAULT 'Shopify order'
 )
-RETURNS TABLE (product_id uuid, new_stock integer, applied boolean)
+RETURNS TABLE (product_id text, new_stock integer, applied boolean)
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-    item          jsonb;
-    v_product_id  uuid;
-    v_qty         integer;
-    v_new_stock   integer;
-    v_exists      boolean;
+    item        jsonb;
+    v_pid       text;
+    v_qty       integer;
+    v_new_stock integer;
+    v_exists    boolean;
 BEGIN
     FOR item IN SELECT * FROM jsonb_array_elements(p_items)
     LOOP
-        v_product_id := (item->>'product_id')::uuid;
-        v_qty        := COALESCE((item->>'quantity')::integer, 0);
+        v_pid := item->>'product_id';
+        v_qty := COALESCE((item->>'quantity')::integer, 0);
 
-        CONTINUE WHEN v_product_id IS NULL OR v_qty <= 0;
+        CONTINUE WHEN v_pid IS NULL OR v_qty <= 0;
 
         SELECT EXISTS (
             SELECT 1 FROM inventory_movements m
             WHERE m.user_id = p_user_id
-              AND m.product_id = v_product_id
+              AND m.product_id::text = v_pid
               AND m.reference = p_reference
               AND m.movement_type = 'Sale'
         ) INTO v_exists;
 
         IF v_exists THEN
-            SELECT p.stock_quantity INTO v_new_stock FROM products p WHERE p.id = v_product_id;
-            RETURN QUERY SELECT v_product_id, v_new_stock, false;
+            SELECT p.stock_quantity INTO v_new_stock
+              FROM products p WHERE p.id::text = v_pid;
+            RETURN QUERY SELECT v_pid, v_new_stock, false;
             CONTINUE;
         END IF;
 
         UPDATE products p
            SET stock_quantity = COALESCE(p.stock_quantity, 0) - v_qty,
                updated_at = now()
-         WHERE p.id = v_product_id
+         WHERE p.id::text = v_pid
            AND p.user_id = p_user_id
         RETURNING p.stock_quantity INTO v_new_stock;
 
         CONTINUE WHEN v_new_stock IS NULL;
 
+        -- Selected from products so the inserted id carries the column's own type,
+        -- rather than being forced through a typed variable.
         INSERT INTO inventory_movements
             (user_id, product_id, movement_type, quantity, reason, reference)
-        VALUES
-            (p_user_id, v_product_id, 'Sale', -v_qty, p_reason, p_reference);
+        SELECT p_user_id, p.id, 'Sale', -v_qty, p_reason, p_reference
+          FROM products p WHERE p.id::text = v_pid;
 
-        RETURN QUERY SELECT v_product_id, v_new_stock, true;
+        RETURN QUERY SELECT v_pid, v_new_stock, true;
     END LOOP;
-END;
-$$;
+END $$;
 
 GRANT EXECUTE ON FUNCTION apply_order_stock(uuid, jsonb, text, text) TO authenticated, service_role;
