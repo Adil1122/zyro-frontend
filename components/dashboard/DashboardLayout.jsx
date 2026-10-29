@@ -11,7 +11,7 @@ import Icon from "./Icon";
 const BOTTOM_NAV_ITEMS = [
     { id: "dashboard", label: "Dashboard", icon: "dashboard", href: "/dashboard", match: (p) => p === "/" || p === "/dashboard" },
     { id: "couriers",  label: "Couriers",  icon: "couriers",  href: "/couriers",  match: (p) => p.startsWith("/couriers") },
-    { id: "whatsapp",  label: "WhatsApp",  icon: "whatsapp",  href: "/whatsapp",  match: (p) => p.startsWith("/whatsapp") },
+    { id: "whatsapp",  label: "WhatsApp",  icon: "whatsapp",  href: "/whatsapp/chat",  match: (p) => p.startsWith("/whatsapp") },
     { id: "marketing", label: "Marketing", icon: "marketing", href: "/marketing", match: (p) => p.startsWith("/marketing") },
     { id: "settings",  label: "Settings",  icon: "settings",  href: "/settings",  match: (p) => p.startsWith("/settings") },
 ];

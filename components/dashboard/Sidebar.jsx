@@ -65,7 +65,7 @@ export default function Sidebar({ page, collapsed, setCollapsed, badgeCounts, dr
             )}
             <nav style={{ flex: 1, padding: "10px 8px", overflow: "hidden" }}>
                 {NAV.map(item => {
-                    const active = page === item.id;
+                    const active = page === item.id || (item.id === "whatsapp/chat" && page === "whatsapp");
                     const href = item.id === "dashboard" ? "/dashboard" : `/${item.id}`;
                     return (
                         <Link key={item.id} href={href}
@@ -97,7 +97,7 @@ export default function Sidebar({ page, collapsed, setCollapsed, badgeCounts, dr
                                 }} />
                             )}
                             <span style={{ flexShrink: 0, display: "flex", alignItems: "center", position: "relative" }}>
-                                <Icon name={item.id} size={15} color={active ? "#fff" : T.textFaint} />
+                                <Icon name={item.icon || item.id} size={15} color={active ? "#fff" : T.textFaint} />
                             </span>
                             {!collapsed && (
                                 <>
