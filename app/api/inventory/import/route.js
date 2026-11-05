@@ -84,32 +84,19 @@ export async function POST(request) {
 
             if (upsertErr) throw upsertErr;
 
-            // Publish to the channels each row asked for. Previously only the
-            // add-product form did this, so imported products never reached a store.
-            // Sequential and capped: each product costs several channel API calls.
-            const PUBLISH_CAP = 25;
-            const toPublish = (saved || [])
+            // Publishing is NOT done here. Each product costs several Shopify calls
+            // and Shopify downloads the image URL synchronously, so publishing a
+            // whole file inline exceeded the function time limit and the import
+            // returned a platform error page instead of JSON. The ids are handed
+            // back and published in small batches via /api/inventory/publish.
+            const pendingPublish = (saved || [])
                 .filter(p => p.publish_shopify || p.publish_woocommerce)
-                .slice(0, PUBLISH_CAP);
-
-            const published = [];
-            for (const p of toPublish) {
-                const channels = [];
-                if (p.publish_shopify) channels.push('shopify');
-                if (p.publish_woocommerce) channels.push('woocommerce');
-                try {
-                    const { createProductOnChannels } = await import('@/lib/services/channelSync');
-                    published.push({ sku: p.sku, ...(await createProductOnChannels(userId, p.id, { channels })) });
-                } catch (e) {
-                    published.push({ sku: p.sku, error: e.message });
-                }
-            }
+                .map(p => p.id);
 
             return NextResponse.json({
                 success: true,
                 count: upsertData.length,
-                published,
-                publishSkipped: Math.max(0, (saved || []).filter(p => p.publish_shopify || p.publish_woocommerce).length - toPublish.length),
+                pendingPublish,
             });
         }
         else if (type === 'Suppliers') {
