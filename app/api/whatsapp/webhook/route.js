@@ -3,6 +3,12 @@ import { supabase } from '@/lib/supabase';
 import { createPostExOrder, cancelPostExOrder, isPostExConfigured } from '@/lib/services/postexService';
 import { whatsappService } from '@/lib/services/whatsappService';
 import { generatePostExSlipPDF } from '@/lib/services/postexPdfService';
+import {
+    getPendingPairingToken,
+    clearPendingPairingToken,
+    setActiveWhatsAppInstance,
+    resolveTenantWhatsAppCredentials,
+} from '@/lib/whatsappSession';
 
 /**
  * POST /api/whatsapp/webhook
@@ -74,19 +80,40 @@ export async function POST(request) {
                 console.log(`[WhatsApp Webhook] Template button reply from ${senderPhone}: text="${buttonReply?.text}", payload="${buttonReply?.payload}" -> interpreted as "${responseText}"`);
             } else if (message.type === 'text') {
                 // Plain text reply
-                responseText = message.text?.body?.trim()?.toUpperCase() || '';
+                responseText = message.text?.body?.trim() || '';
                 console.log(`[WhatsApp Webhook] Text reply from ${senderPhone}: "${responseText}"`);
             } else {
-                console.log(`[WhatsApp Webhook] Ignoring message type: ${message.type}`);
-                continue;
+                console.log(`[WhatsApp Webhook] Received message type: ${message.type}`);
+                responseText = `[${message.type}]`;
             }
 
+            // Check for Pairing Handshake verification (e.g. "CONNECT-ZYRO ZYRO-9482")
+            if (message.type === 'text' && responseText.toUpperCase().includes('CONNECT-ZYRO')) {
+                const parts = responseText.trim().split(/\s+/);
+                const code = parts[1] || parts[0].replace(/CONNECT-ZYRO/i, '').trim();
+                const tokenData = getPendingPairingToken(code);
+                if (tokenData?.userId) {
+                    await handlePairingVerification(tokenData.userId, senderPhone, code, phoneNumberId);
+                    continue;
+                }
+            }
+
+            // Always store every real incoming WhatsApp message in database
+            await storeIncomingMessageToDatabase({
+                senderPhone,
+                messageText: responseText || `[${message.type}]`,
+                phoneNumberId,
+                messageId: message.id,
+            });
+
+            const normalized = responseText.toUpperCase();
+
             // Handle YES / NO
-            if (responseText === 'YES' || responseText === 'NO') {
-                await handleOrderConfirmation(senderPhone, responseText, phoneNumberId);
-            } else if (message.type === 'text' && message.text?.body) {
+            if (normalized === 'YES' || normalized === 'NO') {
+                await handleOrderConfirmation(senderPhone, normalized, phoneNumberId);
+            } else if (message.type === 'text' && responseText) {
                 // Run complaint detection on all other free-text messages
-                await handleComplaintDetection(senderPhone, message.text.body, phoneNumberId);
+                await handleComplaintDetection(senderPhone, responseText, phoneNumberId);
             }
         }
 
@@ -420,28 +447,27 @@ async function handleOrderConfirmation(senderPhone, response, phoneNumberId) {
  */
 async function sendWhatsAppTextMessage(userId, recipientPhone, text) {
     try {
-        const { data: user } = await supabase
-            .from('users')
-            .select('wa_phone_number_id, wa_access_token')
-            .eq('id', userId)
-            .single();
+        const creds = await resolveTenantWhatsAppCredentials(userId);
 
-        if (!user?.wa_phone_number_id || !user?.wa_access_token) {
+        if (!creds?.accessToken || !creds?.phoneNumberId) {
             console.warn('[WhatsApp Webhook] Cannot send reply - missing WA credentials');
             return;
         }
 
-        const url = `https://graph.facebook.com/v18.0/${user.wa_phone_number_id}/messages`;
+        let cleaned = recipientPhone.replace(/\D/g, '');
+        if (cleaned.startsWith('03')) cleaned = '92' + cleaned.substring(1);
+
+        const url = `https://graph.facebook.com/v18.0/${creds.phoneNumberId}/messages`;
         const res = await fetch(url, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${user.wa_access_token}`,
+                'Authorization': `Bearer ${creds.accessToken}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
                 messaging_product: 'whatsapp',
                 recipient_type: 'individual',
-                to: recipientPhone,
+                to: cleaned,
                 type: 'text',
                 text: { body: text },
             }),
@@ -631,4 +657,207 @@ function generatePhoneVariants(phone) {
     }
     
     return [...new Set(variants)]; // deduplicate
+}
+
+/**
+ * Persist incoming WhatsApp message to database (wa_conversations and wa_messages)
+ */
+async function storeIncomingMessageToDatabase({ senderPhone, messageText, phoneNumberId, messageId }) {
+    try {
+        const variants = generatePhoneVariants(senderPhone);
+        let userId = null;
+
+        // 1. Resolve tenant user by dedicated phoneNumberId
+        if (phoneNumberId) {
+            const { data: user } = await supabase
+                .from('users')
+                .select('id')
+                .eq('wa_phone_number_id', phoneNumberId)
+                .maybeSingle();
+            if (user?.id) userId = user.id;
+        }
+
+        // 2. Resolve by matching pending order (customer phone in wa_pending_orders)
+        if (!userId) {
+            for (const phone of variants) {
+                const { data: pending } = await supabase
+                    .from('wa_pending_orders')
+                    .select('user_id')
+                    .eq('phone', phone)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                if (pending?.user_id) {
+                    userId = pending.user_id;
+                    break;
+                }
+            }
+        }
+
+        // 3. Resolve by matching existing conversation
+        if (!userId) {
+            for (const phone of variants) {
+                const { data: existingConv } = await supabase
+                    .from('wa_conversations')
+                    .select('user_id')
+                    .eq('phone_number', phone)
+                    .order('updated_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                if (existingConv?.user_id) {
+                    userId = existingConv.user_id;
+                    break;
+                }
+            }
+        }
+
+        // 4. Resolve by matching merchant phone
+        if (!userId) {
+            for (const phone of variants) {
+                const { data: merchantUser } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('wa_merchant_phone', phone)
+                    .maybeSingle();
+                if (merchantUser?.id) {
+                    userId = merchantUser.id;
+                    break;
+                }
+            }
+        }
+
+        // 5. Fallback to primary tenant
+        if (!userId) {
+            const { data: defaultUser } = await supabase
+                .from('users')
+                .select('id')
+                .limit(1)
+                .maybeSingle();
+            userId = defaultUser?.id || 'e5940095-1560-4425-ab60-f8fc5f7874f4';
+        }
+
+        // Locate or create active conversation
+        let convId = null;
+        for (const phone of variants) {
+            const { data: existing } = await supabase
+                .from('wa_conversations')
+                .select('id')
+                .eq('user_id', userId)
+                .eq('phone_number', phone)
+                .maybeSingle();
+            if (existing?.id) {
+                convId = existing.id;
+                break;
+            }
+        }
+
+        if (!convId) {
+            // Find or associate customer
+            let customerId = null;
+            for (const phone of variants) {
+                const { data: cust } = await supabase
+                    .from('customers')
+                    .select('id')
+                    .eq('user_id', userId)
+                    .eq('contact', phone)
+                    .maybeSingle();
+                if (cust?.id) {
+                    customerId = cust.id;
+                    break;
+                }
+            }
+
+            const { data: newConv } = await supabase
+                .from('wa_conversations')
+                .insert({
+                    user_id: userId,
+                    phone_number: senderPhone,
+                    customer_id: customerId,
+                    status: 'manual_support',
+                    last_message: messageText || 'New message',
+                    updated_at: new Date().toISOString(),
+                })
+                .select('id')
+                .single();
+
+            if (newConv?.id) convId = newConv.id;
+        } else {
+            await supabase
+                .from('wa_conversations')
+                .update({
+                    last_message: messageText,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', convId);
+        }
+
+        // Insert into wa_messages table
+        if (convId) {
+            await supabase
+                .from('wa_messages')
+                .insert({
+                    conversation_id: convId,
+                    user_id: userId,
+                    sender_type: 'customer',
+                    message_text: messageText,
+                    created_at: new Date().toISOString(),
+                });
+        }
+
+        console.log(`[WhatsApp Webhook] Successfully recorded real message from ${senderPhone} into conv ${convId}`);
+    } catch (err) {
+        console.error('[WhatsApp Webhook] Error storing incoming message:', err.message);
+    }
+}
+
+/**
+ * Handle pairing verification handshake when merchant scans QR or sends verification message
+ */
+async function handlePairingVerification(userId, senderPhone, code, phoneNumberId) {
+    try {
+        console.log(`[WhatsApp Webhook] Handshake verified for user ${userId} with phone ${senderPhone}`);
+
+        // 1. Update user record in Supabase
+        await supabase
+            .from('users')
+            .update({
+                wa_merchant_phone: senderPhone,
+                wa_is_active: true,
+            })
+            .eq('id', userId);
+
+        // 2. Set active instance in server memory
+        setActiveWhatsAppInstance(userId, {
+            id: `wa-inst-${userId}`,
+            number: senderPhone,
+            server: 'WhatsApp-69',
+            out_message: 'Yes',
+            notification: 'Yes',
+            group_notification: 'No',
+            priority: '1',
+            status: 'connected',
+            linked_at: new Date().toISOString(),
+            is_official: true,
+            is_platform_managed: true,
+        });
+
+        // 3. Store system message in conversation
+        await storeIncomingMessageToDatabase({
+            senderPhone,
+            messageText: `[Device Linked] Verified via Official Meta WhatsApp QR scan (${code}).`,
+            phoneNumberId,
+        });
+
+        // 4. Send official automated confirmation reply to the merchant's phone
+        await sendWhatsAppTextMessage(
+            userId,
+            senderPhone,
+            `✅ Congratulations! Your WhatsApp number (+${senderPhone}) is now connected to Zyro WhatsApp Command Center.\n\nYou can now manage live customer chats and order notifications directly from your dashboard.`
+        );
+
+        // 5. Clean up pending pairing token
+        clearPendingPairingToken(code);
+    } catch (err) {
+        console.error('[WhatsApp Webhook] Error verifying pairing handshake:', err.message);
+    }
 }

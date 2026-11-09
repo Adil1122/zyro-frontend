@@ -2163,6 +2163,26 @@ export default function SettingsPage({ tabParam }) {
                         <p style={{ fontSize: 13, color: T.textMuted, margin: "0 0 24px" }}>Configure your Meta WhatsApp Cloud API credentials to automate transactional customer notifications.</p>
                         
                         <Card style={{ padding: 24 }}>
+                            {/* Multi-Tenant System Badge */}
+                            <div style={{
+                                padding: "12px 16px",
+                                background: "rgba(37,211,102,0.08)",
+                                border: "1px solid rgba(37,211,102,0.25)",
+                                borderRadius: T.r8,
+                                marginBottom: 20,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 12,
+                            }}>
+                                <span style={{ fontSize: 20 }}>🌐</span>
+                                <div>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: T.text }}>Multi-Tenant Architecture Active</div>
+                                    <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2, lineHeight: 1.4 }}>
+                                        Zyro operates as a centralized Meta Tech Provider. Master platform credentials in Environment Variables automatically serve all merchants. Individual merchants connect numbers in <strong>WhatsApp Integration</strong> without needing custom API tokens or webhooks.
+                                    </div>
+                                </div>
+                            </div>
+
                             {waLoading ? (
                                 <div style={{ textAlign: "center", padding: "40px 0", color: T.textMuted, fontSize: 14 }}>
                                     Loading configurations...

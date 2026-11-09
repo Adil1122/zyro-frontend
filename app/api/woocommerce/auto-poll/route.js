@@ -183,6 +183,11 @@ async function pollUser(user) {
 
 export async function GET(request) {
     try {
+        const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
+        if (!sbUrl || sbUrl.includes('placeholder')) {
+            return NextResponse.json({ message: 'Supabase URL not configured yet', results: [] });
+        }
+
         // Find all users with WooCommerce configured and WhatsApp active
         const { data: users, error } = await supabase
             .from('users')

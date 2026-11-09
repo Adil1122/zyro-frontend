@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { resolveTenantWhatsAppCredentials } from '@/lib/whatsappSession';
 
 export async function POST(request) {
     try {
@@ -18,7 +19,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Message cannot be empty' }, { status: 400 });
         }
 
-        // 1. Resolve or create active conversation (supports numeric IDs like 4 as well as UUIDs)
+        // 1. Resolve or create active conversation
         let activeConvId = conversationId;
         if (!activeConvId || activeConvId === 'support-official') {
             const { data: existingConv } = await supabase
@@ -50,28 +51,24 @@ export async function POST(request) {
             }
         }
 
-        // 2. Fetch User Meta credentials for live WhatsApp sending
-        const { data: user } = await supabase
-            .from('users')
-            .select('wa_phone_number_id, wa_access_token, wa_is_active, wa_merchant_phone')
-            .eq('id', userId)
-            .maybeSingle();
+        // 2. Resolve Meta credentials (tenant overrides or Master Platform credentials from Environment Variables)
+        const creds = await resolveTenantWhatsAppCredentials(userId);
 
-        const recipientPhone = phone || user?.wa_merchant_phone;
+        const recipientPhone = phone || creds.merchantPhone;
         let metaMessageId = null;
         let metaError = null;
 
         // 3. Attempt live WhatsApp dispatch if credentials are configured
-        if (user?.wa_phone_number_id && user?.wa_access_token && user?.wa_is_active !== false && recipientPhone && recipientPhone !== 'Support') {
+        if (creds.accessToken && creds.phoneNumberId && recipientPhone && recipientPhone !== 'Support') {
             try {
                 let cleanedPhone = recipientPhone.replace(/\D/g, '');
                 if (cleanedPhone.startsWith('03')) cleanedPhone = '92' + cleanedPhone.substring(1);
 
-                const url = `https://graph.facebook.com/v18.0/${user.wa_phone_number_id}/messages`;
+                const url = `https://graph.facebook.com/v18.0/${creds.phoneNumberId}/messages`;
                 const metaRes = await fetch(url, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${user.wa_access_token}`,
+                        'Authorization': `Bearer ${creds.accessToken}`,
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
@@ -95,8 +92,8 @@ export async function POST(request) {
                 console.warn('[WhatsApp Send] Network error calling Meta API:', networkErr.message);
             }
         } else {
-            if (!user?.wa_phone_number_id || !user?.wa_access_token) {
-                metaError = 'Meta credentials not configured in /settings/whatsapp';
+            if (!creds.accessToken || !creds.phoneNumberId) {
+                metaError = 'Meta credentials not configured. Configure WA_SYSTEM_ACCESS_TOKEN & WA_DEFAULT_PHONE_NUMBER_ID in Environment Variables or Settings > WhatsApp';
             }
         }
 
@@ -154,6 +151,7 @@ export async function POST(request) {
             },
             messageId: metaMessageId,
             liveSent: Boolean(metaMessageId),
+            isPlatformManaged: creds.isUsingPlatformMaster,
             warning: metaError ? `Note: ${metaError}. Message saved in conversation.` : null,
         });
 

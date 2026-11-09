@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUserId } from '@/lib/supabase';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_KEY
-);
+import { supabase, getCurrentUserId } from '@/lib/supabase';
 
 export async function GET(request) {
   try {

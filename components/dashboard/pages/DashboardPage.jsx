@@ -16,10 +16,33 @@ import { STORE_COLORS, OTHER_DISPLAY } from "../../../lib/platforms";
 import { useRouter } from "next/navigation";
 import { NewOrderModal } from "./OrdersPage";
 
+const DEFAULT_STATS = {
+    kpis: {
+        revenueToday: 0,
+        currency: "PKR",
+        ordersToday: 0,
+        rangeLabel: "Last 7 Days",
+        pendingOrders: 0,
+        aiRate: "98.2%",
+        codDue: 0,
+        revenueDelta: "0%",
+        revenueDeltaUp: true,
+        awaitingConfirmation: 0,
+        lowStockCount: 0,
+        escalatedCount: 0,
+    },
+    charts: {
+        platformSplit: [],
+        revenueTrend: [],
+        platformByDay: [],
+    },
+    recentOrders: [],
+};
+
 export default function DashboardPage() {
     const router = useRouter();
     const [range, setRange] = useState("7d");
-    const [stats, setStats] = useState(null);
+    const [stats, setStats] = useState(DEFAULT_STATS);
     const [loading, setLoading] = useState(true);
     const [refetching, setRefetching] = useState(false);
     const [user, setUser] = useState(null);
@@ -37,7 +60,11 @@ export default function DashboardPage() {
             if (userId) url += `&userId=${encodeURIComponent(userId)}`;
             const res = await fetch(url);
             const data = await res.json();
-            setStats(data);
+            if (data && data.kpis) {
+                setStats(data);
+            } else {
+                console.warn("Dashboard stats returned partial or empty data:", data);
+            }
         } catch (err) {
             console.error("Failed to fetch dashboard stats:", err);
         } finally {
@@ -144,14 +171,22 @@ export default function DashboardPage() {
         return `${Math.floor(diffHrs / 24)}d`;
     };
 
-    if (loading) return (
+    if (loading && (!stats || !stats.kpis)) return (
         <div style={{ padding: "28px 32px", color: T.text, textAlign: "center" }}>
             <Icon name="refresh" size={24} style={{ animation: "spin 1s linear infinite" }} />
             <div style={{ marginTop: 10 }}>Loading Zyro Intelligence...</div>
         </div>
     );
 
-    if (!stats) return <div style={{ padding: 28, color: T.red }}>Error connecting to backend database.</div>;
+    const safeStats = {
+        kpis: { ...DEFAULT_STATS.kpis, ...(stats?.kpis || {}) },
+        charts: {
+            platformSplit: stats?.charts?.platformSplit || DEFAULT_STATS.charts.platformSplit,
+            revenueTrend: stats?.charts?.revenueTrend || DEFAULT_STATS.charts.revenueTrend,
+            platformByDay: stats?.charts?.platformByDay || DEFAULT_STATS.charts.platformByDay,
+        },
+        recentOrders: stats?.recentOrders || DEFAULT_STATS.recentOrders,
+    };
 
     return (
         <div className="page-outer" style={{ padding: "28px 32px", maxWidth: 1280 }}>
@@ -196,17 +231,17 @@ export default function DashboardPage() {
                 <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, color: T.text, fontWeight: 600 }}>Attention needed</div>
                     <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
-                        {stats.kpis.pendingOrders} orders need courier booking · Webhook sync active · {stats.kpis.pendingOrders > 5 ? 'High volume today' : 'Stable traffic'}
+                        {safeStats.kpis.pendingOrders} orders need courier booking · Webhook sync active · {safeStats.kpis.pendingOrders > 5 ? 'High volume today' : 'Stable traffic'}
                     </div>
                 </div>
                 <GradientButton variant="ghost" size="sm" iconRight="arrow" onClick={() => router.push('/orders')}>Review</GradientButton>
             </div>
 
             <div className="stat-grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20, opacity: refetching ? 0.6 : 1, transition: "opacity 0.2s" }}>
-                <KPI label={`Revenue · ${stats.kpis.rangeLabel}`} value={formatMoney(stats.kpis.revenueToday, stats.kpis.currency)} sub={`${stats.kpis.ordersToday} orders · Live Data`} delta={stats.kpis.revenueDelta} deltaUp={stats.kpis.revenueDeltaUp} icon="dollar" highlight />
-                <KPI label="Pending Action" value={stats.kpis.pendingOrders.toString()} sub="Need courier booking" delta="Urgent" icon="truck" />
-                <KPI label="WhatsApp AI Rate" value={stats.kpis.aiRate} sub="Handled without you" icon="ai" />
-                <KPI label="COD Due" value={`Rs ${stats.kpis.codDue.toLocaleString()}`} sub="Active in transit" icon="pkg" />
+                <KPI label={`Revenue · ${safeStats.kpis.rangeLabel}`} value={formatMoney(safeStats.kpis.revenueToday, safeStats.kpis.currency)} sub={`${safeStats.kpis.ordersToday} orders · Live Data`} delta={safeStats.kpis.revenueDelta} deltaUp={safeStats.kpis.revenueDeltaUp} icon="dollar" highlight />
+                <KPI label="Pending Action" value={safeStats.kpis.pendingOrders.toString()} sub="Need courier booking" delta="Urgent" icon="truck" />
+                <KPI label="WhatsApp AI Rate" value={safeStats.kpis.aiRate} sub="Handled without you" icon="ai" />
+                <KPI label="COD Due" value={`Rs ${safeStats.kpis.codDue.toLocaleString()}`} sub="Active in transit" icon="pkg" />
             </div>
 
             <div className="chart-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
@@ -226,7 +261,7 @@ export default function DashboardPage() {
                         </div>
                     </div>
                     <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={stats.charts.platformByDay} barSize={10} barGap={2}>
+                        <BarChart data={safeStats.charts.platformByDay} barSize={10} barGap={2}>
                             <CartesianGrid strokeDasharray="3 3" stroke={T.border} vertical={false} />
                             <XAxis dataKey="day" tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} />
                             <YAxis tick={{ fontSize: 11, fill: T.textFaint }} axisLine={false} tickLine={false} />
@@ -243,14 +278,14 @@ export default function DashboardPage() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                         <div>
                             <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Revenue Trend</div>
-                            <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2 }}>{stats.kpis.rangeLabel} · {refetching ? 'Updating...' : 'Real data'}</div>
+                            <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2 }}>{safeStats.kpis.rangeLabel} · {refetching ? 'Updating...' : 'Real data'}</div>
                         </div>
-                        <div style={{ padding: "3px 9px", borderRadius: T.r20, background: stats.kpis.revenueDeltaUp ? T.greenBg : "rgba(239,68,68,0.08)", border: `1px solid ${stats.kpis.revenueDeltaUp ? T.green : T.red}33` }}>
-                            <span style={{ fontSize: 11, color: stats.kpis.revenueDeltaUp ? T.green : T.red, fontWeight: 700 }}>{stats.kpis.revenueDeltaUp ? "↑" : "↓"} {stats.kpis.revenueDelta}</span>
+                        <div style={{ padding: "3px 9px", borderRadius: T.r20, background: safeStats.kpis.revenueDeltaUp ? T.greenBg : "rgba(239,68,68,0.08)", border: `1px solid ${safeStats.kpis.revenueDeltaUp ? T.green : T.red}33` }}>
+                            <span style={{ fontSize: 11, color: safeStats.kpis.revenueDeltaUp ? T.green : T.red, fontWeight: 700 }}>{safeStats.kpis.revenueDeltaUp ? "↑" : "↓"} {safeStats.kpis.revenueDelta}</span>
                         </div>
                     </div>
                     <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={stats.charts.revenueTrend}>
+                        <AreaChart data={safeStats.charts.revenueTrend}>
                             <defs>
                                 <linearGradient id="rg" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="0%" stopColor={T.j300} stopOpacity={0.4} />
@@ -276,10 +311,10 @@ export default function DashboardPage() {
                         </div>
                         <GradientButton variant="ghost" size="sm" iconRight="arrow">View all</GradientButton>
                     </div>
-                    {stats.recentOrders.map((o, i) => (
+                    {safeStats.recentOrders.map((o, i) => (
                         <div key={o.id} className="dash-order-row" style={{
                             display: "flex", alignItems: "center", gap: 12, padding: "11px 20px",
-                            borderBottom: i < stats.recentOrders.length - 1 ? `1px solid ${T.border}` : "none",
+                            borderBottom: i < safeStats.recentOrders.length - 1 ? `1px solid ${T.border}` : "none",
                             cursor: "pointer", transition: "background 0.1s",
                         }}
                             onMouseEnter={e => e.currentTarget.style.background = "rgba(92,168,124,0.04)"}
@@ -319,12 +354,12 @@ export default function DashboardPage() {
                         <div style={{ fontSize: 11, color: T.textFaint, marginBottom: 12 }}>Detailed database stats</div>
                         <div style={{ display: "flex", justifyContent: "center" }}>
                             <PieChart width={160} height={130}>
-                                <Pie data={stats.charts.platformSplit} cx={80} cy={60} innerRadius={42} outerRadius={60} dataKey="value" strokeWidth={3} stroke={T.bgCard} paddingAngle={2}>
-                                    {stats.charts.platformSplit.map((e, i) => <Cell key={i} fill={e.color} />)}
+                                <Pie data={safeStats.charts.platformSplit} cx={80} cy={60} innerRadius={42} outerRadius={60} dataKey="value" strokeWidth={3} stroke={T.bgCard} paddingAngle={2}>
+                                    {safeStats.charts.platformSplit.map((e, i) => <Cell key={i} fill={e.color} />)}
                                 </Pie>
                             </PieChart>
                         </div>
-                        {stats.charts.platformSplit.map(pp => (
+                        {safeStats.charts.platformSplit.map(pp => (
                             <div key={pp.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                                     <div style={{ width: 8, height: 8, borderRadius: 2, background: pp.color }} />
@@ -338,10 +373,10 @@ export default function DashboardPage() {
                     <Card pad={16}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 12 }}>Quick Actions</div>
                         {[
-                            { icon: "truck", label: "Book couriers", sub: `${stats.kpis.pendingOrders} pending`, color: T.j300 },
-                            { icon: "check", label: "Confirm orders", sub: `${stats.kpis.awaitingConfirmation} awaiting`, color: T.yellow },
-                            { icon: "pkg", label: "Approve POs", sub: `${stats.kpis.lowStockCount} low stock`, color: T.green },
-                            { icon: "chat", label: "Reply to support", sub: `${stats.kpis.escalatedCount} escalated`, color: T.red },
+                            { icon: "truck", label: "Book couriers", sub: `${safeStats.kpis.pendingOrders} pending`, color: T.j300 },
+                            { icon: "check", label: "Confirm orders", sub: `${safeStats.kpis.awaitingConfirmation} awaiting`, color: T.yellow },
+                            { icon: "pkg", label: "Approve POs", sub: `${safeStats.kpis.lowStockCount} low stock`, color: T.green },
+                            { icon: "chat", label: "Reply to support", sub: `${safeStats.kpis.escalatedCount} escalated`, color: T.red },
                         ].map(a => (
                             <button key={a.label} style={{
                                 display: "flex", alignItems: "center", gap: 11, width: "100%",

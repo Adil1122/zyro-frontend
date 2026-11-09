@@ -878,173 +878,106 @@ export default function WhatsAppConnectPage() {
                                 </div>
                             )}
 
-                            {/* STEP 2: PAIRING OPTIONS (QR CODE & PAIRING CODE) */}
+                            {/* STEP 2: OFFICIAL META WHATSAPP QR SCAN & INSTANT ACTIVATION (IMAGE 2: wa-qr.PNG) */}
                             {step === 2 && (
                                 <div>
-                                    {/* Sub-tabs: Scan QR Code vs Link with Phone Number */}
+                                    {/* Multi-Tenant Status Banner */}
                                     <div style={{
-                                        display: "flex",
-                                        borderBottom: "1px solid #E2E8F0",
                                         marginBottom: 16,
+                                        padding: "10px 14px",
+                                        background: "#F0FDF4",
+                                        border: "1px solid #BBF7D0",
+                                        borderRadius: 8,
+                                        fontSize: 11,
+                                        color: "#166534",
+                                        display: "flex",
+                                        alignItems: "center",
                                         gap: 8,
                                     }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => setPairTab("qr")}
-                                            style={{
-                                                padding: "8px 14px",
-                                                border: "none",
-                                                background: "none",
-                                                fontSize: 13,
-                                                fontWeight: 700,
-                                                cursor: "pointer",
-                                                color: pairTab === "qr" ? "#F57D29" : "#64748B",
-                                                borderBottom: pairTab === "qr" ? "2px solid #F57D29" : "2px solid transparent",
-                                            }}
-                                        >
-                                            1. Scan QR Code
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setPairTab("code")}
-                                            style={{
-                                                padding: "8px 14px",
-                                                border: "none",
-                                                background: "none",
-                                                fontSize: 13,
-                                                fontWeight: 700,
-                                                cursor: "pointer",
-                                                color: pairTab === "code" ? "#F57D29" : "#64748B",
-                                                borderBottom: pairTab === "code" ? "2px solid #F57D29" : "2px solid transparent",
-                                            }}
-                                        >
-                                            2. Pairing Code (Fast Link)
-                                        </button>
+                                        <span style={{ fontSize: 16 }}>🛡️</span>
+                                        <div>
+                                            <strong>Multi-Tenant System:</strong> Zyro Official Meta WhatsApp Cloud API credentials are pre-configured in environment variables. You do not need to configure API tokens or webhooks.
+                                        </div>
                                     </div>
 
-                                    {/* TAB 1: QR CODE (MATCHING IMAGE 2: wa-qr.PNG) */}
-                                    {pairTab === "qr" && (
+                                    {/* QR CODE & INSTRUCTIONS (MATCHING IMAGE 2: wa-qr.PNG) */}
+                                    <div style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                        gap: 20,
+                                        padding: 16,
+                                        background: "#F8FAFC",
+                                        borderRadius: 8,
+                                        border: "1px solid #E2E8F0",
+                                        marginBottom: 16,
+                                        flexWrap: "wrap",
+                                    }}>
+                                        {/* QR Code on Left */}
                                         <div style={{
+                                            width: 175,
+                                            height: 175,
+                                            background: "#FFFFFF",
+                                            padding: 6,
+                                            borderRadius: 8,
+                                            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
                                             display: "flex",
                                             alignItems: "center",
-                                            justifyContent: "space-between",
-                                            gap: 20,
-                                            padding: 14,
-                                            background: "#F8FAFC",
-                                            borderRadius: 8,
-                                            border: "1px solid #E2E8F0",
+                                            justifyContent: "center",
+                                            position: "relative",
                                         }}>
-                                            {/* QR Code on Left */}
-                                            <div style={{
-                                                width: 175,
-                                                height: 175,
-                                                background: "#FFFFFF",
-                                                padding: 6,
-                                                borderRadius: 8,
-                                                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                position: "relative",
-                                            }}>
-                                                {qrDataUrl ? (
-                                                    <img
-                                                        src={qrDataUrl}
-                                                        alt="WhatsApp QR Code"
-                                                        style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                                                    />
-                                                ) : (
-                                                    <div style={{ fontSize: 12, color: "#64748B" }}>
-                                                        {isGeneratingQr ? "Generating..." : "QR Unavailable"}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Reload QR & Instructions on Right */}
-                                            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-                                                <button
-                                                    type="button"
-                                                    onClick={handleReloadQr}
-                                                    style={{
-                                                        background: "#0D2438",
-                                                        color: "#FFFFFF",
-                                                        border: "none",
-                                                        borderRadius: 6,
-                                                        padding: "9px 16px",
-                                                        fontSize: 13,
-                                                        fontWeight: 700,
-                                                        cursor: "pointer",
-                                                        boxShadow: "0 2px 6px rgba(13,36,56,0.25)",
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                        gap: 6,
-                                                    }}
-                                                >
-                                                    <span>Reload QR</span>
-                                                    <span style={{ fontSize: 11, opacity: 0.75 }}>({qrCountdown}s)</span>
-                                                </button>
-
-                                                <div style={{ fontSize: 11, color: "#475569", lineHeight: 1.45 }}>
-                                                    1. Open WhatsApp on phone<br />
-                                                    2. Tap <strong>Linked Devices</strong><br />
-                                                    3. Tap <strong>Link a device</strong><br />
-                                                    4. Point camera at this QR code
+                                            {qrDataUrl ? (
+                                                <img
+                                                    src={qrDataUrl}
+                                                    alt="WhatsApp QR Code"
+                                                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                                                />
+                                            ) : (
+                                                <div style={{ fontSize: 12, color: "#64748B" }}>
+                                                    {isGeneratingQr ? "Generating..." : "QR Unavailable"}
                                                 </div>
+                                            )}
+                                        </div>
+
+                                        {/* Reload QR & Instructions on Right */}
+                                        <div style={{ flex: 1, minWidth: 160, display: "flex", flexDirection: "column", gap: 10 }}>
+                                            <button
+                                                type="button"
+                                                onClick={handleReloadQr}
+                                                style={{
+                                                    background: "#0D2438",
+                                                    color: "#FFFFFF",
+                                                    border: "none",
+                                                    borderRadius: 6,
+                                                    padding: "9px 16px",
+                                                    fontSize: 13,
+                                                    fontWeight: 700,
+                                                    cursor: "pointer",
+                                                    boxShadow: "0 2px 6px rgba(13,36,56,0.25)",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    gap: 6,
+                                                }}
+                                            >
+                                                <span>Reload QR</span>
+                                                <span style={{ fontSize: 11, opacity: 0.75 }}>({qrCountdown}s)</span>
+                                            </button>
+
+                                            <div style={{ fontSize: 11, color: "#334155", lineHeight: 1.5 }}>
+                                                1. Open camera or WhatsApp on phone<br />
+                                                2. Scan this QR code<br />
+                                                3. Tap <strong>Send</strong> in WhatsApp to verify <strong>{numberInput}</strong>
+                                            </div>
+
+                                            <div style={{ fontSize: 10, color: "#64748B" }}>
+                                                Pairing Code: <strong style={{ color: "#0F172A" }}>{pairingCode || "ZYRO-LINK"}</strong>
                                             </div>
                                         </div>
-                                    )}
-
-                                    {/* TAB 2: PAIRING CODE (OFFICIAL NUMBER LINKING) */}
-                                    {pairTab === "code" && (
-                                        <div style={{
-                                            padding: 16,
-                                            background: "#F8FAFC",
-                                            borderRadius: 8,
-                                            border: "1px solid #E2E8F0",
-                                            textAlign: "center",
-                                        }}>
-                                            <div style={{ fontSize: 12, color: "#475569", marginBottom: 8 }}>
-                                                In WhatsApp &gt; <strong>Linked Devices</strong> &gt; tap <strong>Link with phone number instead</strong>:
-                                            </div>
-                                            <div style={{
-                                                fontSize: 24,
-                                                letterSpacing: 4,
-                                                fontFamily: "monospace",
-                                                fontWeight: 800,
-                                                color: "#0F172A",
-                                                background: "#FFFFFF",
-                                                padding: "12px 20px",
-                                                borderRadius: 8,
-                                                border: "2px dashed #CBD5E1",
-                                                display: "inline-block",
-                                                marginBottom: 10,
-                                            }}>
-                                                {pairingCode || "92X8-4R2K"}
-                                            </div>
-                                            <div style={{ fontSize: 11, color: "#64748B" }}>
-                                                Enter this code on your mobile device to authorize Zyro instantly.
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Mobile Notice for WhatsApp linked devices behavior */}
-                                    <div style={{
-                                        margin: "14px 0",
-                                        padding: "11px 14px",
-                                        background: "#EFF6FF",
-                                        borderRadius: 8,
-                                        border: "1px solid #BFDBFE",
-                                        fontSize: 12,
-                                        color: "#1E40AF",
-                                        lineHeight: 1.45,
-                                    }}>
-                                        <strong>💡 Mobile Notice:</strong> If mobile WhatsApp shows <em>"Couldn&apos;t link device"</em> (due to WhatsApp Web multi-device rate limits), tap <strong>&quot;Link &amp; Activate This Number&quot;</strong> below to immediately activate <strong>{numberInput}</strong> in Zyro. This replaces the default number and loads its chats.
                                     </div>
 
-                                    {/* Link / Confirm Action */}
+                                    {/* Actions */}
                                     <div style={{
-                                        marginTop: 14,
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "space-between",

@@ -11,6 +11,7 @@ export default function WhatsAppInboxPage() {
     const [loading, setLoading] = useState(true);
     const [connectedNumber, setConnectedNumber] = useState(null);
     const [isMetaConfigured, setIsMetaConfigured] = useState(false);
+    const [isPlatformManaged, setIsPlatformManaged] = useState(false);
 
     // Filter & Search
     const [filterTab, setFilterTab] = useState("all"); // "all", "unread", "support"
@@ -61,6 +62,7 @@ export default function WhatsAppInboxPage() {
             if (data.success) {
                 setConnectedNumber(data.connectedNumber || null);
                 setIsMetaConfigured(data.isMetaConfigured || false);
+                setIsPlatformManaged(data.isPlatformManaged || false);
 
                 const convList = data.conversations || [];
                 setConversations(convList);
@@ -314,9 +316,11 @@ export default function WhatsAppInboxPage() {
                             )}
                         </div>
                         <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
-                            {isMetaConfigured
-                                ? "Meta WhatsApp Cloud API & Coexistence Active"
-                                : "Direct Web Multi-Device Linked Session"}
+                            {isPlatformManaged
+                                ? "Official Meta Cloud API • Multi-Tenant Platform Managed"
+                                : (isMetaConfigured
+                                    ? "Official Meta WhatsApp Cloud API Active"
+                                    : "Multi-Tenant WhatsApp Integration Active")}
                         </div>
                     </div>
                 </div>
@@ -832,16 +836,100 @@ export default function WhatsAppInboxPage() {
                             alignItems: "center",
                             justifyContent: "center",
                             color: T.textMuted,
-                            padding: 24,
+                            padding: "40px 24px",
                             textAlign: "center",
                         }}>
-                            <div style={{ fontSize: 40, marginBottom: 12 }}>💬</div>
-                            <h3 style={{ fontSize: 16, fontWeight: 700, color: T.text, margin: "0 0 6px 0" }}>
-                                No Active WhatsApp Conversation Selected
+                            <div style={{
+                                width: 64,
+                                height: 64,
+                                borderRadius: "50%",
+                                background: "rgba(37,211,102,0.15)",
+                                border: "1px solid rgba(37,211,102,0.3)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                margin: "0 auto 18px auto",
+                                color: "#25D366",
+                                fontSize: 28,
+                            }}>
+                                💬
+                            </div>
+                            <h3 style={{ fontSize: 18, fontWeight: 800, color: T.text, margin: "0 0 8px 0" }}>
+                                {conversations.length === 0 ? "No WhatsApp Conversations Yet" : "Select a Conversation"}
                             </h3>
-                            <p style={{ fontSize: 13, maxWidth: 360, color: T.textMuted }}>
-                                Select a conversation from the left or click &quot;New Chat&quot; to initiate a real message.
+                            <p style={{ fontSize: 13, maxWidth: 440, color: T.textMuted, margin: "0 auto 24px auto", lineHeight: 1.5 }}>
+                                {conversations.length === 0
+                                    ? `Your WhatsApp account (+${connectedNumber || "923475776857"}) is ready. Real customer messages will appear here live when sent to your WhatsApp number.`
+                                    : "Choose a contact from the list on the left to read or reply to real messages."}
                             </p>
+
+                            {/* Meta & Webhook Diagnostic Info */}
+                            <div style={{
+                                maxWidth: 480,
+                                width: "100%",
+                                background: T.bgElev,
+                                border: `1px solid ${T.borderMid}`,
+                                borderRadius: 10,
+                                padding: "16px 20px",
+                                textAlign: "left",
+                                marginBottom: 24,
+                            }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: T.textSub, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                    <span>Live WhatsApp Integration Status</span>
+                                    <span style={{
+                                        fontSize: 10,
+                                        padding: "2px 8px",
+                                        borderRadius: 10,
+                                        background: "rgba(74,222,128,0.15)",
+                                        color: T.green,
+                                        fontWeight: 700,
+                                    }}>
+                                        {isPlatformManaged ? "● Meta Cloud API Active (Platform Managed)" : (isMetaConfigured ? "● Meta Cloud API Active" : "● Multi-Tenant Active")}
+                                    </span>
+                                </div>
+                                <div style={{ fontSize: 11, color: T.textMuted, display: "flex", flexDirection: "column", gap: 6 }}>
+                                    <div><strong style={{ color: T.text }}>Active Number:</strong> +{connectedNumber || "923475776857"}</div>
+                                    <div><strong style={{ color: T.text }}>Platform Mode:</strong> <span style={{ color: T.green }}>Multi-Tenant (Centralized Meta Cloud API)</span></div>
+                                    <div><strong style={{ color: T.text }}>Webhook Endpoint:</strong> <code style={{ color: T.j200 }}>/api/whatsapp/webhook</code></div>
+                                    <div><strong style={{ color: T.text }}>Verify Token:</strong> <code style={{ color: T.j200 }}>zyro_verify_token</code></div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+                                <button
+                                    onClick={() => setNewChatModalOpen(true)}
+                                    style={{
+                                        background: T.gradBtn,
+                                        color: "#FFFFFF",
+                                        border: "none",
+                                        borderRadius: 8,
+                                        padding: "10px 20px",
+                                        fontSize: 13,
+                                        fontWeight: 700,
+                                        cursor: "pointer",
+                                        boxShadow: T.glowBtn,
+                                    }}
+                                >
+                                    + Start New WhatsApp Chat
+                                </button>
+                                <a
+                                    href="/settings/whatsapp"
+                                    style={{
+                                        background: T.bgElev,
+                                        border: `1px solid ${T.borderMid}`,
+                                        color: T.textSub,
+                                        borderRadius: 8,
+                                        padding: "10px 18px",
+                                        fontSize: 13,
+                                        fontWeight: 600,
+                                        textDecoration: "none",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                    }}
+                                >
+                                    WhatsApp Settings
+                                </a>
+                            </div>
                         </div>
                     )}
                 </div>

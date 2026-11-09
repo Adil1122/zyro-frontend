@@ -7,6 +7,8 @@ import {
     setActiveWhatsAppInstance,
     clearWhatsAppInstances,
     restoreDefaultWhatsAppInstance,
+    resolveTenantWhatsAppCredentials,
+    getPlatformWhatsAppConfig,
 } from '@/lib/whatsappSession';
 
 export const dynamic = 'force-dynamic';
@@ -32,38 +34,17 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const forceDefault = searchParams.get('default') === 'true';
 
-        // Fetch user from Supabase
-        const { data: user, error: userErr } = await supabase
-            .from('users')
-            .select('id, wa_merchant_phone, wa_phone_number_id, wa_waba_id, wa_access_token, wa_is_active')
-            .eq('id', userId)
-            .maybeSingle();
-
-        if (userErr) {
-            console.warn('[WhatsApp Instances] User lookup error:', userErr.message);
-        }
+        // Resolve credentials (checks tenant overrides first, then Master Platform credentials)
+        const creds = await resolveTenantWhatsAppCredentials(userId);
+        const platform = getPlatformWhatsAppConfig();
 
         let list = getAllWhatsAppInstances(userId);
 
-        if (forceDefault || (!list && (!user?.wa_merchant_phone || user.wa_merchant_phone.trim() === ''))) {
-            // Default number 923475776857 is always active by default
+        if (forceDefault || (!list && (!creds.merchantPhone || creds.merchantPhone.trim() === ''))) {
             const defaultInst = restoreDefaultWhatsAppInstance(userId);
             list = [defaultInst];
-
-            // Persist default merchant phone in database
-            try {
-                await supabase
-                    .from('users')
-                    .update({ 
-                        wa_merchant_phone: DEFAULT_MERCHANT_PHONE,
-                        wa_is_active: true 
-                    })
-                    .eq('id', userId);
-            } catch (dbErr) {
-                console.warn('[WhatsApp Instances] Default phone db save:', dbErr);
-            }
         } else if (!list) {
-            const activePhone = (user?.wa_merchant_phone && user.wa_merchant_phone.trim()) || DEFAULT_MERCHANT_PHONE;
+            const activePhone = creds.merchantPhone || platform.defaultMerchantPhone;
             const inst = {
                 id: `wa-inst-${userId}`,
                 number: activePhone,
@@ -74,24 +55,28 @@ export async function GET(request) {
                 priority: '1',
                 status: 'connected',
                 linked_at: new Date().toISOString(),
-                is_official: Boolean(user?.wa_phone_number_id && user?.wa_access_token),
+                is_official: creds.isConfigured,
+                is_platform_managed: creds.isUsingPlatformMaster,
             };
             setActiveWhatsAppInstance(userId, inst);
             list = [inst];
         }
 
-        const activeNumber = list[0]?.number || DEFAULT_MERCHANT_PHONE;
+        const activeNumber = list[0]?.number || creds.merchantPhone;
 
         return NextResponse.json({
             instances: list,
-            defaultNumber: DEFAULT_MERCHANT_PHONE,
+            defaultNumber: platform.defaultMerchantPhone,
             activeNumber,
+            isPlatformManaged: creds.isUsingPlatformMaster,
+            isMetaConfigured: creds.isConfigured,
             officialCredentials: {
-                configured: Boolean(user?.wa_phone_number_id && user?.wa_access_token),
-                phoneNumberId: user?.wa_phone_number_id || '',
-                wabaId: user?.wa_waba_id || '',
-                isActive: user?.wa_is_active !== false,
-                merchantPhone: user?.wa_merchant_phone || activeNumber,
+                configured: creds.isConfigured,
+                isUsingPlatformMaster: creds.isUsingPlatformMaster,
+                phoneNumberId: creds.phoneNumberId || '',
+                wabaId: creds.wabaId || '',
+                isActive: creds.isActive,
+                merchantPhone: activeNumber,
             }
         }, {
             headers: {
@@ -111,14 +96,15 @@ export async function POST(request) {
         // Support restoring default WhatsApp number
         if (body.restoreDefault) {
             const defaultInstance = restoreDefaultWhatsAppInstance(userId);
+            const platform = getPlatformWhatsAppConfig();
             try {
-                await supabase.from('users').update({ wa_merchant_phone: DEFAULT_MERCHANT_PHONE, wa_is_active: true }).eq('id', userId);
+                await supabase.from('users').update({ wa_merchant_phone: platform.defaultMerchantPhone, wa_is_active: true }).eq('id', userId);
             } catch (err) {}
             return NextResponse.json({
                 success: true,
                 instance: defaultInstance,
                 instances: [defaultInstance],
-                message: `Default WhatsApp number ${DEFAULT_MERCHANT_PHONE} restored successfully`
+                message: `Default WhatsApp number ${platform.defaultMerchantPhone} restored successfully`
             });
         }
 
@@ -129,6 +115,7 @@ export async function POST(request) {
         }
 
         const cleanedNumber = number.trim().replace(/\s+/g, '');
+        const creds = await resolveTenantWhatsAppCredentials(userId);
 
         const newInstance = {
             id: `wa-inst-${Date.now()}`,
@@ -140,10 +127,11 @@ export async function POST(request) {
             priority: '1',
             status: 'connected',
             linked_at: new Date().toISOString(),
-            is_official: false,
+            is_official: creds.isConfigured,
+            is_platform_managed: creds.isUsingPlatformMaster,
         };
 
-        // Replaces the existing active number with this new single active number!
+        // Replaces the existing active number with this new single active number
         setActiveWhatsAppInstance(userId, newInstance);
         const updated = [newInstance];
 
@@ -160,32 +148,12 @@ export async function POST(request) {
             console.warn('[WhatsApp Instances] User phone update:', dbErr);
         }
 
-        // Ensure a conversation row exists in wa_conversations for this number
-        try {
-            const { data: existingConv } = await supabase
-                .from('wa_conversations')
-                .select('id')
-                .eq('user_id', userId)
-                .eq('phone_number', cleanedNumber)
-                .maybeSingle();
-
-            if (!existingConv) {
-                await supabase
-                    .from('wa_conversations')
-                    .insert({
-                        user_id: userId,
-                        phone_number: cleanedNumber,
-                        status: 'manual_support',
-                        last_message: 'WhatsApp linked and verified.',
-                    });
-            }
-        } catch (convErr) {}
-
         return NextResponse.json({
             success: true,
             instance: newInstance,
             instances: updated,
-            message: `WhatsApp number ${cleanedNumber} linked successfully and replaced previous account`
+            isPlatformManaged: creds.isUsingPlatformMaster,
+            message: `WhatsApp number ${cleanedNumber} connected successfully to your multi-tenant account`
         });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
