@@ -65,7 +65,7 @@ export default function Sidebar({ page, collapsed, setCollapsed, badgeCounts, dr
             )}
             <nav style={{ flex: 1, padding: "10px 8px", overflow: "hidden" }}>
                 {NAV.map(item => {
-                    const active = page === item.id || (item.id === "whatsapp/chat" && page === "whatsapp");
+                    const active = page === item.id;
                     const href = item.id === "dashboard" ? "/dashboard" : `/${item.id}`;
                     return (
                         <Link key={item.id} href={href}

@@ -1,7 +1,7 @@
 "use client";
 
-import WhatsAppInboxPage from "@/components/dashboard/pages/WhatsAppInboxPage";
+import WhatsAppPage from "@/components/dashboard/pages/WhatsAppPage";
 
 export default function Page() {
-    return <WhatsAppInboxPage />;
+    return <WhatsAppPage />;
 }

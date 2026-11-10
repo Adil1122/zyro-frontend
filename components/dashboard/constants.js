@@ -35,8 +35,7 @@ export const statusCfg = {
 export const NAV = [
     { id: "dashboard", label: "Dashboard" },
     { id: "orders", label: "Orders", badge: 0 },
-    { id: "whatsapp/connect", label: "Add WhatsApp Account", icon: "whatsapp-connect" },
-    { id: "whatsapp/chat", label: "WhatsApp Chat", icon: "whatsapp-chat", badge: 14, alert: true },
+    { id: "whatsapp", label: "WhatsApp", badge: 14, alert: true },
     { id: "couriers", label: "Couriers" },
     { id: "inventory", label: "Inventory", badge: 0, warn: true },
     { id: "marketing", label: "Marketing" },

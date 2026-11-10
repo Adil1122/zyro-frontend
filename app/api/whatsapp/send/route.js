@@ -62,9 +62,8 @@ export async function POST(request) {
         if (creds.accessToken && creds.phoneNumberId && recipientPhone && recipientPhone !== 'Support') {
             try {
                 let cleanedPhone = recipientPhone.replace(/\D/g, '');
-                if (cleanedPhone.startsWith('03')) cleanedPhone = '92' + cleanedPhone.substring(1);
-
-                const url = `https://graph.facebook.com/v18.0/${creds.phoneNumberId}/messages`;
+                const graphVersion = process.env.META_GRAPH_API_VERSION || 'v26.0';
+                const url = `https://graph.facebook.com/${graphVersion}/${creds.phoneNumberId}/messages`;
                 const metaRes = await fetch(url, {
                     method: 'POST',
                     headers: {
