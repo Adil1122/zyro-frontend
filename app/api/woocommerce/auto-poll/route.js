@@ -9,10 +9,19 @@ export const dynamic = 'force-dynamic';
 async function pollUser(user) {
     const { id: userId, wc_store_url, wc_consumer_key, wc_consumer_secret } = user;
 
+    if (!wc_store_url || !wc_consumer_key || !wc_consumer_secret) {
+        return { userId, skipped: true };
+    }
+
+    let cleanUrl = wc_store_url.trim().replace(/\/+$/, '');
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        cleanUrl = 'https://' + cleanUrl;
+    }
+
     const api = new WooCommerceRestApi({
-        url: wc_store_url,
-        consumerKey: wc_consumer_key,
-        consumerSecret: wc_consumer_secret,
+        url: cleanUrl,
+        consumerKey: wc_consumer_key.trim(),
+        consumerSecret: wc_consumer_secret.trim(),
         version: 'wc/v3',
         queryStringAuth: true,
     });
@@ -31,7 +40,12 @@ async function pollUser(user) {
             if (!seen.has(key)) { seen.add(key); wcOrders.push(o); }
         }
     } catch (err) {
-        console.error(`[WC Poll] API error for user ${userId}:`, err.message);
+        const isNotFound = err.response?.status === 404 || err.message?.includes('404');
+        if (isNotFound) {
+            console.warn(`[WC Poll] Store endpoint returned 404 for user ${userId} (${cleanUrl}). WooCommerce REST API may be inactive on this store.`);
+        } else {
+            console.warn(`[WC Poll] API notice for user ${userId}:`, err.message);
+        }
         return { userId, error: err.message };
     }
 

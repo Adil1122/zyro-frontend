@@ -20,7 +20,10 @@ export async function GET(request) {
         const stats = await getDarazStats(getCredentials(user));
         return NextResponse.json({ configured: true, ...stats });
     } catch (error) {
-        console.error('[Daraz Stats Error]', error.message);
-        return NextResponse.json({ configured: true, error: error.message }, { status: 500 });
+        if (error.message?.includes('NOT_CONFIGURED')) {
+            return NextResponse.json({ configured: false, message: 'Daraz credentials not configured' });
+        }
+        console.warn('[Daraz Stats Warning]', error.message);
+        return NextResponse.json({ configured: false, error: error.message });
     }
 }

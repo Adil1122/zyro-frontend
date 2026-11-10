@@ -1799,13 +1799,17 @@ export default function SettingsPage({ tabParam }) {
                 method: 'POST',
                 headers,
             });
-            const targetUrl = data.signupUrl || data.hostedSignupUrl;
+            const data = await res.json();
+            const targetUrl = data?.signupUrl || data?.hostedSignupUrl;
             if (!res.ok || !targetUrl) {
-                throw new Error(data.error || 'Failed to initialize Meta Embedded Signup session');
+                throw new Error(data?.error || 'Failed to initialize Meta Embedded Signup session');
             }
 
-            // Redirect user to Meta's official onboarding interface
-            window.location.href = targetUrl;
+            // Open Meta's official onboarding interface in a new window/tab (to bypass iframe restrictions)
+            const popup = window.open(targetUrl, '_blank', 'width=800,height=750,scrollbars=yes,resizable=yes');
+            if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+                window.location.href = targetUrl;
+            }
         } catch (err) {
             setWaMessage({ success: false, text: "Error launching WhatsApp onboarding: " + err.message });
             setMetaConnecting(false);
