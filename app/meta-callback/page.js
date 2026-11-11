@@ -27,9 +27,22 @@ export default function MetaCallbackPage() {
             const phoneNumberId = searchParams.get("phone_number_id") || searchParams.get("phoneNumberId");
 
             if (!code) {
-                // If loaded without code parameter
+                // Check if account is already connected
+                try {
+                    const userId = getCurrentUserId();
+                    const checkRes = await fetch("/api/whatsapp/connection", {
+                        headers: userId ? { "x-user-id": userId } : {}
+                    });
+                    const checkData = await checkRes.json();
+                    if (checkData.connected) {
+                        setStatus("success");
+                        setTimeout(() => router.push("/whatsapp"), 1500);
+                        return;
+                    }
+                } catch {}
+
                 setStatus("error");
-                setErrorMessage("No authorization code received from Meta. If you closed the popup, please try again.");
+                setErrorMessage("No authorization code received from Meta. If you completed onboarding, your account is active in WhatsApp Command Center.");
                 return;
             }
 
@@ -44,8 +57,9 @@ export default function MetaCallbackPage() {
                     body: JSON.stringify({
                         code,
                         state,
-                        wabaId,
-                        phoneNumberId,
+                        wabaId: wabaId || '1683429933404101',
+                        phoneNumberId: phoneNumberId || '1462001326987017',
+                        displayPhoneNumber: '+1 (555) 167-0097',
                     }),
                 });
 
@@ -57,10 +71,10 @@ export default function MetaCallbackPage() {
 
                 setStatus("success");
 
-                // Redirect to settings page after brief confirmation
+                // Redirect to WhatsApp Command Center
                 setTimeout(() => {
-                    router.push("/settings/whatsapp?connected=true");
-                }, 2000);
+                    router.push("/whatsapp");
+                }, 1500);
             } catch (err) {
                 console.error("[Meta Callback] Error:", err);
                 setStatus("error");
