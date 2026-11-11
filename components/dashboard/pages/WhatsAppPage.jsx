@@ -264,7 +264,7 @@ export default function WhatsAppPage() {
                 setSendSuccessNotice("✓ Message saved to conversation history");
             }
 
-            setTimeout(() => setSendSuccessNotice(null), 4000);
+            setTimeout(() => setSendSuccessNotice(null), result.warning ? 9000 : 4000);
 
         } catch (err) {
             setSendError(err.message);
@@ -850,8 +850,29 @@ export default function WhatsAppPage() {
                                     {/* Support Message Input & Send Bar */}
                                     <div style={{ padding: "12px 16px", borderTop: `1px solid ${T.border}`, background: T.bgCard }}>
                                         {sendSuccessNotice && (
-                                            <div style={{ fontSize: 11, color: T.green, marginBottom: 6, fontWeight: 600 }}>
-                                                {sendSuccessNotice}
+                                            <div style={{
+                                                fontSize: 11,
+                                                color: (sendSuccessNotice.includes("Note:") || sendSuccessNotice.includes("#131030") || sendSuccessNotice.includes("Sandbox")) ? "#FBBF24" : T.green,
+                                                background: (sendSuccessNotice.includes("Note:") || sendSuccessNotice.includes("#131030") || sendSuccessNotice.includes("Sandbox")) ? "rgba(251,191,36,0.12)" : "rgba(74,222,128,0.12)",
+                                                border: `1px solid ${(sendSuccessNotice.includes("Note:") || sendSuccessNotice.includes("#131030") || sendSuccessNotice.includes("Sandbox")) ? "rgba(251,191,36,0.35)" : "rgba(74,222,128,0.3)"}`,
+                                                borderRadius: 6,
+                                                padding: "8px 12px",
+                                                marginBottom: 8,
+                                                fontWeight: 600,
+                                                lineHeight: 1.4,
+                                                display: "flex",
+                                                justifyContent: "space-between",
+                                                alignItems: "center",
+                                                gap: 8,
+                                            }}>
+                                                <span>{sendSuccessNotice}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSendSuccessNotice(null)}
+                                                    style={{ background: "transparent", border: "none", color: "inherit", cursor: "pointer", fontSize: 13, padding: 0 }}
+                                                >
+                                                    ✕
+                                                </button>
                                             </div>
                                         )}
                                         {sendError && (

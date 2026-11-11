@@ -11,11 +11,11 @@ export async function POST(request) {
             userId = defaultUser?.id || 'e5940095-1560-4425-ab60-f8fc5f7874f4';
         }
 
-        const body = await request.json();
-        const { phone, message, conversationId, senderType, simulateReply } = body;
-        const trimmedMessage = (message || '').trim();
+        const body = await request.json().catch(() => ({}));
+        const { phone, message, conversationId, senderType, simulateReply, useTemplate, templateName, languageCode } = body;
+        const trimmedMessage = (message || '').trim() || (useTemplate ? `[Official Meta Template: ${templateName || 'hello_world'}]` : '');
 
-        if (!trimmedMessage) {
+        if (!trimmedMessage && !useTemplate) {
             return NextResponse.json({ error: 'Message cannot be empty' }, { status: 400 });
         }
 
@@ -58,32 +58,56 @@ export async function POST(request) {
         let metaMessageId = null;
         let metaError = null;
 
-        // 3. Attempt live WhatsApp dispatch if credentials are configured
-        if (creds.accessToken && creds.phoneNumberId && recipientPhone && recipientPhone !== 'Support') {
+        // Check if recipient is the sender's own phone number
+        const cleanRecipient = (recipientPhone || '').replace(/\D/g, '');
+        const cleanSender = (creds.merchantPhone || '').replace(/\D/g, '');
+        const isSendingToSelf = Boolean(cleanRecipient && cleanSender && (cleanRecipient === cleanSender || cleanRecipient === '15551670097'));
+
+        if (isSendingToSelf) {
+            metaError = 'Cannot send WhatsApp message to the sender test number itself (+1 555 167-0097). Select a customer conversation (e.g. Sarah Jenkins or your personal phone) to send messages.';
+        } else if (creds.accessToken && creds.phoneNumberId && recipientPhone && recipientPhone !== 'Support') {
             try {
-                let cleanedPhone = recipientPhone.replace(/\D/g, '');
                 const graphVersion = process.env.META_GRAPH_API_VERSION || 'v26.0';
                 const url = `https://graph.facebook.com/${graphVersion}/${creds.phoneNumberId}/messages`;
+                const metaPayload = useTemplate ? {
+                    messaging_product: 'whatsapp',
+                    recipient_type: 'individual',
+                    to: cleanRecipient,
+                    type: 'template',
+                    template: {
+                        name: templateName || 'hello_world',
+                        language: { code: languageCode || 'en_US' },
+                    },
+                } : {
+                    messaging_product: 'whatsapp',
+                    recipient_type: 'individual',
+                    to: cleanRecipient,
+                    type: 'text',
+                    text: { body: trimmedMessage },
+                };
+
                 const metaRes = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${creds.accessToken}`,
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        messaging_product: 'whatsapp',
-                        recipient_type: 'individual',
-                        to: cleanedPhone,
-                        type: 'text',
-                        text: { body: trimmedMessage },
-                    }),
+                    body: JSON.stringify(metaPayload),
                 });
 
                 const metaJson = await metaRes.json().catch(() => ({}));
                 if (metaRes.ok && metaJson?.messages?.[0]?.id) {
                     metaMessageId = metaJson.messages[0].id;
                 } else {
-                    metaError = metaJson?.error?.message || `Meta API Status ${metaRes.status}`;
+                    const rawMsg = metaJson?.error?.message || `Meta API Status ${metaRes.status}`;
+                    const errCode = metaJson?.error?.code;
+                    const errSubcode = metaJson?.error?.error_subcode;
+
+                    if (rawMsg.includes('131030') || errCode === 131030 || errSubcode === 131030) {
+                        metaError = 'Meta Sandbox Restriction (#131030): Recipient is not in your allowed test list. In Meta Development mode, add this number in Meta Dashboard > WhatsApp > API Setup > To: "Manage phone number list" (or switch your Meta App to Live Mode).';
+                    } else {
+                        metaError = rawMsg;
+                    }
                     console.warn('[WhatsApp Send] Meta dispatch response:', metaError);
                 }
             } catch (networkErr) {

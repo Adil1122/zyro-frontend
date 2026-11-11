@@ -43,6 +43,12 @@ if (!process.env.WA_DEFAULT_WABA_ID) {
 if (!process.env.WA_DEFAULT_MERCHANT_PHONE) {
   process.env.WA_DEFAULT_MERCHANT_PHONE = '+1 (555) 167-0097';
 }
+if (!process.env.WA_SYSTEM_ACCESS_TOKEN) {
+  process.env.WA_SYSTEM_ACCESS_TOKEN = 'EAAMuo0rMk8oBQ2AEPkOi3Ec7bgyQ2hHBpUtcXjbYBv32mNucQXwTjrmUPFRsCGG2J1tYpJlWR860j6EI4ZCYWpToI8LdLtRC2hzwOs8YaTY3mf7lnobMv7geVZBZCJQuy2IuUsurYvPiiQbT6ZCD4RRINTDoCLzCT6pvi62WssZB80W8WnD9KLLJeqZCNwautgpwZDZD';
+}
+if (!process.env.META_ACCESS_TOKEN) {
+  process.env.META_ACCESS_TOKEN = process.env.WA_SYSTEM_ACCESS_TOKEN;
+}
 
 const nextConfig = {
   reactStrictMode: true,

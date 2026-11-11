@@ -1917,15 +1917,18 @@ export default function SettingsPage({ tabParam }) {
                 },
                 body: JSON.stringify({
                     phone: targetNumber,
-                    message: "👋 This is a live verification message from your ZYRO WhatsApp integration! Your Meta WhatsApp Cloud API connection is active and operational.",
+                    useTemplate: true,
+                    templateName: 'hello_world',
+                    languageCode: 'en_US',
+                    message: "Welcome to Dayemens Business on WhatsApp! (Official Meta hello_world template)",
                     senderType: 'merchant',
                 }),
             });
             const data = await res.json();
             if (data.success && data.liveSent) {
-                setTestResult({ success: true, message: `✅ Live message sent to ${targetNumber}! (ID: ${data.messageId || 'OK'})` });
+                setTestResult({ success: true, message: `✅ Live Meta template (hello_world) dispatched to ${targetNumber}! (Meta ID: ${data.messageId || 'OK'}). Check WhatsApp on this phone!` });
             } else if (data.success) {
-                setTestResult({ success: true, message: `✓ Message dispatched. ${data.warning || ''}` });
+                setTestResult({ success: true, message: `✓ Dispatched. ${data.warning || ''}` });
             } else {
                 setTestResult({ success: false, message: `Failed: ${data.error || 'Could not dispatch message'}` });
             }
@@ -2530,7 +2533,7 @@ export default function SettingsPage({ tabParam }) {
                                                     onClick={handleSendTestMessage}
                                                     disabled={testSending || !testPhone.trim()}
                                                 >
-                                                    {testSending ? "Sending..." : "Send Test Ping"}
+                                                    {testSending ? "Sending..." : "Send Official Template (hello_world)"}
                                                 </GradientButton>
                                             </div>
 
@@ -2542,6 +2545,23 @@ export default function SettingsPage({ tabParam }) {
                                                     {testResult.message}
                                                 </div>
                                             )}
+
+                                            <div style={{
+                                                marginTop: 12,
+                                                padding: "10px 12px",
+                                                background: "rgba(251,191,36,0.08)",
+                                                border: "1px solid rgba(251,191,36,0.25)",
+                                                borderRadius: T.r8,
+                                                fontSize: 11,
+                                                color: "#FBBF24",
+                                                lineHeight: 1.5,
+                                            }}>
+                                                💡 <b>Why does Meta accept a message but not deliver it?</b>
+                                                <br />
+                                                • <b>WhatsApp 24-Hour Policy:</b> For a new conversation initiated by a business, Meta <b>requires a pre-approved template message</b> (such as <code>hello_world</code>). Free-form text messages are dropped by Meta unless the customer messages you first.
+                                                <br />
+                                                • <b>To receive custom text messages:</b> Send a quick message (e.g. <code>"Hi"</code>) from <code>+92 315 5567644</code> to your test number <code>+1 (555) 167-0097</code> on WhatsApp. That immediately opens the 24-hour customer service window!
+                                            </div>
                                         </div>
                                     </Card>
                                 ) : (
