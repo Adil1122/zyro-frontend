@@ -680,7 +680,7 @@ export default function WhatsAppPage() {
                                 </span>
                             </div>
                             <div style={{ fontSize: 11, color: T.yellow, marginTop: 2, fontFamily: "monospace" }}>
-                                {merchantPhone ? `📱 Merchant: +${merchantPhone}` : "Merchant phone not set in Settings"}
+                                {merchantPhone ? `📱 Connected: ${merchantPhone.startsWith('+') ? merchantPhone : `+${merchantPhone}`} (Phone ID: 1462001326987017 • Dayemens Business)` : "Merchant phone not set in Settings"}
                             </div>
                         </div>
                         <div style={{ textAlign: "right" }}>

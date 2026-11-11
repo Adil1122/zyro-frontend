@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton, Card } from "../Primitives";
@@ -1528,6 +1529,8 @@ export default function SettingsPage({ tabParam }) {
     const [waMessage, setWaMessage] = useState(null);
     const [metaConnection, setMetaConnection] = useState(null);
     const [metaConnecting, setMetaConnecting] = useState(false);
+    const [callbackInput, setCallbackInput] = useState("");
+    const [isExchangingCallback, setIsExchangingCallback] = useState(false);
     const [showDisconnectModal, setShowDisconnectModal] = useState(false);
     const [isDisconnecting, setIsDisconnecting] = useState(false);
     const [showManualCredentials, setShowManualCredentials] = useState(false);
@@ -1812,6 +1815,42 @@ export default function SettingsPage({ tabParam }) {
             }
         } catch (err) {
             setWaMessage({ success: false, text: "Error launching WhatsApp onboarding: " + err.message });
+            setMetaConnecting(false);
+        }
+    };
+
+    const handleCompleteManualCallback = async (directVal) => {
+        setIsExchangingCallback(true);
+        setWaMessage(null);
+        try {
+            const userId = getCurrentUserId();
+            const inputVal = directVal === 'direct' ? '' : (directVal || callbackInput);
+            const payload = {
+                url: inputVal,
+                code: inputVal,
+                wabaId: '1683429933404101',
+                phoneNumberId: '1462001326987017',
+                displayPhoneNumber: '+1 (555) 167-0097',
+            };
+            const res = await fetch('/api/whatsapp/embedded-signup/exchange', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(userId ? { 'x-user-id': userId } : {})
+                },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data?.error || 'Failed to complete Meta connection');
+            }
+            setWaMessage({ success: true, text: "✓ WhatsApp Business (+1 555 167-0097) successfully connected!" });
+            await fetchWhatsAppConfig();
+            setCallbackInput("");
+        } catch (err) {
+            setWaMessage({ success: false, text: "Error finalizing connection: " + err.message });
+        } finally {
+            setIsExchangingCallback(false);
             setMetaConnecting(false);
         }
     };
@@ -2369,7 +2408,16 @@ export default function SettingsPage({ tabParam }) {
                                                 </div>
                                             </div>
 
-                                            <div style={{ display: "flex", gap: 8 }}>
+                                            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                                <Link href="/whatsapp" style={{ textDecoration: "none" }}>
+                                                    <GradientButton
+                                                        size="sm"
+                                                        variant="primary"
+                                                        icon="whatsapp"
+                                                    >
+                                                        Open WhatsApp Command Center 💬
+                                                    </GradientButton>
+                                                </Link>
                                                 <GradientButton
                                                     size="sm"
                                                     variant="secondary"
@@ -2525,6 +2573,73 @@ export default function SettingsPage({ tabParam }) {
                                                 <Icon name="whatsapp" size={18} color="#fff" />
                                                 {metaConnecting ? "Opening Meta Onboarding..." : "Onboard Official WhatsApp"}
                                             </button>
+                                        </div>
+
+                                        {/* Assistant box for completing Meta Onboarding when stopped at hosted_es callback */}
+                                        <div style={{
+                                            marginTop: 10,
+                                            marginBottom: 24,
+                                            padding: "16px 20px",
+                                            background: "rgba(13,36,28,0.85)",
+                                            border: "1px solid rgba(74,222,128,0.3)",
+                                            borderRadius: T.r8,
+                                            textAlign: "left",
+                                        }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                                                <Icon name="check" size={16} color={T.green} />
+                                                <span style={{ fontSize: 13, fontWeight: 800, color: T.text }}>
+                                                    Finished Meta Step or Seeing "Hosted ES OAuth callback"?
+                                                </span>
+                                            </div>
+                                            <p style={{ fontSize: 12, color: T.textMuted, margin: "0 0 12px 0", lineHeight: 1.5 }}>
+                                                If Meta completed onboarding and displayed <code>Hosted ES OAuth callback...</code> in the popup, paste the address bar URL or authorization code below to link your registered Dayemens Business account (Phone ID: <code>1462001326987017</code>, WABA: <code>1683429933404101</code>).
+                                            </p>
+                                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                                                <input
+                                                    type="text"
+                                                    value={callbackInput}
+                                                    onChange={(e) => setCallbackInput(e.target.value)}
+                                                    placeholder="Paste Meta callback URL or code (e.g. https://business.facebook.com/...)"
+                                                    style={{
+                                                        flex: 1,
+                                                        minWidth: 260,
+                                                        background: T.bgElev,
+                                                        border: `1px solid ${T.border}`,
+                                                        borderRadius: 8,
+                                                        padding: "9px 14px",
+                                                        color: T.text,
+                                                        fontSize: 12,
+                                                        outline: "none",
+                                                        fontFamily: "monospace",
+                                                    }}
+                                                />
+                                                <GradientButton
+                                                    size="sm"
+                                                    variant="primary"
+                                                    onClick={() => handleCompleteManualCallback()}
+                                                    disabled={isExchangingCallback || !callbackInput.trim()}
+                                                >
+                                                    {isExchangingCallback ? "Finalizing..." : "Complete Connection"}
+                                                </GradientButton>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleCompleteManualCallback('direct')}
+                                                    disabled={isExchangingCallback}
+                                                    style={{
+                                                        background: "rgba(74,222,128,0.15)",
+                                                        color: T.green,
+                                                        border: "1px solid rgba(74,222,128,0.35)",
+                                                        borderRadius: 8,
+                                                        padding: "9px 16px",
+                                                        fontSize: 12,
+                                                        fontWeight: 700,
+                                                        cursor: "pointer",
+                                                        fontFamily: "inherit",
+                                                    }}
+                                                >
+                                                    ⚡ Link Test Number (+1 555 167-0097)
+                                                </button>
+                                            </div>
                                         </div>
 
                                         {/* Benefits Row */}
