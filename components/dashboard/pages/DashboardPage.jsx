@@ -217,6 +217,19 @@ export default function DashboardPage() {
                     <GradientButton variant="primary" size="sm" icon="plus" onClick={() => setShowNewOrder(true)}>Manual Order</GradientButton>
                 </>}
             />
+
+            {/* The service returns zeroed figures on a failed query so this page cannot
+                crash. Without showing the error, though, a fault is indistinguishable
+                from a quiet day — which is how "Rs 0" was read as real for weeks. */}
+            {stats?.error && (
+                <div style={{
+                    margin: "0 0 16px", padding: "10px 14px", borderRadius: T.r8,
+                    background: T.redBg, border: `1px solid ${T.red}44`,
+                    color: T.red, fontSize: 12, fontWeight: 600,
+                }}>
+                    Figures below are incomplete — {stats.error}
+                </div>
+            )}
             <div className="dash-alert-banner" style={{
                 background: "linear-gradient(90deg, rgba(251,191,36,0.1) 0%, rgba(17,51,46,0.3) 100%)",
                 border: `1px solid rgba(251,191,36,0.3)`, borderRadius: T.r10, padding: "12px 18px",
