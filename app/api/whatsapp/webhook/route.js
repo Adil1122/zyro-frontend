@@ -638,25 +638,28 @@ async function handleComplaintDetection(senderPhone, messageText, phoneNumberId)
  * E.g. "923001234567" → ["923001234567", "03001234567", "3001234567"]
  */
 function generatePhoneVariants(phone) {
-    const variants = [phone];
+    const raw = String(phone || '').trim();
+    const clean = raw.replace(/\D/g, '');
+    const variants = [raw, clean];
     
-    // If starts with 92, also try with 0 prefix and without country code
-    if (phone.startsWith('92')) {
-        variants.push('0' + phone.substring(2)); // 03001234567
-        variants.push(phone.substring(2));         // 3001234567
-    }
-    // If starts with 0, also try with 92 prefix
-    if (phone.startsWith('0')) {
-        variants.push('92' + phone.substring(1));  // 923001234567
-        variants.push(phone.substring(1));         // 3001234567
-    }
-    // If doesn't start with 0 or 92, try adding both
-    if (!phone.startsWith('0') && !phone.startsWith('92')) {
-        variants.push('0' + phone);    // 03001234567
-        variants.push('92' + phone);   // 923001234567
+    if (clean) {
+        variants.push(`+${clean}`);
+        if (clean.startsWith('92')) {
+            variants.push('0' + clean.substring(2));
+            variants.push(clean.substring(2));
+            variants.push('+92' + clean.substring(2));
+        } else if (clean.startsWith('0')) {
+            variants.push('92' + clean.substring(1));
+            variants.push('+92' + clean.substring(1));
+            variants.push(clean.substring(1));
+        } else if (clean.length === 10) {
+            variants.push('0' + clean);
+            variants.push('92' + clean);
+            variants.push('+92' + clean);
+        }
     }
     
-    return [...new Set(variants)]; // deduplicate
+    return [...new Set(variants.filter(Boolean))];
 }
 
 /**
@@ -711,13 +714,14 @@ async function storeIncomingMessageToDatabase({ senderPhone, messageText, phoneN
             }
         }
 
-        // 4. Resolve by matching merchant phone
+        // 4. Resolve by matching merchant phone (both phone and wa_merchant_phone in users)
         if (!userId) {
             for (const phone of variants) {
                 const { data: merchantUser } = await supabase
                     .from('users')
                     .select('id')
-                    .eq('wa_merchant_phone', phone)
+                    .or(`phone.eq.${phone},wa_merchant_phone.eq.${phone}`)
+                    .limit(1)
                     .maybeSingle();
                 if (merchantUser?.id) {
                     userId = merchantUser.id;

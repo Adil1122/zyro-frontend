@@ -12,20 +12,34 @@ export async function POST(request) {
         }
 
         const body = await request.json().catch(() => ({}));
-        const { phone, message, conversationId, senderType, simulateReply, useTemplate, templateName, languageCode } = body;
+        const { phone, message, conversationId, targetUserId, senderType, simulateReply, useTemplate, templateName, languageCode } = body;
         const trimmedMessage = (message || '').trim() || (useTemplate ? `[Official Meta Template: ${templateName || 'hello_world'}]` : '');
 
         if (!trimmedMessage && !useTemplate) {
             return NextResponse.json({ error: 'Message cannot be empty' }, { status: 400 });
         }
 
+        // Check if sending user is Zyro Admin
+        const { data: userRecord } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle();
+
+        const isAdmin = Boolean(userRecord?.is_admin === true || (userRecord?.email || '').toLowerCase().trim() === 'admin@zyro.com');
+        const effectiveSenderType = senderType || (isAdmin ? 'agent' : 'merchant');
+
         // 1. Resolve or create active conversation
         let activeConvId = conversationId;
-        if (!activeConvId || activeConvId === 'support-official') {
+        const targetOwnerId = (isAdmin && targetUserId)
+            ? targetUserId
+            : (String(activeConvId || '').startsWith('user-') ? activeConvId.replace('user-', '') : userId);
+
+        if (!activeConvId || String(activeConvId).startsWith('user-') || activeConvId === 'support-official') {
             const { data: existingConv } = await supabase
                 .from('wa_conversations')
                 .select('id')
-                .eq('user_id', userId)
+                .eq('user_id', targetOwnerId)
                 .order('updated_at', { ascending: false })
                 .limit(1)
                 .maybeSingle();
@@ -33,11 +47,11 @@ export async function POST(request) {
             if (existingConv?.id) {
                 activeConvId = existingConv.id;
             } else {
-                const targetPhone = phone || '923001234567';
+                const targetPhone = phone || (userRecord?.phone || '+923465629140');
                 const { data: newConv } = await supabase
                     .from('wa_conversations')
                     .insert({
-                        user_id: userId,
+                        user_id: targetOwnerId,
                         phone_number: targetPhone,
                         status: 'manual_support',
                         last_message: trimmedMessage,
@@ -51,24 +65,27 @@ export async function POST(request) {
             }
         }
 
-        // 2. Resolve Meta credentials (tenant overrides or Master Platform credentials from Environment Variables)
-        const creds = await resolveTenantWhatsAppCredentials(userId);
+        // 2. Resolve Meta credentials (Master Admin credentials)
+        const creds = await resolveTenantWhatsAppCredentials(isAdmin ? userId : 'e5940095-1560-4425-ab60-f8fc5f7874f4');
 
-        const recipientPhone = phone || creds.merchantPhone;
+        const recipientPhone = phone || (isAdmin ? '+923465629140' : '+1 (555) 167-0097');
         let metaMessageId = null;
         let metaError = null;
 
-        // Check if recipient is the sender's own phone number
         const cleanRecipient = (recipientPhone || '').replace(/\D/g, '');
         const cleanSender = (creds.merchantPhone || '').replace(/\D/g, '');
-        const isSendingToSelf = Boolean(cleanRecipient && cleanSender && (cleanRecipient === cleanSender || cleanRecipient === '15551670097'));
 
-        if (isSendingToSelf) {
-            metaError = 'Cannot send WhatsApp message to the sender test number itself (+1 555 167-0097). Select a customer conversation (e.g. Sarah Jenkins or your personal phone) to send messages.';
-        } else if (creds.accessToken && creds.phoneNumberId && recipientPhone && recipientPhone !== 'Support') {
+        // Only dispatch live over Meta Cloud API when Admin is sending to a merchant phone (e.g. 923465629140)
+        const isMerchantSendingToAdmin = !isAdmin || cleanRecipient === '15551670097';
+
+        if (isAdmin && cleanRecipient && cleanRecipient !== '15551670097' && cleanRecipient !== cleanSender) {
+            // Admin sending live message to Merchant phone over Meta Cloud API
             try {
                 const graphVersion = process.env.META_GRAPH_API_VERSION || 'v26.0';
-                const url = `https://graph.facebook.com/${graphVersion}/${creds.phoneNumberId}/messages`;
+                const phoneNumberId = creds.phoneNumberId || '1462001326987017';
+                const url = `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`;
+                const token = creds.accessToken || process.env.WA_SYSTEM_ACCESS_TOKEN;
+
                 const metaPayload = useTemplate ? {
                     messaging_product: 'whatsapp',
                     recipient_type: 'individual',
@@ -89,7 +106,7 @@ export async function POST(request) {
                 const metaRes = await fetch(url, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${creds.accessToken}`,
+                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(metaPayload),
@@ -104,7 +121,7 @@ export async function POST(request) {
                     const errSubcode = metaJson?.error?.error_subcode;
 
                     if (rawMsg.includes('131030') || errCode === 131030 || errSubcode === 131030) {
-                        metaError = 'Meta Sandbox Restriction (#131030): Recipient is not in your allowed test list. In Meta Development mode, add this number in Meta Dashboard > WhatsApp > API Setup > To: "Manage phone number list" (or switch your Meta App to Live Mode).';
+                        metaError = 'Meta Sandbox Restriction (#131030): Recipient is not in your allowed test list. In Meta Dashboard, add this number in WhatsApp > API Setup > To: "Manage phone number list".';
                     } else {
                         metaError = rawMsg;
                     }
@@ -114,30 +131,16 @@ export async function POST(request) {
                 metaError = networkErr.message;
                 console.warn('[WhatsApp Send] Network error calling Meta API:', networkErr.message);
             }
-        } else {
-            if (!creds.accessToken || !creds.phoneNumberId) {
-                metaError = 'Meta credentials not configured. Configure WA_SYSTEM_ACCESS_TOKEN & WA_DEFAULT_PHONE_NUMBER_ID in Environment Variables or Settings > WhatsApp';
-            }
         }
 
-        // Check if sending user is Zyro Admin
-        const { data: userRecord } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', userId)
-            .maybeSingle();
-
-        const isAdmin = Boolean(userRecord?.is_admin === true || (userRecord?.email || '').toLowerCase().trim() === 'admin@zyro.com');
-        const effectiveSenderType = senderType || (isAdmin ? 'agent' : 'merchant');
-
-        // 4. Save to wa_messages and update conversation in Supabase
+        // 3. Save to wa_messages and update conversation in Supabase
         let savedMessage = null;
         if (activeConvId) {
             const { data: insertedMsg, error: insertErr } = await supabase
                 .from('wa_messages')
                 .insert({
                     conversation_id: activeConvId,
-                    user_id: userId,
+                    user_id: targetOwnerId,
                     sender_type: effectiveSenderType,
                     message_text: trimmedMessage,
                 })

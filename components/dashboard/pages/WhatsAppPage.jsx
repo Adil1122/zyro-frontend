@@ -242,7 +242,10 @@ export default function WhatsAppPage() {
 
         try {
             const userId = getCurrentUserId();
-            const activePhone = conv?.phone || data?.merchantPhone || 'Support';
+            const targetConv = conv || (data?.supportChats && data.supportChats[supportActive]) || null;
+            const activePhone = isAdmin
+                ? (targetConv?.phone || targetConv?.merchantPhone || '+923465629140')
+                : '+1 (555) 167-0097';
 
             const res = await fetch('/api/whatsapp/send', {
                 method: 'POST',
@@ -250,7 +253,8 @@ export default function WhatsAppPage() {
                 body: JSON.stringify({
                     phone: activePhone,
                     message: msg,
-                    conversationId: conv?.id,
+                    conversationId: targetConv?.id,
+                    targetUserId: targetConv?.userId,
                     senderType: activeSenderType,
                 }),
             });
@@ -261,14 +265,14 @@ export default function WhatsAppPage() {
             }
 
             if (result.liveSent) {
-                setSendSuccessNotice("✅ Dispatched live via WhatsApp Meta Cloud API");
+                setSendSuccessNotice(`✅ Dispatched live via WhatsApp Meta Cloud API to ${activePhone}`);
             } else if (result.warning) {
                 setSendSuccessNotice(result.warning);
             } else {
-                setSendSuccessNotice("✓ Message saved to conversation history");
+                setSendSuccessNotice(isAdmin ? "✓ Message saved to conversation history" : "✓ Message delivered to Zyro Admin Desk");
             }
 
-            setTimeout(() => setSendSuccessNotice(null), result.warning ? 9000 : 4000);
+            setTimeout(() => setSendSuccessNotice(null), result.warning ? 9000 : 5000);
 
         } catch (err) {
             setSendError(err.message);
@@ -721,10 +725,10 @@ export default function WhatsAppPage() {
                     <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
                         {/* Conversations list sidebar - ONLY VISIBLE TO ZYRO ADMIN */}
                         {isAdmin && (
-                            <div style={{ width: 220, borderRight: `1px solid ${T.border}`, overflowY: "auto", flexShrink: 0, background: T.bgCard }}>
+                            <div style={{ width: 240, borderRight: `1px solid ${T.border}`, overflowY: "auto", flexShrink: 0, background: T.bgCard }}>
                                 <div style={{ padding: "10px 14px", borderBottom: `1px solid ${T.border}`, fontSize: 11, fontWeight: 800, color: T.j200, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                                     <span>MERCHANTS ({supportChats.length})</span>
-                                    <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: "rgba(251,191,36,0.15)", color: T.yellow }}>Admin</span>
+                                    <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: "rgba(251,191,36,0.15)", color: T.yellow }}>Admin Desk</span>
                                 </div>
                                 {supportChats.map((c, i) => (
                                     <div
@@ -739,14 +743,19 @@ export default function WhatsAppPage() {
                                             transition: "all 0.1s",
                                         }}
                                     >
-                                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
                                             <span style={{ fontSize: 12, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                                 {c.merchantName || c.name || "Merchant"}
                                             </span>
                                             <span style={{ fontSize: 9, color: T.textFaint }}>{c.time}</span>
                                         </div>
+                                        {/* Under Name: Show Phone Number */}
+                                        <div style={{ fontSize: 11, color: T.yellow, fontWeight: 700, display: "flex", alignItems: "center", gap: 4, marginBottom: 2 }}>
+                                            <span>📱</span>
+                                            <span>{c.phone || c.merchantPhone || "No phone registered"}</span>
+                                        </div>
                                         <div style={{ fontSize: 10, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                            {c.merchantEmail || c.phone}
+                                            {c.merchantEmail}
                                         </div>
                                         <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                             {c.lastMsg || "Tap to chat..."}
@@ -782,10 +791,10 @@ export default function WhatsAppPage() {
                                                     {isAdmin ? "MERCHANT" : "ZYRO ADMIN"}
                                                 </span>
                                             </div>
-                                            <div style={{ fontSize: 10, color: T.textFaint, marginTop: 1 }}>
+                                            <div style={{ fontSize: 11, color: T.yellow, marginTop: 2, fontWeight: 600 }}>
                                                 {isAdmin
-                                                    ? `${supportConv.merchantEmail || supportConv.phone || 'Store Owner'} • Direct Channel`
-                                                    : "admin@zyro.com • Direct Store Support & Operations"}
+                                                    ? `📱 Direct WhatsApp: ${supportConv.phone || supportConv.merchantPhone || '+923465629140'} • ${supportConv.merchantEmail || 'Store Owner'}`
+                                                    : `admin@zyro.com • 📱 Admin WhatsApp: +1 (555) 167-0097 • Your Registered Phone: ${supportConv.merchantPhone || '+923465629140'}`}
                                             </div>
                                         </div>
                                         {isMetaConfigured ? (
@@ -930,7 +939,7 @@ export default function WhatsAppPage() {
                                             <Icon name="chat" size={15} color={T.yellow} />
                                             <input
                                                 type="text"
-                                                placeholder="Type message to send via WhatsApp..."
+                                                placeholder={isAdmin ? `Message ${supportConv?.merchantName || 'Merchant'} at ${supportConv?.phone || supportConv?.merchantPhone || ''}...` : "Message Zyro Admin at +1 (555) 167-0097..."}
                                                 value={replyText}
                                                 onChange={e => { setReplyText(e.target.value); setSendError(null); }}
                                                 disabled={isSending}
