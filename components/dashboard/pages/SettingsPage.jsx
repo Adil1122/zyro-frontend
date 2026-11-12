@@ -1808,6 +1808,25 @@ export default function SettingsPage({ tabParam }) {
                 throw new Error(data?.error || 'Failed to initialize Meta Embedded Signup session');
             }
 
+            // Listen for Meta Embedded Signup message events
+            const messageHandler = async (event) => {
+                if (!event.origin || !event.origin.includes("facebook.com")) return;
+                try {
+                    const eventData = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                    if (eventData?.type === 'WA_EMBEDDED_SIGNUP') {
+                        if (eventData.event === 'FINISH') {
+                            const { phone_number_id, waba_id } = eventData.data || {};
+                            await handleCompleteManualCallback('direct', {
+                                phoneNumberId: phone_number_id,
+                                wabaId: waba_id,
+                            });
+                            if (popup && !popup.closed) popup.close();
+                        }
+                    }
+                } catch {}
+            };
+            window.addEventListener('message', messageHandler);
+
             // Open Meta's official onboarding interface in a new window/tab (to bypass iframe restrictions)
             const popup = window.open(targetUrl, 'MetaWhatsAppSignup', 'width=800,height=750,scrollbars=yes,resizable=yes');
             if (!popup || popup.closed || typeof popup.closed === 'undefined') {
@@ -1816,7 +1835,10 @@ export default function SettingsPage({ tabParam }) {
                 const pollTimer = setInterval(async () => {
                     if (popup.closed) {
                         clearInterval(pollTimer);
+                        window.removeEventListener('message', messageHandler);
                         setMetaConnecting(false);
+                        // Auto-finalize connection for the authenticated merchant
+                        await handleCompleteManualCallback('direct');
                         await fetchWhatsAppConfig();
                     }
                 }, 1200);
@@ -1827,7 +1849,7 @@ export default function SettingsPage({ tabParam }) {
         }
     };
 
-    const handleCompleteManualCallback = async (directVal) => {
+    const handleCompleteManualCallback = async (directVal, overrides = {}) => {
         setIsExchangingCallback(true);
         setWaMessage(null);
         try {
@@ -1836,9 +1858,9 @@ export default function SettingsPage({ tabParam }) {
             const payload = {
                 url: inputVal,
                 code: inputVal,
-                wabaId: '1683429933404101',
-                phoneNumberId: '1462001326987017',
-                displayPhoneNumber: '+1 (555) 167-0097',
+                wabaId: overrides.wabaId || '1683429933404101',
+                phoneNumberId: overrides.phoneNumberId || '1462001326987017',
+                displayPhoneNumber: overrides.displayPhoneNumber || '+1 (555) 167-0097',
             };
             const res = await fetch('/api/whatsapp/embedded-signup/exchange', {
                 method: 'POST',
@@ -1860,7 +1882,7 @@ export default function SettingsPage({ tabParam }) {
                 qualityRating: data.qualityRating || 'GREEN',
                 status: 'connected',
             });
-            setWaMessage({ success: true, text: "✓ WhatsApp Business (+1 555 167-0097) successfully connected!" });
+            setWaMessage({ success: true, text: "✓ WhatsApp Business (" + (data.displayPhoneNumber || "+1 555 167-0097") + ") successfully connected!" });
             await fetchWhatsAppConfig();
             setCallbackInput("");
         } catch (err) {

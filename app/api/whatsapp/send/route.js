@@ -120,6 +120,16 @@ export async function POST(request) {
             }
         }
 
+        // Check if sending user is Zyro Admin
+        const { data: userRecord } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle();
+
+        const isAdmin = Boolean(userRecord?.is_admin === true || (userRecord?.email || '').toLowerCase().trim() === 'admin@zyro.com');
+        const effectiveSenderType = senderType || (isAdmin ? 'agent' : 'merchant');
+
         // 4. Save to wa_messages and update conversation in Supabase
         let savedMessage = null;
         if (activeConvId) {
@@ -128,7 +138,7 @@ export async function POST(request) {
                 .insert({
                     conversation_id: activeConvId,
                     user_id: userId,
-                    sender_type: senderType || 'merchant',
+                    sender_type: effectiveSenderType,
                     message_text: trimmedMessage,
                 })
                 .select()

@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import { T } from "../constants";
 import Icon from "../Icon";
 import { GradientButton } from "../Primitives";
-import { getCurrentUserId } from "../../../lib/auth";
+import { getCurrentUserId, getCurrentUser, isZyroAdmin } from "../../../lib/auth";
 
 export default function WhatsAppPage() {
     const [data, setData] = useState(null);
@@ -188,10 +188,10 @@ export default function WhatsAppPage() {
         };
         fetchData();
 
-        // Polling every 10 seconds for incoming WhatsApp messages
+        // Polling every 3 seconds for instant real-time conversation between Admin and Merchants
         const pollInterval = setInterval(() => {
             refreshData();
-        }, 10000);
+        }, 3000);
 
         return () => clearInterval(pollInterval);
     }, []);
@@ -205,10 +205,14 @@ export default function WhatsAppPage() {
         const msg = (textOverride !== undefined ? textOverride : replyText).trim();
         if (!msg) return;
 
+        const currentUser = getCurrentUser();
+        const isAdmin = Boolean(data?.isAdmin !== undefined ? data.isAdmin : isZyroAdmin(currentUser));
+        const activeSenderType = isAdmin ? "agent" : "merchant";
+
         const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         const localMsg = {
             id: `local-${Date.now()}`,
-            from: "merchant",
+            from: activeSenderType,
             text: msg,
             time: timeStr,
             status: "delivered",
@@ -247,7 +251,7 @@ export default function WhatsAppPage() {
                     phone: activePhone,
                     message: msg,
                     conversationId: conv?.id,
-                    senderType: 'merchant',
+                    senderType: activeSenderType,
                 }),
             });
 
@@ -383,6 +387,9 @@ export default function WhatsAppPage() {
         );
     }
 
+    const currentUser = getCurrentUser();
+    const isAdmin = Boolean(data?.isAdmin !== undefined ? data.isAdmin : isZyroAdmin(currentUser));
+
     const supportChats = data?.supportChats || [];
     const supportConv = supportChats.length > 0 ? supportChats[supportActive] || supportChats[0] : null;
     const isMetaConfigured = Boolean(data?.waConfigured);
@@ -401,6 +408,16 @@ export default function WhatsAppPage() {
                             </h1>
                             <span style={{
                                 fontSize: 10, padding: "3px 8px", borderRadius: 12, fontWeight: 700,
+                                background: isAdmin ? "rgba(251,191,36,0.15)" : "rgba(74,222,128,0.12)",
+                                color: isAdmin ? T.yellow : T.green,
+                                border: `1px solid ${isAdmin ? T.yellow : T.green}44`,
+                                display: "inline-flex", alignItems: "center", gap: 4,
+                            }}>
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: isAdmin ? T.yellow : T.green }} />
+                                {isAdmin ? "Zyro Admin Mode" : "Merchant Account"}
+                            </span>
+                            <span style={{
+                                fontSize: 10, padding: "3px 8px", borderRadius: 12, fontWeight: 700,
                                 background: isMetaConfigured ? "rgba(74,222,128,0.12)" : "rgba(251,191,36,0.12)",
                                 color: isMetaConfigured ? T.green : T.yellow,
                                 border: `1px solid ${isMetaConfigured ? T.green : T.yellow}44`,
@@ -411,7 +428,9 @@ export default function WhatsAppPage() {
                             </span>
                         </div>
                         <p style={{ fontSize: 13, color: T.textMuted, margin: "5px 0 0" }}>
-                            Dual Command Hub: <b>Zyro AI Bot</b> for platform guidance & <b>Support Team</b> for direct WhatsApp conversations
+                            {isAdmin
+                                ? "Zyro Admin Desk: Communicate with merchants across all connected stores & manage real-time WhatsApp conversations."
+                                : "Merchant Hub: Direct conversation channel with Zyro Admin & AI Platform Copilot."}
                         </p>
                     </div>
 
@@ -669,14 +688,16 @@ export default function WhatsAppPage() {
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <span style={{ fontSize: 15, fontWeight: 800, color: T.text }}>Support Team</span>
+                                <span style={{ fontSize: 15, fontWeight: 800, color: T.text }}>
+                                    {isAdmin ? "Admin WhatsApp Desk" : "Support Team & Admin"}
+                                </span>
                                 <span style={{
                                     fontSize: 9, padding: "2px 7px", borderRadius: T.r20, fontWeight: 700,
-                                    background: T.yellowBg, color: T.yellow, border: `1px solid ${T.yellow}44`,
+                                    background: isAdmin ? "rgba(251,191,36,0.15)" : T.yellowBg, color: T.yellow, border: `1px solid ${T.yellow}44`,
                                     display: "flex", alignItems: "center", gap: 3,
                                 }}>
                                     <div style={{ width: 5, height: 5, borderRadius: "50%", background: T.yellow, boxShadow: `0 0 4px ${T.yellow}` }} />
-                                    REAL WHATSAPP
+                                    {isAdmin ? "ZYRO ADMIN VIEW" : "DIRECT ADMIN CHANNEL"}
                                 </span>
                             </div>
                             <div style={{ fontSize: 11, color: T.yellow, marginTop: 2, fontFamily: "monospace" }}>
@@ -698,37 +719,42 @@ export default function WhatsAppPage() {
 
                     {/* Support Conversation Split View */}
                     <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-                        {/* Conversations list sidebar */}
-                        <div style={{ width: 190, borderRight: `1px solid ${T.border}`, overflowY: "auto", flexShrink: 0, background: T.bgCard }}>
-                            {supportChats.map((c, i) => (
-                                <div
-                                    key={c.id || i}
-                                    onClick={() => setSupportActive(i)}
-                                    style={{
-                                        padding: "12px 14px",
-                                        borderBottom: `1px solid ${T.border}`,
-                                        cursor: "pointer",
-                                        background: supportActive === i ? "rgba(251,191,36,0.08)" : "transparent",
-                                        borderLeft: `3px solid ${supportActive === i ? T.yellow : "transparent"}`,
-                                        transition: "all 0.1s",
-                                    }}
-                                >
-                                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                                        <span style={{ fontSize: 12, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                            {c.name || "Zyro Support"}
-                                        </span>
-                                        <span style={{ fontSize: 9, color: T.textFaint }}>{c.time}</span>
-                                    </div>
-                                    <div style={{ fontSize: 11, color: T.textFaint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                        {c.lastMsg || "Tap to chat..."}
-                                    </div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
-                                        <Icon name="headset" size={9} color={T.yellow} />
-                                        <span style={{ fontSize: 9, color: T.yellow, fontWeight: 600 }}>{c.reason || "Support"}</span>
-                                    </div>
+                        {/* Conversations list sidebar - ONLY VISIBLE TO ZYRO ADMIN */}
+                        {isAdmin && (
+                            <div style={{ width: 220, borderRight: `1px solid ${T.border}`, overflowY: "auto", flexShrink: 0, background: T.bgCard }}>
+                                <div style={{ padding: "10px 14px", borderBottom: `1px solid ${T.border}`, fontSize: 11, fontWeight: 800, color: T.j200, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                    <span>MERCHANTS ({supportChats.length})</span>
+                                    <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: "rgba(251,191,36,0.15)", color: T.yellow }}>Admin</span>
                                 </div>
-                            ))}
-                        </div>
+                                {supportChats.map((c, i) => (
+                                    <div
+                                        key={c.id || i}
+                                        onClick={() => setSupportActive(i)}
+                                        style={{
+                                            padding: "12px 14px",
+                                            borderBottom: `1px solid ${T.border}`,
+                                            cursor: "pointer",
+                                            background: supportActive === i ? "rgba(251,191,36,0.08)" : "transparent",
+                                            borderLeft: `3px solid ${supportActive === i ? T.yellow : "transparent"}`,
+                                            transition: "all 0.1s",
+                                        }}
+                                    >
+                                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                                            <span style={{ fontSize: 12, fontWeight: 700, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                {c.merchantName || c.name || "Merchant"}
+                                            </span>
+                                            <span style={{ fontSize: 9, color: T.textFaint }}>{c.time}</span>
+                                        </div>
+                                        <div style={{ fontSize: 10, color: T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                            {c.merchantEmail || c.phone}
+                                        </div>
+                                        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                            {c.lastMsg || "Tap to chat..."}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
                         {/* Active Chat Conversation View */}
                         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -740,19 +766,26 @@ export default function WhatsAppPage() {
                                         display: "flex", alignItems: "center", gap: 10, background: T.bgCard,
                                     }}>
                                         <div style={{
-                                            width: 30, height: 30, borderRadius: "50%",
-                                            background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
+                                            width: 32, height: 32, borderRadius: "50%",
+                                            background: isAdmin ? "linear-gradient(135deg, #10B981 0%, #059669 100%)" : "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
                                             display: "flex", alignItems: "center", justifyContent: "center",
                                             fontSize: 11, fontWeight: 800, color: "#fff",
                                         }}>
-                                            {(supportConv.name || "ZS").split(" ").map(w => w[0]).join("")}
+                                            {isAdmin
+                                                ? (supportConv.merchantName ? supportConv.merchantName.substring(0, 2).toUpperCase() : "MC")
+                                                : "ZA"}
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontSize: 12, fontWeight: 700, color: T.text }}>
-                                                {supportConv.name || "Zyro Official Support"}
+                                            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, display: "flex", alignItems: "center", gap: 6 }}>
+                                                <span>{isAdmin ? (supportConv.merchantName || supportConv.name || "Merchant") : "Zyro Admin (Official Support Desk)"}</span>
+                                                <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: isAdmin ? "rgba(74,222,128,0.12)" : "rgba(251,191,36,0.15)", color: isAdmin ? T.green : T.yellow, fontWeight: 700 }}>
+                                                    {isAdmin ? "MERCHANT" : "ZYRO ADMIN"}
+                                                </span>
                                             </div>
-                                            <div style={{ fontSize: 10, color: T.textFaint }}>
-                                                {supportConv.phone} · Direct WhatsApp Channel
+                                            <div style={{ fontSize: 10, color: T.textFaint, marginTop: 1 }}>
+                                                {isAdmin
+                                                    ? `${supportConv.merchantEmail || supportConv.phone || 'Store Owner'} • Direct Channel`
+                                                    : "admin@zyro.com • Direct Store Support & Operations"}
                                             </div>
                                         </div>
                                         {isMetaConfigured ? (
@@ -800,45 +833,50 @@ export default function WhatsAppPage() {
                                                 <div style={{ fontSize: 24 }}>💬</div>
                                                 <div style={{ fontWeight: 700, color: T.textMuted }}>Direct WhatsApp Channel Active</div>
                                                 <div style={{ maxWidth: 300, lineHeight: 1.4 }}>
-                                                    Send a message below to start communicating with this contact via WhatsApp.
+                                                    {isAdmin ? "Select a merchant on the left to start a direct WhatsApp conversation." : "Send a message below to start communicating directly with Zyro Admin."}
                                                 </div>
                                             </div>
                                         )}
 
                                         {supportConv.msgs?.map((m, i) => {
-                                            const isMerchant = m.from === "merchant" || m.from === "agent" || m.from === "user";
-                                            const senderTitle = isMerchant ? "You (Merchant)" : (supportConv.name || "Customer / Support");
+                                            const isMine = isAdmin
+                                                ? (m.from === "agent" || m.from === "admin")
+                                                : (m.from === "merchant" || m.from === "user");
+
+                                            const senderTitle = isMine
+                                                ? (isAdmin ? "You (Zyro Admin)" : "You (Merchant)")
+                                                : (isAdmin ? (supportConv.merchantName || supportConv.name || "Merchant") : "Zyro Admin (Support)");
 
                                             return (
-                                                <div key={m.id || i} style={{ display: "flex", justifyContent: isMerchant ? "flex-end" : "flex-start", marginBottom: 6 }}>
+                                                <div key={m.id || i} style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 6 }}>
                                                     <div style={{ maxWidth: "84%", minWidth: "160px" }}>
                                                         <div style={{
-                                                            fontSize: 10, color: isMerchant ? T.j200 : T.yellow,
-                                                            fontWeight: 700, marginBottom: 3, textAlign: isMerchant ? "right" : "left",
-                                                            display: "flex", alignItems: "center", gap: 4, justifyContent: isMerchant ? "flex-end" : "flex-start"
+                                                            fontSize: 10, color: isMine ? T.j200 : T.yellow,
+                                                            fontWeight: 700, marginBottom: 3, textAlign: isMine ? "right" : "left",
+                                                            display: "flex", alignItems: "center", gap: 4, justifyContent: isMine ? "flex-end" : "flex-start"
                                                         }}>
-                                                            {!isMerchant && <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.yellow }} />}
+                                                            {!isMine && <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.yellow }} />}
                                                             {senderTitle}
-                                                            {isMerchant && <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.green }} />}
+                                                            {isMine && <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.green }} />}
                                                         </div>
                                                         <div style={{
                                                             padding: "10px 14px",
-                                                            borderRadius: isMerchant ? "14px 14px 3px 14px" : "14px 14px 14px 3px",
-                                                            background: isMerchant ? T.gradBtn : T.bgElev,
-                                                            border: isMerchant ? "none" : `1px solid ${T.borderMid}`,
-                                                            fontSize: 12, color: isMerchant ? "#fff" : T.text, lineHeight: 1.5,
-                                                            boxShadow: isMerchant ? T.glowBtn : "0 2px 6px rgba(0,0,0,0.25)",
+                                                            borderRadius: isMine ? "14px 14px 3px 14px" : "14px 14px 14px 3px",
+                                                            background: isMine ? T.gradBtn : T.bgElev,
+                                                            border: isMine ? "none" : `1px solid ${T.borderMid}`,
+                                                            fontSize: 12, color: isMine ? "#fff" : T.text, lineHeight: 1.5,
+                                                            boxShadow: isMine ? T.glowBtn : "0 2px 6px rgba(0,0,0,0.25)",
                                                             whiteSpace: "pre-wrap",
                                                         }}>
                                                             {m.text}
                                                         </div>
                                                         <div style={{
                                                             fontSize: 9, color: T.textFaint, marginTop: 3,
-                                                            textAlign: isMerchant ? "right" : "left",
-                                                            display: "flex", alignItems: "center", gap: 4, justifyContent: isMerchant ? "flex-end" : "flex-start"
+                                                            textAlign: isMine ? "right" : "left",
+                                                            display: "flex", alignItems: "center", gap: 4, justifyContent: isMine ? "flex-end" : "flex-start"
                                                         }}>
                                                             <span>{m.time}</span>
-                                                            {isMerchant && <span style={{ color: T.j200, fontWeight: 700 }}>✓✓</span>}
+                                                            {isMine && <span style={{ color: T.j200, fontWeight: 700 }}>✓✓</span>}
                                                         </div>
                                                     </div>
                                                 </div>
