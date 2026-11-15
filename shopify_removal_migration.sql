@@ -16,6 +16,12 @@ ALTER TABLE users DROP COLUMN IF EXISTS shopify_store_domain;
 ALTER TABLE users DROP COLUMN IF EXISTS shopify_token_expires_at;
 ALTER TABLE users DROP COLUMN IF EXISTS shopify_refresh_token_expires_at;
 
+-- The generation before these: shopify_domain and shopify_token predate the rename
+-- to shopify_store_domain and shopify_access_token. No code referenced them, so
+-- they sat holding a stale credential. Dropped for the same reason as the rest.
+ALTER TABLE users DROP COLUMN IF EXISTS shopify_domain;
+ALTER TABLE users DROP COLUMN IF EXISTS shopify_token;
+
 ALTER TABLE products DROP COLUMN IF EXISTS shopify_variant_id;
 ALTER TABLE products DROP COLUMN IF EXISTS shopify_inventory_item_id;
 ALTER TABLE products DROP COLUMN IF EXISTS shopify_location_id;
