@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { applyOrderStock } from '@/lib/services/shopifyInventory';
+import { applyOrderStock } from '@/lib/services/inventoryStock';
 import { pushStockToChannels } from '@/lib/services/channelSync';
 import { whatsappService } from '@/lib/services/whatsappService';
 

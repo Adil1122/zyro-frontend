@@ -26,12 +26,11 @@ async function report(userId) {
 
     const { data: user, error: userError } = await db
         .from('users')
-        .select('shopify_store_domain, shopify_access_token, wc_store_url, wc_consumer_key, daraz_access_token, daraz_is_active')
+        .select('wc_store_url, wc_consumer_key, daraz_access_token, daraz_is_active')
         .eq('id', userId)
         .single();
 
     const connected = {
-        shopify: !!(user?.shopify_store_domain && user?.shopify_access_token),
         woocommerce: !!(user?.wc_store_url && user?.wc_consumer_key),
         daraz: !!(user?.daraz_access_token && user?.daraz_is_active),
     };

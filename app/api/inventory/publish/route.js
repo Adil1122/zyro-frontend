@@ -5,8 +5,8 @@ import { createProductOnChannels } from '@/lib/services/channelSync';
 
 export const maxDuration = 60;
 
-// Deliberately small. Creating one product costs several channel calls and
-// Shopify downloads its image URL before responding, so a large batch exceeds the
+// Deliberately small. Creating one product costs several channel calls and the
+// store downloads its image URL before responding, so a large batch exceeds the
 // function time limit and the caller gets a platform error page instead of JSON.
 const MAX_PER_CALL = 3;
 
@@ -27,8 +27,8 @@ export async function POST(request) {
                 .from('products')
                 .select('id')
                 .eq('user_id', userId)
-                .is('shopify_inventory_item_id', null)
-                .eq('publish_shopify', true)
+                .is('wc_product_id', null)
+                .eq('publish_woocommerce', true)
                 .limit(MAX_PER_CALL);
             ids = (data || []).map(p => p.id);
         }
@@ -39,7 +39,7 @@ export async function POST(request) {
         for (const id of batch) {
             const { data: p } = await db
                 .from('products')
-                .select('id, sku, publish_shopify, publish_woocommerce')
+                .select('id, sku, publish_woocommerce')
                 .eq('id', id)
                 .eq('user_id', userId)
                 .maybeSingle();
@@ -47,7 +47,6 @@ export async function POST(request) {
             if (!p) { results.push({ id, error: 'not found' }); continue; }
 
             const channels = [];
-            if (p.publish_shopify) channels.push('shopify');
             if (p.publish_woocommerce) channels.push('woocommerce');
             if (!channels.length) { results.push({ id, sku: p.sku, skipped: 'no channels flagged' }); continue; }
 

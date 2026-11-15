@@ -7,7 +7,6 @@ import Icon from "../Icon";
 import { GradientButton, Card } from "../Primitives";
 import WooCommerceManagePage from "./WooCommerceManagePage";
 import DarazManagePage from "./DarazManagePage";
-import ShopifyManagePage from "./ShopifyManagePage";
 import CurrencySetting from "../CurrencySetting";
 import PostExManagePage from "./PostExManagePage";
 import TCSManagePage from "./TCSManagePage";
@@ -23,7 +22,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { getCurrentUserId, supabase } from "@/lib/supabase";
 
 // ─── Sub-view router state ──────────────────────────────────────────────────
-// managingStore: null | "woocommerce" | "daraz" | "shopify" | "instagram"
+// managingStore: null | "woocommerce" | "daraz" | "instagram"
 
 function formatRevenue(amount) {
     if (!amount) return "—";
@@ -93,38 +92,6 @@ function useDarazStats() {
             }
         } catch (e) {
             setError(e.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => { fetchStats(); }, []);
-    return { stats, loading, error, refetch: fetchStats };
-}
-
-// ─── Shopify Live Stats Hook ────────────────────────────────────────────────
-function useShopifyStats() {
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-
-    const fetchStats = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const userId = getCurrentUserId();
-            // Check DB credentials only (no live Shopify call on the card)
-            const { data: user } = await supabase
-                .from('users')
-                .select('shopify_store_domain, shopify_access_token')
-                .eq('id', userId)
-                .single();
-
-            const configured = !!(user?.shopify_store_domain && user?.shopify_access_token);
-            setStats({ configured });
-        } catch (e) {
-            setError(e.message);
-            setStats({ configured: false });
         } finally {
             setLoading(false);
         }
@@ -656,124 +623,6 @@ function DarazCard({ onManage, onSync, isSyncing, syncResult }) {
                         <div>{syncResult.message}</div>
                     </div>
                 )}
-            </div>
-        </Card>
-    );
-}
-
-// ─── Shopify Live Card ───────────────────────────────────────────────────────
-const SHOPIFY_GREEN = "#96BF48";
-const SHOPIFY_GRAD = "linear-gradient(135deg, #96BF48 0%, #5E8E3E 100%)";
-
-function ShopifyCard({ onManage }) {
-    const { stats, loading, error } = useShopifyStats();
-    const isConnected = stats?.configured && !error;
-
-    return (
-        <Card style={{ marginBottom: 10, padding: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-                {/* Platform icon */}
-                <div style={{
-                    width: 44, height: 44, borderRadius: T.r10, flexShrink: 0,
-                    background: SHOPIFY_GRAD,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 22, boxShadow: "0 4px 12px rgba(150,191,72,0.4)",
-                }}>🏬</div>
-
-                {/* Name & desc */}
-                <div style={{ flex: 1, minWidth: 140 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>Shopify</div>
-                    <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
-                        {loading
-                            ? "Connecting to Shopify…"
-                            : stats?.configured === false
-                                ? "Credentials not configured"
-                                : error
-                                    ? `Error: ${error}`
-                                    : stats?.todayOrders !== undefined
-                                        ? `${stats.todayOrders} orders today`
-                                        : "No data yet"
-                        }
-                    </div>
-                </div>
-
-                {/* Live stats */}
-                {isConnected && !loading && stats?.totalOrders !== undefined && (
-                    <div style={{ display: "flex", gap: 20, marginRight: 12 }}>
-                        <div>
-                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>Total Orders</div>
-                            <div style={{ fontSize: 14, fontWeight: 800, color: T.text, marginTop: 2 }}>
-                                {(stats.totalOrders || 0).toLocaleString()}
-                            </div>
-                            <div style={{ fontSize: 10, color: T.textFaint, marginTop: 1 }}>
-                                +{stats.todayOrders || 0} today
-                            </div>
-                        </div>
-                        <div>
-                            <div style={{ fontSize: 10, color: T.textFaint, fontWeight: 600 }}>Revenue</div>
-                            <div style={{ fontSize: 14, fontWeight: 800, color: SHOPIFY_GREEN, marginTop: 2 }}>
-                                {formatRevenue(stats.totalRevenue)}
-                            </div>
-                            <div style={{ fontSize: 10, color: T.textFaint, marginTop: 1 }}>
-                                +{formatRevenue(stats.todayRevenue)} today
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Skeleton */}
-                {loading && (
-                    <div style={{ display: "flex", gap: 20, marginRight: 12 }}>
-                        {[80, 80].map((w, i) => (
-                            <div key={i}>
-                                <div style={{ height: 10, width: 60, borderRadius: T.r4, background: T.bgHigh, marginBottom: 6, animation: "pulse 1.4s ease-in-out infinite" }} />
-                                <div style={{ height: 18, width: w, borderRadius: T.r4, background: T.bgHigh, animation: "pulse 1.4s ease-in-out infinite" }} />
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Status indicator */}
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginRight: 12 }}>
-                    {loading ? (
-                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: T.textFaint, animation: "pulse 1s ease-in-out infinite" }} />
-                    ) : (
-                        <div style={{
-                            width: 6, height: 6, borderRadius: "50%",
-                            background: isConnected ? T.green : T.red,
-                            boxShadow: isConnected ? `0 0 6px ${T.green}` : `0 0 6px ${T.red}`,
-                        }} />
-                    )}
-                    <span style={{
-                        fontSize: 12, fontWeight: 600,
-                        color: loading ? T.textFaint : isConnected ? T.green : T.red,
-                    }}>
-                        {loading ? "checking…" : isConnected ? "connected" : "disconnected"}
-                    </span>
-                </div>
-
-                {/* Action button */}
-                {isConnected && !loading
-                    ? (
-                        <button onClick={onManage} style={{
-                            display: "inline-flex", alignItems: "center", gap: 6,
-                            padding: "6px 12px", borderRadius: T.r8,
-                            background: SHOPIFY_GRAD, color: "#fff",
-                            border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
-                            fontFamily: "inherit", boxShadow: "0 2px 8px rgba(150,191,72,0.35)",
-                            transition: "all 0.15s",
-                        }}>
-                            <Icon name="settings" size={13} color="#fff" />
-                            Manage
-                        </button>
-                    )
-                    : !loading
-                        ? <GradientButton variant="primary" size="sm" icon="plus"
-                            onClick={onManage}>
-                            Connect Store
-                        </GradientButton>
-                        : null
-                }
             </div>
         </Card>
     );
@@ -1506,7 +1355,6 @@ export default function SettingsPage({ tabParam }) {
     
     const initialManaging = searchParams.get("manage");
     const [managingStore, setManagingStore] = useState(initialManaging);
-    const [shopifyJustConnected, setShopifyJustConnected] = useState(false);
     const [darazOAuthError, setDarazOAuthError] = useState(null);
 
     // ─── WhatsApp Integration State ───
@@ -2093,15 +1941,6 @@ export default function SettingsPage({ tabParam }) {
         }
     }, [searchParams]);
 
-    // Detect Shopify OAuth callback redirect
-    useEffect(() => {
-        const shopifyStatus = searchParams.get("shopify");
-        if (shopifyStatus === "connected") {
-            setManagingStore("shopify");
-            setShopifyJustConnected(true);
-            router.replace(`/settings/stores?manage=shopify`);
-        }
-    }, []);
 
     // Detect Daraz OAuth callback redirect
     useEffect(() => {
@@ -2161,9 +2000,6 @@ export default function SettingsPage({ tabParam }) {
     }
     if (managingStore === "daraz") {
         return <DarazManagePage onBack={handleBack} />;
-    }
-    if (managingStore === "shopify") {
-        return <ShopifyManagePage onBack={handleBack} justConnected={shopifyJustConnected} />;
     }
     if (managingStore === "postex") {
         return <PostExManagePage onBack={handleBack} />;
@@ -2301,8 +2137,6 @@ export default function SettingsPage({ tabParam }) {
                         <WooCommerceCard onManage={() => handleManage("woocommerce")} />
                         {/* Daraz – live integration */}
                         <DarazCard onManage={() => handleManage("daraz")} onSync={handleDarazSync} isSyncing={isDarazSyncing} syncResult={darazSyncResult} />
-                        {/* Shopify – live integration */}
-                        <ShopifyCard onManage={() => handleManage("shopify")} />
                         <OtherStoreCard
                             name="Instagram Shop"
                             icon="📸"
