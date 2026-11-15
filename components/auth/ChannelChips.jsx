@@ -37,7 +37,6 @@ const Facebook = (props) => (
 );
 
 export const channels = [
-  { id: "shopify", name: "Shopify", icon: ShoppingBag },
   { id: "website", name: "Custom Website", icon: Globe },
   { id: "woocommerce", name: "WooCommerce", icon: ShoppingCart },
   { id: "daraz", name: "Daraz", icon: Package },

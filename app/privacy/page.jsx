@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'Privacy Policy — Zyro Cloud',
-  description: 'How Zyro Cloud collects, uses, and protects your data when you connect your Shopify, Daraz, or WooCommerce store.',
+  description: 'How Zyro Cloud collects, uses, and protects your data when you connect your WooCommerce or Daraz store.',
 };
 
 export default function PrivacyPolicy() {
@@ -282,7 +282,7 @@ export default function PrivacyPolicy() {
             <p>
               Zyro Cloud (&ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;) operates <strong>zyroocloud.com</strong>, an
               e-commerce management dashboard that helps sellers manage orders, products, customers, and
-              analytics across multiple sales platforms including Shopify, Daraz, and WooCommerce.
+              analytics across multiple sales platforms including WooCommerce and Daraz.
             </p>
             <p>
               This Privacy Policy explains what information we collect, how we use it, and your rights
@@ -307,7 +307,6 @@ export default function PrivacyPolicy() {
               to retrieve your store data.
             </p>
             <ul>
-              <li><strong>Shopify:</strong> Store domain, OAuth access token, orders, products, customers, fulfillments</li>
               <li><strong>Daraz:</strong> Access token, region, orders and order items</li>
               <li><strong>WooCommerce:</strong> Store URL, consumer key and secret, orders and products</li>
             </ul>
@@ -345,38 +344,12 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="pp-section">
-            <h2><span className="pp-num">4</span>Shopify Data Use</h2>
-            <p>
-              When you install Zyro Cloud on your Shopify store, we access your store data through the
-              Shopify Admin API with your explicit authorization. Specifically, we access:
-            </p>
-            <ul>
-              <li><strong>Orders</strong> — to display order history, statuses, and revenue analytics</li>
-              <li><strong>Products</strong> — to show product listings and inventory levels</li>
-              <li><strong>Customers</strong> — to display customer information linked to orders</li>
-              <li><strong>Fulfillments</strong> — to show delivery and fulfillment status</li>
-            </ul>
-            <p>
-              This data is displayed only within your private dashboard. It is not shared with any third
-              party, not used for advertising, and not merged with data from other merchants.
-            </p>
-            <p>
-              You can disconnect your Shopify store at any time from <strong>Settings → Stores → Shopify → Disconnect</strong>,
-              which will remove your access token and stop all data access immediately.
-            </p>
-          </section>
-
-          <section className="pp-section">
-            <h2><span className="pp-num">5</span>Connected Platforms</h2>
+            <h2><span className="pp-num">4</span>Connected Platforms</h2>
             <p>
               Zyro Cloud integrates with the following platforms. Each integration requires your explicit
               consent and stores only the credentials you provide.
             </p>
             <div className="pp-platforms">
-              <div className="pp-platform">
-                <div className="pp-platform-name">Shopify</div>
-                <div className="pp-platform-desc">Orders, products, customers via OAuth</div>
-              </div>
               <div className="pp-platform">
                 <div className="pp-platform-name">Daraz</div>
                 <div className="pp-platform-desc">Orders and items via Open Platform API</div>
@@ -401,7 +374,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="pp-section">
-            <h2><span className="pp-num">6</span>Data Sharing</h2>
+            <h2><span className="pp-num">4</span>Data Sharing</h2>
             <p>
               We do not sell, trade, or rent your personal information to third parties. We share data
               only in these limited circumstances:
@@ -423,7 +396,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="pp-section">
-            <h2><span className="pp-num">7</span>Data Security</h2>
+            <h2><span className="pp-num">4</span>Data Security</h2>
             <ul>
               <li>All data is transmitted over HTTPS (TLS encryption)</li>
               <li>API access tokens are stored encrypted in our database</li>
@@ -434,7 +407,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="pp-section">
-            <h2><span className="pp-num">8</span>Data Retention</h2>
+            <h2><span className="pp-num">4</span>Data Retention</h2>
             <p>
               We retain your account data for as long as your account is active. Store data (orders,
               products, customers synced from your platforms) is retained to power your dashboard analytics.
@@ -446,7 +419,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="pp-section">
-            <h2><span className="pp-num">9</span>Your Rights</h2>
+            <h2><span className="pp-num">4</span>Your Rights</h2>
             <p>You have the right to:</p>
             <ul>
               <li><strong>Access</strong> — request a copy of the personal data we hold about you</li>
@@ -460,7 +433,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="pp-section">
-            <h2><span className="pp-num">10</span>Cookies</h2>
+            <h2><span className="pp-num">4</span>Cookies</h2>
             <p>
               We use cookies and session tokens solely for authentication and to maintain your logged-in
               session. We do not use third-party advertising cookies or cross-site tracking.
@@ -468,7 +441,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="pp-section">
-            <h2><span className="pp-num">11</span>Children&rsquo;s Privacy</h2>
+            <h2><span className="pp-num">4</span>Children&rsquo;s Privacy</h2>
             <p>
               Zyro Cloud is a business tool not intended for use by anyone under 18. We do not knowingly
               collect personal information from minors.
@@ -476,7 +449,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="pp-section">
-            <h2><span className="pp-num">12</span>Changes to This Policy</h2>
+            <h2><span className="pp-num">4</span>Changes to This Policy</h2>
             <p>
               We may update this policy as our service evolves. Material changes will be communicated via
               email or a notice in the dashboard. Continued use after changes are posted constitutes
@@ -485,7 +458,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section className="pp-section">
-            <h2><span className="pp-num">13</span>Contact Us</h2>
+            <h2><span className="pp-num">4</span>Contact Us</h2>
             <p>For privacy questions, data requests, or to report a concern:</p>
             <div className="pp-contact-box">
               <div className="pp-contact-row">
@@ -510,7 +483,7 @@ export default function PrivacyPolicy() {
           <div className="pp-footer">
             <p>
               This Privacy Policy is effective as of August 11, 2026. Zyro Cloud is operated
-              independently and is not affiliated with Shopify Inc., Daraz, or any connected platform.
+              independently and is not affiliated with Daraz or any connected platform.
             </p>
           </div>
         </main>

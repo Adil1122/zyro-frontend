@@ -386,7 +386,6 @@ export default function OnboardingPage() {
 
                   <div className="grid gap-3 mt-4">
                     {[
-                      { id: "Shopify", label: "Shopify Integration", desc: "Sync Shopify products and listings instantly" },
                       { id: "WooCommerce", label: "WooCommerce Plugin", desc: "Sync catalog from WordPress WooCommerce" },
                       { id: "Daraz", label: "Daraz Seller Center", desc: "Connect Daraz seller API catalog" },
                       { id: "CSV", label: "Manual CSV Upload", desc: "Import products via standard Excel/CSV templates" }

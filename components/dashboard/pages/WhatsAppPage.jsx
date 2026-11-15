@@ -18,7 +18,7 @@ export default function WhatsAppPage() {
         {
             id: "welcome-ai",
             from: "ai",
-            text: "👋 **Hello! I'm your Zyro AI Copilot.**\n\nAsk me anything about configuring your stores (**WooCommerce, Shopify, Daraz**), automated couriers (**PostEx, TCS, Leopards**), WhatsApp Meta Cloud API settings, or daily PnL calculations.",
+            text: "👋 **Hello! I'm your Zyro AI Copilot.**\n\nAsk me anything about configuring your stores (**WooCommerce, Daraz**), automated couriers (**PostEx, TCS, Leopards**), WhatsApp Meta Cloud API settings, or daily PnL calculations.",
             time: "Just now",
             source: "Zyro Platform Engine",
         }

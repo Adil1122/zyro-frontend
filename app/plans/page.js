@@ -49,13 +49,13 @@ const COMPARE = [
     { label: "Dedicated success manager", s: false, g: false, p: true },
   ]},
   { cat: "Integrations", rows: [
-    { label: "WooCommerce, Shopify & Daraz", s: true, g: true, p: true },
+    { label: "WooCommerce & Daraz", s: true, g: true, p: true },
   ]},
 ];
 
 const FAQS = [
   { q: "Can I switch plans later?", a: "Yes. Upgrade or downgrade at any time from your account settings — the change applies from your next billing cycle, and nothing you've already set up is lost." },
-  { q: "Do I need a developer to set this up?", a: "No. Connecting WooCommerce, Shopify or Daraz takes a few clicks, and our team can walk you through courier setup on your first call." },
+  { q: "Do I need a developer to set this up?", a: "No. Connecting WooCommerce or Daraz takes a few clicks, and our team can walk you through courier setup on your first call." },
   { q: "Which couriers does Zyro support?", a: "All 14 major couriers used across Pakistan, including Leopards, TCS, M&P, Call Courier, BlueEX, PostEx, Trax, Rider and Swyft, plus international options like FedEx and DHL." },
   { q: "Is there a contract, and what happens if I cancel?", a: "Monthly plans have no lock-in. You can export your orders, inventory and customer data at any point, and we keep a backup for 30 days after cancellation." },
   { q: "Does the WhatsApp AI reply in Urdu?", a: "Yes — the multi-language chatbot on Growth and Professional plans replies in Urdu, English, and several other languages based on how the customer writes in." },

@@ -811,7 +811,7 @@ function OrdersPage() {
     { id: "DRZ-2891", customer: "Ali Hassan", city: "Islamabad", amount: 5200, status: "confirmed", platform: "Daraz", time: "31m", items: 2 },
     { id: "WC-1040", customer: "Fatima Malik", city: "Faisalabad", amount: 2100, status: "delivered", platform: "Woo", time: "1h", items: 1, courier: "TCS", cn: "779416038401" },
     { id: "WC-1039", customer: "Usman Sheikh", city: "Multan", amount: 4800, status: "returned", platform: "Woo", time: "3h", items: 4 },
-    { id: "SH-0832", customer: "Bilal Anwar", city: "Rawalpindi", amount: 7890, status: "shipped", platform: "Shopify", time: "5h", items: 5, courier: "TCS" },
+    { id: "SH-0832", customer: "Bilal Anwar", city: "Rawalpindi", amount: 7890, status: "shipped", platform: "WooCommerce", time: "5h", items: 5, courier: "TCS" },
   ];
   const filtered = filter === "all" ? orders : orders.filter(o => o.status === filter);
   const filters = [
@@ -2126,7 +2126,6 @@ function SettingsPage() {
             title: "Connected Stores", items: [
               { label: "WooCommerce", sub: "1,247 orders · Live", right: "✓", color: T.green },
               { label: "Daraz", sub: "687 orders · Live", right: "✓", color: T.green },
-              { label: "Shopify", sub: "Not connected", right: "Connect", color: T.j300 },
             ]
           },
           {
