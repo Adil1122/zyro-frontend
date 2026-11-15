@@ -67,7 +67,6 @@ export async function POST(request) {
                     status: stock > reorder ? 'In Stock' : stock > 0 ? 'Low Stock' : 'Out of Stock',
                     supplier_id: supplierMap[(item.Supplier || '').trim()] || null,
                     lead_time_days: item.LeadTimeDays ? parseInt(item.LeadTimeDays) : null,
-                    publish_shopify: parseBool(item.PublishShopify),
                     publish_daraz: parseBool(item.PublishDaraz),
                     publish_woocommerce: parseBool(item.PublishWooCommerce),
                 };
@@ -80,7 +79,7 @@ export async function POST(request) {
             const { data: saved, error: upsertErr } = await supabase
                 .from('products')
                 .upsert(upsertData, { onConflict: 'id' })
-                .select('id, sku, publish_shopify, publish_woocommerce');
+                .select('id, sku, publish_woocommerce');
 
             if (upsertErr) throw upsertErr;
 
@@ -90,7 +89,7 @@ export async function POST(request) {
             // returned a platform error page instead of JSON. The ids are handed
             // back and published in small batches via /api/inventory/publish.
             const pendingPublish = (saved || [])
-                .filter(p => p.publish_shopify || p.publish_woocommerce)
+                .filter(p => p.publish_woocommerce)
                 .map(p => p.id);
 
             return NextResponse.json({
