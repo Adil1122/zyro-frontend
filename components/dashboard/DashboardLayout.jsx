@@ -127,10 +127,9 @@ export default function DashboardLayout({ children }) {
                         const isTrialExpired = now > trialEndsAt;
                         const hasPlan = !!dbUser.plan_id;
 
-                        // Billing redirect disabled for Shopify App Store review
-                        // if (isTrialExpired && !hasPlan && !isPlansPage && !isPublicPage && pathname !== "/payment" && pathname !== "/profile") {
-                        //     router.push("/plans");
-                        // }
+                        if (isTrialExpired && !hasPlan && !isPlansPage && !isPublicPage && pathname !== "/payment" && pathname !== "/profile") {
+                            router.push("/plans");
+                        }
                     }
                 } catch (err) {
                     console.error("Auth sync error:", err);
