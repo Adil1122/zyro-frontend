@@ -49,7 +49,27 @@ export default function DashboardPage() {
     const [showNewOrder, setShowNewOrder] = useState(false);
     const [exporting, setExporting] = useState(false);
 
-    // Refresh ignores the throttle: pressing it is an explicit request for current data.
+    const fetchStats = useCallback(async (isRefresh = false) => {
+        if (isRefresh) setRefetching(true); else setLoading(true);
+        try {
+            const userId = getCurrentUserId();
+            let url = `/api/dashboard-stats?range=${encodeURIComponent(range)}`;
+            if (userId) url += `&userId=${encodeURIComponent(userId)}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data && data.kpis) {
+                setStats(data);
+            } else {
+                console.warn("Dashboard stats returned partial or empty data:", data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch dashboard stats:", err);
+        } finally {
+            setLoading(false);
+            setRefetching(false);
+        }
+    }, [range]);
+
     const handleRefresh = useCallback(async () => {
         setRefetching(true);
         await fetchStats(true);
