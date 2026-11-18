@@ -1585,6 +1585,12 @@ export default function SettingsPage({ tabParam }) {
         finally { setIsDHLSyncing(false); }
     };
 
+    // metaConnection reflects whatsapp_connections.connection_status. The legacy
+    // single-config path has no such row, so it falls back to the stored number
+    // AND wa_is_active — the number alone survives a disconnect by design, and
+    // testing it alone made the UI report a disconnected account as connected.
+    const waConnected = !!(metaConnection || (waConfig.phoneNumberId && waConfig.isActive));
+
     // canReconnect: a stored, unexpired Meta authorization exists, so Connect can
     // restore the link without sending the merchant back through Meta.
     const [waCanReconnect, setWaCanReconnect] = useState(false);
@@ -2259,13 +2265,13 @@ export default function SettingsPage({ tabParam }) {
                             </div>
                             <span style={{
                                 fontSize: 11, padding: "4px 10px", borderRadius: 20, fontWeight: 700,
-                                background: (metaConnection || waConfig.phoneNumberId) ? "rgba(74,222,128,0.12)" : "rgba(251,191,36,0.12)",
-                                color: (metaConnection || waConfig.phoneNumberId) ? T.green : T.yellow,
-                                border: `1px solid ${(metaConnection || waConfig.phoneNumberId) ? T.green : T.yellow}44`,
+                                background: waConnected ? "rgba(74,222,128,0.12)" : "rgba(251,191,36,0.12)",
+                                color: waConnected ? T.green : T.yellow,
+                                border: `1px solid ${waConnected ? T.green : T.yellow}44`,
                                 display: "inline-flex", alignItems: "center", gap: 5,
                             }}>
-                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: (metaConnection || waConfig.phoneNumberId) ? T.green : T.yellow }} />
-                                {(metaConnection || waConfig.phoneNumberId) ? "Official WhatsApp Connected" : "Not Connected"}
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: waConnected ? T.green : T.yellow }} />
+                                {waConnected ? "Official WhatsApp Connected" : "Not Connected"}
                             </span>
                         </div>
 
@@ -2312,7 +2318,7 @@ export default function SettingsPage({ tabParam }) {
                         ) : (
                             <>
                                 {/* ── CONNECTED STATE ── */}
-                                {(metaConnection || waConfig.phoneNumberId) ? (
+                                {waConnected ? (
                                     <Card style={{ padding: 24, marginBottom: 24, border: `1px solid rgba(74,222,128,0.3)` }}>
                                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
                                             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
