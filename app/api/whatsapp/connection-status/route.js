@@ -3,6 +3,7 @@ import { resolveWhatsAppUserId } from '@/lib/whatsappAuth';
 import {
     getMerchantWhatsAppConnection,
     hasStoredWhatsAppAuthorization,
+    verifyStoredConnection,
 } from '@/lib/services/metaEmbeddedSignup';
 
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,22 @@ export async function GET(request) {
 
     try {
         const connection = await getMerchantWhatsAppConnection(userId);
+
+        // A row saying 'connected' is not proof. Meta is asked before the status
+        // is reported, so a fabricated or revoked record demotes itself instead of
+        // needing to be deleted by hand.
+        if (connection) {
+            const verdict = await verifyStoredConnection(userId, connection);
+            if (!verdict.valid) {
+                return NextResponse.json({
+                    status: 'disconnected',
+                    connected: false,
+                    canReconnect: await hasStoredWhatsAppAuthorization(userId),
+                    connection: null,
+                    reason: verdict.reason,
+                });
+            }
+        }
 
         if (connection) {
             return NextResponse.json({
