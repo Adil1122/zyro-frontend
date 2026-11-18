@@ -1718,40 +1718,80 @@ export default function SettingsPage({ tabParam }) {
             }
 
             // Listen for Meta Embedded Signup message events
-            const messageHandler = async (event) => {
+            // FINISH carries waba_id and phone_number_id but never an authorization
+            // code — that arrives when Meta redirects the popup to /meta-callback,
+            // which performs the exchange. The old handler exchanged here with no
+            // code and then closed the popup, destroying the redirect that would
+            // have supplied one. It only ever "worked" because the backend
+            // fabricated a connection from these ids.
+            //
+            // So: note the ids, leave the popup alone, and wait for the backend to
+            // report a verified connection.
+            const messageHandler = (event) => {
                 if (!event.origin || !event.origin.includes("facebook.com")) return;
                 try {
                     const eventData = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-                    if (eventData?.type === 'WA_EMBEDDED_SIGNUP') {
-                        if (eventData.event === 'FINISH') {
-                            const { phone_number_id, waba_id } = eventData.data || {};
-                            await handleCompleteManualCallback('direct', {
-                                phoneNumberId: phone_number_id,
-                                wabaId: waba_id,
-                            });
-                            if (popup && !popup.closed) popup.close();
-                        }
+                    if (eventData?.type !== 'WA_EMBEDDED_SIGNUP') return;
+
+                    if (eventData.event === 'FINISH') {
+                        setWaMessage({ success: true, text: "Finishing with Meta — verifying your account…" });
+                    } else if (eventData.event === 'CANCEL' || eventData.event === 'ERROR') {
+                        setWaMessage({ success: false, text: "Meta authorization was cancelled." });
                     }
-                } catch {}
+                } catch { /* not a message we handle */ }
             };
             window.addEventListener('message', messageHandler);
+
+            // The popup completes the exchange on /meta-callback, so the opener
+            // learns the outcome by asking the backend rather than by trusting a
+            // postMessage. Stops when connected, when the popup goes away, or on
+            // timeout — never leaves a spinner running forever.
+            const startedAt = Date.now();
+            const poll = setInterval(async () => {
+                const uid = getCurrentUserId();
+                try {
+                    const r = await fetch('/api/whatsapp/connection-status', {
+                        headers: { 'x-user-id': uid }, cache: 'no-store',
+                    });
+                    const d = await r.json();
+                    if (d?.connected) {
+                        clearInterval(poll);
+                        window.removeEventListener('message', messageHandler);
+                        if (popup && !popup.closed) popup.close();
+                        setMetaConnecting(false);
+                        await fetchWhatsAppConfig();
+                        setWaMessage({ success: true, text: "WhatsApp connected successfully!" });
+                        return;
+                    }
+                } catch { /* keep polling */ }
+
+                const popupGone = !popup || popup.closed;
+                const timedOut = Date.now() - startedAt > 180000;
+                if (popupGone || timedOut) {
+                    clearInterval(poll);
+                    window.removeEventListener('message', messageHandler);
+                    setMetaConnecting(false);
+                    await fetchWhatsAppConfig();
+                    setWaMessage({
+                        success: false,
+                        text: timedOut
+                            ? "Timed out waiting for Meta. Nothing was connected — please try again."
+                            : "Authorization was not completed with Meta. Nothing was connected.",
+                    });
+                }
+            }, 2500);
 
             // Open Meta's official onboarding interface in a new window/tab (to bypass iframe restrictions)
             const popup = window.open(targetUrl, 'MetaWhatsAppSignup', 'width=800,height=750,scrollbars=yes,resizable=yes');
             if (!popup || popup.closed || typeof popup.closed === 'undefined') {
                 window.location.href = targetUrl;
-            } else {
-                const pollTimer = setInterval(async () => {
-                    if (popup.closed) {
-                        clearInterval(pollTimer);
-                        window.removeEventListener('message', messageHandler);
-                        setMetaConnecting(false);
-                        // Auto-finalize connection for the authenticated merchant
-                        await handleCompleteManualCallback('direct');
-                        await fetchWhatsAppConfig();
-                    }
-                }, 1200);
             }
+            // Closing the popup used to call handleCompleteManualCallback('direct'),
+            // finalizing with no authorization code. Against the old backend that
+            // fabricated a connection — closing the window without logging in was
+            // literally how an account became "connected". A closed popup is now
+            // handled by the status poll above, which only reports what Meta
+            // confirms.
         } catch (err) {
             setWaMessage({ success: false, text: "Error launching WhatsApp onboarding: " + err.message });
             setMetaConnecting(false);
