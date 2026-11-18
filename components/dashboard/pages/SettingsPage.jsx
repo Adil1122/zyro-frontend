@@ -1589,7 +1589,11 @@ export default function SettingsPage({ tabParam }) {
     // single-config path has no such row, so it falls back to the stored number
     // AND wa_is_active — the number alone survives a disconnect by design, and
     // testing it alone made the UI report a disconnected account as connected.
-    const waConnected = !!(metaConnection || (waConfig.phoneNumberId && waConfig.isActive));
+    // whatsapp_connections, via /api/whatsapp/connection-status, is the only
+    // evidence of a connection. users.wa_is_active and wa_phone_number_id are
+    // legacy config that failed authorizations had already written, so including
+    // them here kept the card green after finalization failed.
+    const waConnected = !!metaConnection;
 
     // canReconnect: a stored, unexpired Meta authorization exists, so Connect can
     // restore the link without sending the merchant back through Meta.
@@ -1664,7 +1668,7 @@ export default function SettingsPage({ tabParam }) {
             // 2. Fetch template names and user notification preferences
             const { data, error } = await supabase
                 .from('users')
-                .select('wa_phone_number_id, wa_waba_id, wa_access_token, wa_template_name, wa_is_active, wa_template_cancelled, wa_template_payment, wa_template_shipped, wa_template_status, wa_template_merchant, wa_template_low_stock, wa_merchant_phone')
+                .select('wa_phone_number_id, wa_waba_id, wa_template_name, wa_is_active, wa_template_cancelled, wa_template_payment, wa_template_shipped, wa_template_status, wa_template_merchant, wa_template_low_stock, wa_merchant_phone')
                 .eq('id', userId)
                 .single();
 
@@ -1672,7 +1676,6 @@ export default function SettingsPage({ tabParam }) {
                 setWaConfig({
                     phoneNumberId: data.wa_phone_number_id || "",
                     wabaId: data.wa_waba_id || "",
-                    accessToken: data.wa_access_token || "",
                     templateName: data.wa_template_name || "order_created",
                     isActive: data.wa_is_active !== false,
                     tplCancelled: data.wa_template_cancelled || "order_canceled",
@@ -1884,7 +1887,9 @@ export default function SettingsPage({ tabParam }) {
                 .update({
                     wa_phone_number_id: waConfig.phoneNumberId,
                     wa_waba_id: waConfig.wabaId,
-                    wa_access_token: waConfig.accessToken,
+                    // Only when a new one was typed. The stored token is never
+                    // loaded into the browser, so blank means leave it as it is.
+                    ...(waConfig.accessToken ? { wa_access_token: waConfig.accessToken } : {}),
                     wa_template_name: waConfig.templateName,
                     wa_is_active: waConfig.isActive,
                     wa_template_cancelled: waConfig.tplCancelled,
@@ -2336,13 +2341,13 @@ export default function SettingsPage({ tabParam }) {
                                                 </div>
                                                 <div>
                                                     <div style={{ fontSize: 16, fontWeight: 800, color: T.text, display: "flex", alignItems: "center", gap: 8 }}>
-                                                        {metaConnection?.verifiedName || "Connected WhatsApp Business"}
+                                                        {metaConnection?.verifiedName || "WhatsApp Business"}
                                                         <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: "rgba(74,222,128,0.15)", color: T.green, fontWeight: 700 }}>
                                                             VERIFIED
                                                         </span>
                                                     </div>
                                                     <div style={{ fontSize: 12, color: T.green, fontFamily: "monospace", marginTop: 2 }}>
-                                                        📱 {metaConnection?.displayPhoneNumber || waConfig.merchantPhone || waConfig.phoneNumberId}
+                                                        📱 {metaConnection?.displayPhoneNumber || "—"}
                                                     </div>
                                                 </div>
                                             </div>
@@ -2404,15 +2409,15 @@ export default function SettingsPage({ tabParam }) {
                                         }}>
                                             <div>
                                                 <span style={{ color: T.textFaint, display: "block", fontSize: 10, textTransform: "uppercase", fontWeight: 700 }}>Phone Number ID</span>
-                                                <span style={{ color: T.text, fontFamily: "monospace", fontWeight: 600 }}>{metaConnection?.phoneNumberId || waConfig.phoneNumberId || "—"}</span>
+                                                <span style={{ color: T.text, fontFamily: "monospace", fontWeight: 600 }}>{metaConnection?.phoneNumberId || "—"}</span>
                                             </div>
                                             <div>
                                                 <span style={{ color: T.textFaint, display: "block", fontSize: 10, textTransform: "uppercase", fontWeight: 700 }}>WABA Account ID</span>
-                                                <span style={{ color: T.text, fontFamily: "monospace", fontWeight: 600 }}>{metaConnection?.wabaId || waConfig.wabaId || "—"}</span>
+                                                <span style={{ color: T.text, fontFamily: "monospace", fontWeight: 600 }}>{metaConnection?.wabaId || "—"}</span>
                                             </div>
                                             <div>
                                                 <span style={{ color: T.textFaint, display: "block", fontSize: 10, textTransform: "uppercase", fontWeight: 700 }}>Quality Rating</span>
-                                                <span style={{ color: T.green, fontWeight: 700 }}>{metaConnection?.qualityRating || "GREEN / HIGH"}</span>
+                                                <span style={{ color: T.green, fontWeight: 700 }}>{metaConnection?.qualityRating || "—"}</span>
                                             </div>
                                             <div>
                                                 <span style={{ color: T.textFaint, display: "block", fontSize: 10, textTransform: "uppercase", fontWeight: 700 }}>Meta Graph Version</span>
@@ -2741,7 +2746,7 @@ export default function SettingsPage({ tabParam }) {
                                                     <label style={{ fontSize: 11, fontWeight: 700, color: T.textMuted }}>Permanent System User Access Token</label>
                                                     <input 
                                                         type="password" 
-                                                        placeholder="EAAGz..."
+                                                        placeholder="Leave blank to keep the saved token"
                                                         value={waConfig.accessToken} 
                                                         onChange={e => setWaConfig({ ...waConfig, accessToken: e.target.value })} 
                                                         style={{
