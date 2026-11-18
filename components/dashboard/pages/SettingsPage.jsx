@@ -1585,6 +1585,51 @@ export default function SettingsPage({ tabParam }) {
         finally { setIsDHLSyncing(false); }
     };
 
+    // canReconnect: a stored, unexpired Meta authorization exists, so Connect can
+    // restore the link without sending the merchant back through Meta.
+    const [waCanReconnect, setWaCanReconnect] = useState(false);
+    const [waReconnecting, setWaReconnecting] = useState(false);
+
+    // Tries the stored credentials first and only falls through to Meta OAuth when
+    // Meta itself says the authorization is gone.
+    const handleConnectWhatsApp = async () => {
+        const userId = getCurrentUserId();
+        if (!userId) { setWaMessage({ success: false, text: "Please sign in again." }); return; }
+
+        setWaReconnecting(true);
+        setWaMessage(null);
+        try {
+            const res = await fetch('/api/whatsapp/reconnect', {
+                method: 'POST',
+                headers: { 'x-user-id': userId },
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                setMetaConnection(data.connection);
+                setWaCanReconnect(false);
+                setWaConfig(prev => ({ ...prev, isActive: true }));
+                setWaMessage({ success: true, text: "WhatsApp connected successfully!" });
+                fetchWhatsAppConfig();
+                return;
+            }
+
+            if (data.reauthRequired) {
+                // Genuinely needs Meta again.
+                setWaMessage({ success: false, text: data.message || "Meta authorization is required again." });
+                setWaCanReconnect(false);
+                return;
+            }
+
+            // Transient: a Meta outage must not push anyone through OAuth.
+            setWaMessage({ success: false, text: data.message || "Could not reconnect. Please try again." });
+        } catch (err) {
+            setWaMessage({ success: false, text: "Could not reconnect: " + err.message });
+        } finally {
+            setWaReconnecting(false);
+        }
+    };
+
     const fetchWhatsAppConfig = async () => {
         setWaLoading(true);
         try {
@@ -1593,12 +1638,14 @@ export default function SettingsPage({ tabParam }) {
 
             // 1. Fetch connection status from Meta Embedded Signup v4 endpoint
             try {
-                const connRes = await fetch('/api/whatsapp/connection', { headers, cache: 'no-store' });
+                const connRes = await fetch('/api/whatsapp/connection-status', { headers, cache: 'no-store' });
                 const connData = await connRes.json();
                 if (connData?.connected && connData?.connection) {
                     setMetaConnection(connData.connection);
+                    setWaCanReconnect(false);
                 } else {
                     setMetaConnection(null);
+                    setWaCanReconnect(!!connData?.canReconnect);
                 }
             } catch (connErr) {
                 console.warn("Failed to check Meta connection:", connErr.message);
@@ -1747,8 +1794,8 @@ export default function SettingsPage({ tabParam }) {
         try {
             const userId = getCurrentUserId();
             const headers = userId ? { 'x-user-id': userId } : {};
-            const res = await fetch('/api/whatsapp/connection', {
-                method: 'DELETE',
+            const res = await fetch('/api/whatsapp/disconnect', {
+                method: 'POST',
                 headers,
             });
             const data = await res.json();
@@ -1757,9 +1804,16 @@ export default function SettingsPage({ tabParam }) {
             }
 
             setMetaConnection(null);
-            setWaConfig(prev => ({ ...prev, isActive: false, phoneNumberId: "", wabaId: "" }));
+            setWaCanReconnect(!!data.canReconnect);
+            // phoneNumberId/wabaId are left in place: they are what reconnect reuses.
+            setWaConfig(prev => ({ ...prev, isActive: false }));
             setShowDisconnectModal(false);
-            setWaMessage({ success: true, text: "✓ WhatsApp account disconnected successfully." });
+            setWaMessage({
+                success: true,
+                text: data.canReconnect
+                    ? "WhatsApp disconnected. Your history is intact — Connect will restore it without Meta."
+                    : "WhatsApp disconnected. Your message history and templates are unchanged.",
+            });
         } catch (err) {
             setWaMessage({ success: false, text: "Error disconnecting: " + err.message });
         } finally {
@@ -2434,18 +2488,20 @@ export default function SettingsPage({ tabParam }) {
                                                 <Icon name="whatsapp" size={30} color="#fff" />
                                             </div>
                                             <h3 style={{ fontSize: 18, fontWeight: 800, color: T.text, margin: "0 0 8px" }}>
-                                                Onboard Official WhatsApp Business with Meta
+                                                {waCanReconnect ? "Reconnect WhatsApp Business" : "Onboard Official WhatsApp Business with Meta"}
                                             </h3>
                                             <p style={{ fontSize: 13, color: T.textMuted, margin: 0, lineHeight: 1.5 }}>
-                                                Connect your phone number in 2 minutes via Meta Embedded Signup v4. Zyro manages the Meta Developer App centrally, eliminating individual API keys and webhook configuration.
+                                                {waCanReconnect
+                                                    ? "Your Meta authorization is still on file. Connecting restores your number, webhooks and message sync without asking Meta for permission again."
+                                                    : "Connect your phone number in 2 minutes via Meta Embedded Signup v4. Zyro manages the Meta Developer App centrally, eliminating individual API keys and webhook configuration."}
                                             </p>
                                         </div>
 
                                         <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
                                             <button
                                                 type="button"
-                                                onClick={handleLaunchEmbeddedSignup}
-                                                disabled={metaConnecting}
+                                                onClick={waCanReconnect ? handleConnectWhatsApp : handleLaunchEmbeddedSignup}
+                                                disabled={metaConnecting || waReconnecting}
                                                 style={{
                                                     background: "linear-gradient(135deg, #25D366 0%, #128C7E 100%)",
                                                     color: "#FFFFFF",
@@ -2454,16 +2510,23 @@ export default function SettingsPage({ tabParam }) {
                                                     padding: "14px 28px",
                                                     fontSize: 14,
                                                     fontWeight: 800,
-                                                    cursor: metaConnecting ? "not-allowed" : "pointer",
+                                                    cursor: (metaConnecting || waReconnecting) ? "not-allowed" : "pointer",
                                                     fontFamily: "inherit",
                                                     boxShadow: "0 4px 18px rgba(37,211,102,0.45)",
                                                     display: "inline-flex",
                                                     alignItems: "center",
                                                     gap: 10,
+                                                    opacity: (metaConnecting || waReconnecting) ? 0.75 : 1,
                                                 }}
                                             >
                                                 <Icon name="whatsapp" size={18} color="#fff" />
-                                                {metaConnecting ? "Opening Meta Onboarding..." : "Onboard Official WhatsApp"}
+                                                {waReconnecting
+                                                    ? "Reconnecting your WhatsApp account..."
+                                                    : metaConnecting
+                                                        ? "Opening Meta Onboarding..."
+                                                        : waCanReconnect
+                                                            ? "Connect WhatsApp"
+                                                            : "Onboard Official WhatsApp"}
                                             </button>
                                         </div>
 

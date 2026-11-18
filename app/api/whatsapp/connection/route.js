@@ -1,27 +1,21 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { resolveWhatsAppUserId } from '@/lib/whatsappAuth';
 import { getMerchantWhatsAppConnection, disconnectMerchantWhatsApp } from '@/lib/services/metaEmbeddedSignup';
 
 export const dynamic = 'force-dynamic';
 
+// Previously fell back to the first row in `users` when the header was missing,
+// which let an unauthenticated caller read one merchant's phone number and WABA
+// id, or disconnect them. Absent header now means unauthorized.
 async function resolveUserId(request) {
-    let userId = request.headers.get('x-user-id');
-    if (!userId || userId === 'null' || userId === 'undefined') {
-        const { data: defaultUser } = await supabase
-            .from('users')
-            .select('id')
-            .limit(1)
-            .maybeSingle();
-        userId = defaultUser?.id || null;
-    }
-    return userId;
+    return resolveWhatsAppUserId(request);
 }
 
 export async function GET(request) {
     try {
         const userId = await resolveUserId(request);
         if (!userId) {
-            return NextResponse.json({ connected: false, message: 'Unauthenticated' });
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const connection = await getMerchantWhatsAppConnection(userId);
