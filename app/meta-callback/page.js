@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getCurrentUserId } from "@/lib/auth";
 
@@ -10,7 +10,13 @@ export default function MetaCallbackPage() {
     const [status, setStatus] = useState("processing"); // 'processing', 'success', 'error'
     const [errorMessage, setErrorMessage] = useState("");
 
+    const processedRef = useRef(false);
+
     useEffect(() => {
+        // Meta codes and signup states are single-use — never run the exchange twice
+        if (processedRef.current) return;
+        processedRef.current = true;
+
         const processCallback = async () => {
             // Check for error response from Meta
             const error = searchParams.get("error");
@@ -57,9 +63,8 @@ export default function MetaCallbackPage() {
                     body: JSON.stringify({
                         code,
                         state,
-                        wabaId: wabaId || '1683429933404101',
-                        phoneNumberId: phoneNumberId || '1462001326987017',
-                        displayPhoneNumber: '+1 (555) 167-0097',
+                        wabaId: wabaId || null,
+                        phoneNumberId: phoneNumberId || null,
                     }),
                 });
 

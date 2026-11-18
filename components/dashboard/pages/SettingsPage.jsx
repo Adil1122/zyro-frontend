@@ -1656,26 +1656,9 @@ export default function SettingsPage({ tabParam }) {
                 throw new Error(data?.error || 'Failed to initialize Meta Embedded Signup session');
             }
 
-            // Listen for Meta Embedded Signup message events
-            const messageHandler = async (event) => {
-                if (!event.origin || !event.origin.includes("facebook.com")) return;
-                try {
-                    const eventData = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-                    if (eventData?.type === 'WA_EMBEDDED_SIGNUP') {
-                        if (eventData.event === 'FINISH') {
-                            const { phone_number_id, waba_id } = eventData.data || {};
-                            await handleCompleteManualCallback('direct', {
-                                phoneNumberId: phone_number_id,
-                                wabaId: waba_id,
-                            });
-                            if (popup && !popup.closed) popup.close();
-                        }
-                    }
-                } catch {}
-            };
-            window.addEventListener('message', messageHandler);
-
-            // Open Meta's official onboarding interface in a new window/tab (to bypass iframe restrictions)
+            // Open Meta's official onboarding interface in a new window/tab (to bypass iframe restrictions).
+            // The connection is finalized ONLY by /meta-callback when Meta redirects back with a real
+            // authorization code. Closing the popup never marks WhatsApp as connected.
             const popup = window.open(targetUrl, 'MetaWhatsAppSignup', 'width=800,height=750,scrollbars=yes,resizable=yes');
             if (!popup || popup.closed || typeof popup.closed === 'undefined') {
                 window.location.href = targetUrl;
@@ -1683,10 +1666,8 @@ export default function SettingsPage({ tabParam }) {
                 const pollTimer = setInterval(async () => {
                     if (popup.closed) {
                         clearInterval(pollTimer);
-                        window.removeEventListener('message', messageHandler);
                         setMetaConnecting(false);
-                        // Auto-finalize connection for the authenticated merchant
-                        await handleCompleteManualCallback('direct');
+                        // Just re-check the real connection status from the server
                         await fetchWhatsAppConfig();
                     }
                 }, 1200);
@@ -1702,13 +1683,16 @@ export default function SettingsPage({ tabParam }) {
         setWaMessage(null);
         try {
             const userId = getCurrentUserId();
-            const inputVal = directVal === 'direct' ? '' : (directVal || callbackInput);
+            const inputVal = (directVal === 'direct' ? '' : (directVal || callbackInput) || '').trim();
+            if (!inputVal) {
+                throw new Error('Paste the Meta callback URL or authorization code first.');
+            }
             const payload = {
                 url: inputVal,
                 code: inputVal,
-                wabaId: overrides.wabaId || '1683429933404101',
-                phoneNumberId: overrides.phoneNumberId || '1462001326987017',
-                displayPhoneNumber: overrides.displayPhoneNumber || '+1 (555) 167-0097',
+                wabaId: overrides.wabaId || null,
+                phoneNumberId: overrides.phoneNumberId || null,
+                displayPhoneNumber: overrides.displayPhoneNumber || null,
             };
             const res = await fetch('/api/whatsapp/embedded-signup/exchange', {
                 method: 'POST',
@@ -1723,14 +1707,14 @@ export default function SettingsPage({ tabParam }) {
                 throw new Error(data?.error || 'Failed to complete Meta connection');
             }
             setMetaConnection({
-                wabaId: data.wabaId || '1683429933404101',
-                phoneNumberId: data.phoneNumberId || '1462001326987017',
-                displayPhoneNumber: data.displayPhoneNumber || '+1 (555) 167-0097',
-                verifiedName: data.verifiedName || 'Dayemens Business Portfolio',
-                qualityRating: data.qualityRating || 'GREEN',
+                wabaId: data.wabaId,
+                phoneNumberId: data.phoneNumberId,
+                displayPhoneNumber: data.displayPhoneNumber,
+                verifiedName: data.verifiedName,
+                qualityRating: data.qualityRating,
                 status: 'connected',
             });
-            setWaMessage({ success: true, text: "✓ WhatsApp Business (" + (data.displayPhoneNumber || "+1 555 167-0097") + ") successfully connected!" });
+            setWaMessage({ success: true, text: "✓ WhatsApp Business (" + (data.displayPhoneNumber || data.phoneNumberId) + ") successfully connected!" });
             await fetchWhatsAppConfig();
             setCallbackInput("");
         } catch (err) {
@@ -2205,13 +2189,13 @@ export default function SettingsPage({ tabParam }) {
                             </div>
                             <span style={{
                                 fontSize: 11, padding: "4px 10px", borderRadius: 20, fontWeight: 700,
-                                background: (metaConnection || waConfig.phoneNumberId) ? "rgba(74,222,128,0.12)" : "rgba(251,191,36,0.12)",
-                                color: (metaConnection || waConfig.phoneNumberId) ? T.green : T.yellow,
-                                border: `1px solid ${(metaConnection || waConfig.phoneNumberId) ? T.green : T.yellow}44`,
+                                background: (metaConnection || (waConfig.phoneNumberId && waConfig.isActive)) ? "rgba(74,222,128,0.12)" : "rgba(251,191,36,0.12)",
+                                color: (metaConnection || (waConfig.phoneNumberId && waConfig.isActive)) ? T.green : T.yellow,
+                                border: `1px solid ${(metaConnection || (waConfig.phoneNumberId && waConfig.isActive)) ? T.green : T.yellow}44`,
                                 display: "inline-flex", alignItems: "center", gap: 5,
                             }}>
-                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: (metaConnection || waConfig.phoneNumberId) ? T.green : T.yellow }} />
-                                {(metaConnection || waConfig.phoneNumberId) ? "Official WhatsApp Connected" : "Not Connected"}
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: (metaConnection || (waConfig.phoneNumberId && waConfig.isActive)) ? T.green : T.yellow }} />
+                                {(metaConnection || (waConfig.phoneNumberId && waConfig.isActive)) ? "Official WhatsApp Connected" : "Not Connected"}
                             </span>
                         </div>
 
@@ -2258,7 +2242,7 @@ export default function SettingsPage({ tabParam }) {
                         ) : (
                             <>
                                 {/* ── CONNECTED STATE ── */}
-                                {(metaConnection || waConfig.phoneNumberId) ? (
+                                {(metaConnection || (waConfig.phoneNumberId && waConfig.isActive)) ? (
                                     <Card style={{ padding: 24, marginBottom: 24, border: `1px solid rgba(74,222,128,0.3)` }}>
                                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
                                             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
