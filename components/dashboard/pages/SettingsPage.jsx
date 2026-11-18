@@ -1765,8 +1765,15 @@ export default function SettingsPage({ tabParam }) {
                     }
                 } catch { /* keep polling */ }
 
-                const popupGone = !popup || popup.closed;
-                const timedOut = Date.now() - startedAt > 180000;
+                // popup.closed is not reliable across a cross-origin navigation:
+                // once the window moves to facebook.com the opener's handle can
+                // report closed while it is plainly open, which showed "not
+                // completed" seconds after the popup appeared. Only trust it after
+                // a grace period, and never before Meta has had time to load.
+                const GRACE_MS = 30000;
+                const elapsed = Date.now() - startedAt;
+                const popupGone = elapsed > GRACE_MS && (!popup || popup.closed);
+                const timedOut = elapsed > 180000;
                 if (popupGone || timedOut) {
                     clearInterval(poll);
                     window.removeEventListener('message', messageHandler);
