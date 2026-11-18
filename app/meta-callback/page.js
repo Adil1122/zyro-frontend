@@ -54,19 +54,16 @@ export default function MetaCallbackPage() {
                         "Content-Type": "application/json",
                         ...(userId ? { "x-user-id": userId } : {}),
                     },
-                    body: JSON.stringify({
-                        code,
-                        state,
-                        wabaId: wabaId || '1683429933404101',
-                        phoneNumberId: phoneNumberId || '1462001326987017',
-                        displayPhoneNumber: '+1 (555) 167-0097',
-                    }),
+                    // Only what Meta actually returned. Placeholder ids here were
+                    // enough to produce a connected-looking account with no
+                    // authorization behind it.
+                    body: JSON.stringify({ code, state, wabaId, phoneNumberId }),
                 });
 
                 const data = await res.json();
 
                 if (!res.ok || !data.success) {
-                    throw new Error(data.error || "Failed to finalize WhatsApp Business connection with Meta");
+                    throw new Error(data.message || data.error || "Failed to finalize WhatsApp Business connection with Meta");
                 }
 
                 setStatus("success");

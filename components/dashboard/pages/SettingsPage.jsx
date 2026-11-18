@@ -1756,12 +1756,13 @@ export default function SettingsPage({ tabParam }) {
         try {
             const userId = getCurrentUserId();
             const inputVal = directVal === 'direct' ? '' : (directVal || callbackInput);
+            // Only what Meta returned. Placeholder ids here meant the backend
+            // could "connect" an account the merchant never authorized.
             const payload = {
                 url: inputVal,
                 code: inputVal,
-                wabaId: overrides.wabaId || '1683429933404101',
-                phoneNumberId: overrides.phoneNumberId || '1462001326987017',
-                displayPhoneNumber: overrides.displayPhoneNumber || '+1 (555) 167-0097',
+                wabaId: overrides.wabaId || null,
+                phoneNumberId: overrides.phoneNumberId || null,
             };
             const res = await fetch('/api/whatsapp/embedded-signup/exchange', {
                 method: 'POST',
@@ -1773,18 +1774,15 @@ export default function SettingsPage({ tabParam }) {
             });
             const data = await res.json();
             if (!res.ok || !data.success) {
-                throw new Error(data?.error || 'Failed to complete Meta connection');
+                throw new Error(data?.message || data?.error || 'Failed to complete Meta connection');
             }
-            setMetaConnection({
-                wabaId: data.wabaId || '1683429933404101',
-                phoneNumberId: data.phoneNumberId || '1462001326987017',
-                displayPhoneNumber: data.displayPhoneNumber || '+1 (555) 167-0097',
-                verifiedName: data.verifiedName || 'Dayemens Business Portfolio',
-                qualityRating: data.qualityRating || 'GREEN',
-                status: 'connected',
-            });
-            setWaMessage({ success: true, text: "✓ WhatsApp Business (" + (data.displayPhoneNumber || "+1 555 167-0097") + ") successfully connected!" });
+            // Re-read from the backend rather than asserting success locally, so
+            // what is shown is the verified connection record, not this response.
             await fetchWhatsAppConfig();
+            setWaMessage({
+                success: true,
+                text: "WhatsApp Business" + (data.displayPhoneNumber ? ` (${data.displayPhoneNumber})` : "") + " connected successfully!",
+            });
             setCallbackInput("");
         } catch (err) {
             setWaMessage({ success: false, text: "Error finalizing connection: " + err.message });
@@ -2476,7 +2474,7 @@ export default function SettingsPage({ tabParam }) {
                                                 <br />
                                                 • <b>WhatsApp 24-Hour Policy:</b> For a new conversation initiated by a business, Meta <b>requires a pre-approved template message</b> (such as <code>hello_world</code>). Free-form text messages are dropped by Meta unless the customer messages you first.
                                                 <br />
-                                                • <b>To receive custom text messages:</b> Send a quick message (e.g. <code>"Hi"</code>) from <code>+92 315 5567644</code> to your test number <code>+1 (555) 167-0097</code> on WhatsApp. That immediately opens the 24-hour customer service window!
+                                                • <b>To receive custom text messages:</b> Send a quick message (e.g. <code>"Hi"</code>) from your personal phone to your connected WhatsApp Business number. That immediately opens the 24-hour customer service window!
                                             </div>
                                         </div>
                                     </Card>
@@ -2553,7 +2551,7 @@ export default function SettingsPage({ tabParam }) {
                                                 </span>
                                             </div>
                                             <p style={{ fontSize: 12, color: T.textMuted, margin: "0 0 12px 0", lineHeight: 1.5 }}>
-                                                If Meta completed onboarding and displayed <code>Hosted ES OAuth callback...</code> in the popup, paste the address bar URL or authorization code below to link your registered Dayemens Business account (Phone ID: <code>1462001326987017</code>, WABA: <code>1683429933404101</code>).
+                                                If Meta completed onboarding and displayed <code>Hosted ES OAuth callback...</code> in the popup, paste the address bar URL or authorization code below to finish linking your WhatsApp Business account.
                                             </p>
                                             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                                                 <input
