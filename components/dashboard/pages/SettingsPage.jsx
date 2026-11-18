@@ -1595,6 +1595,10 @@ export default function SettingsPage({ tabParam }) {
     // restore the link without sending the merchant back through Meta.
     const [waCanReconnect, setWaCanReconnect] = useState(false);
     const [waReconnecting, setWaReconnecting] = useState(false);
+    // The state issued by /embedded-signup/start. Meta returns it on the redirect
+    // path, but the popup FINISH event does not carry it, so it is held here and
+    // sent on completion — without it the CSRF check rejects the authorization.
+    const metaSignupState = useRef(null);
 
     // Tries the stored credentials first and only falls through to Meta OAuth when
     // Meta itself says the authorization is gone.
@@ -1704,6 +1708,7 @@ export default function SettingsPage({ tabParam }) {
                 headers,
             });
             const data = await res.json();
+            metaSignupState.current = data?.rawState || null;
             const targetUrl = data?.signupUrl || data?.hostedSignupUrl;
             if (!res.ok || !targetUrl) {
                 throw new Error(data?.error || 'Failed to initialize Meta Embedded Signup session');
@@ -1761,6 +1766,7 @@ export default function SettingsPage({ tabParam }) {
             const payload = {
                 url: inputVal,
                 code: inputVal,
+                state: overrides.state || metaSignupState.current || undefined,
                 wabaId: overrides.wabaId || null,
                 phoneNumberId: overrides.phoneNumberId || null,
             };
