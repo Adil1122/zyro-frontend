@@ -63,7 +63,10 @@ export default function MetaCallbackPage() {
                 const data = await res.json();
 
                 if (!res.ok || !data.success) {
-                    throw new Error(data.message || data.error || "Failed to finalize WhatsApp Business connection with Meta");
+                    // The reason names the step that rejected; without it a 400 in
+                    // the console says nothing about what actually failed.
+                    console.error('[Meta Callback] Exchange rejected:', res.status, data);
+                    throw new Error((data.reason ? `[${data.reason}] ` : "") + (data.message || data.error || "Failed to finalize WhatsApp Business connection with Meta"));
                 }
 
                 setStatus("success");

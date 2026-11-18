@@ -1783,7 +1783,8 @@ export default function SettingsPage({ tabParam }) {
             });
             const data = await res.json();
             if (!res.ok || !data.success) {
-                throw new Error(data?.message || data?.error || 'Failed to complete Meta connection');
+                console.error('[WhatsApp] Exchange rejected:', res.status, data);
+                throw new Error((data?.reason ? `[${data.reason}] ` : '') + (data?.message || data?.error || 'Failed to complete Meta connection'));
             }
             // Re-read from the backend rather than asserting success locally, so
             // what is shown is the verified connection record, not this response.
